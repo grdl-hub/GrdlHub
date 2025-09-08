@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1976d2" />
+  <meta name="description" content="GrdlHub - A centralized PWA hub with multiple features" />
+  
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firestore.googleapis.com;">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  
+  <!-- Google Fonts similar to JW.org style -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+  
+  <title>GrdlHub - PWA Hub</title>
+  
+  <style>
+    /* Critical loading styles */
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      background: #f8fafc;
+    }
+    
+    .app-initializing {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 2rem;
+    }
+    
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 6px solid #e5e7eb;
+      border-top: 6px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 2rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .app-initializing h1 {
+      color: #1f2937;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .app-initializing p {
+      color: #6b7280;
+      font-size: 1rem;
+    }
+    
+    .security-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #dcfce7;
+      color: #166534;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-initializing">
+    <div class="spinner"></div>
+    <h1>GrdlHub</h1>
+    <p>Initializing secure application...</p>
+    <div class="security-badge">
+      🔒 Secure Authentication Required
+    </div>
+  </div>
+
+  <script type="module">
+    // App entry point - handles auth check and routing
+    import { AuthAPI } from './src/auth-standalone.js'
+    
+    async function initializeApp() {
+      try {
+        // Initialize auth system
+        await AuthAPI.initializeStandaloneAuth()
+        
+        // Check if user is authenticated
+        const user = AuthAPI.getCurrentAuthUser()
+        
+        if (user && user.emailVerified) {
+          // User is authenticated, load main app
+          const { default: initMainApp } = await import('./src/main-app.js')
+          await initMainApp()
+        } else {
+          // User not authenticated, redirect to auth page
+          window.location.href = '/auth.html'
+        }
+      } catch (error) {
+        console.error('App initialization error:', error)
+        // Fallback to auth page
+        window.location.href = '/auth.html'
+      }
+    }
+    
+    // Start app initialization
+    initializeApp()
+  </script>
+</body>
+</html>l>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
