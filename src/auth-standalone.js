@@ -44,6 +44,9 @@ const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
 const db = getFirestore(app)
 
+// Export db for other modules that need Firestore access
+export { db }
+
 // Auth state management
 let authStateInitialized = false
 let currentAuthUser = null

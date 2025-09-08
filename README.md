@@ -11,7 +11,10 @@ A modern, **invite-only Progressive Web App (PWA)** built with security-first ar
 
 ### 🔐 Security-First Architecture
 - **Isolated Authentication**: Completely separate auth module from main app
+- **Magic Link Authentication**: Passwordless access via secure email links (24-hour validity)
 - **Invite-Only Access**: Pre-approved email whitelist system for secure registration
+- **Auto-Generated Invites**: Magic links automatically created when emails are approved
+- **No Password Required**: Simplified access for all users, especially seniors
 - **Email Verification**: Email-based authorization before account creation
 - **Role-Based Permissions**: Granular access control for different user roles
 - **Content Security Policy**: Strict CSP headers for XSS protection
@@ -161,19 +164,55 @@ Enable Email/Password authentication in the Firebase Console.
 - Cannot manage other users
 - Default permissions: `["home", "content"]`
 
+## Magic Link Authentication Workflow
+
+### 🔗 Passwordless Access (Preferred Method)
+
+1. **Admin Adds Email**: Administrator adds user email to pre-approved list
+2. **Auto-Invite Generation**: System automatically creates magic link with 24-hour validity
+3. **Manual Email Sharing**: Administrator copies magic link and emails it to user
+4. **One-Click Access**: User clicks magic link → automatically creates account and logs in
+5. **No Password Needed**: Simplified access especially beneficial for older users
+
+### ⚡ Magic Link Features
+
+- **Secure Tokens**: Cryptographically secure random tokens (256-bit)
+- **Time-Limited**: Links expire after 24 hours for security
+- **One-Time Use**: Tokens are cleared after successful registration
+- **Email Validation**: Links are tied to specific email addresses
+- **Auto-Registration**: Creates Firebase account with secure random password
+
+### 📧 Manual Invitation Process
+
+1. Admin accesses **Users > Pre-Approved Emails**
+2. Clicks **"Add Email"** and enters user's email address
+3. System shows magic link modal with:
+   - Copy-ready magic link URL
+   - Email template for easy sharing
+   - 24-hour validity notice
+4. Admin copies and emails the link to user
+5. User clicks link → instant secure access
+
+### 🔄 Legacy Authentication (Fallback)
+
+For users without magic links:
+1. **Email Check**: User enters email to verify pre-approval status
+2. **Status Messages**: System shows appropriate message based on email status:
+   - Not pre-approved → Contact administrator
+   - Has pending invite → Check email for magic link
+   - Registered → Contact administrator for new link
+
 ## Authentication Flow
+
+## Legacy Authentication Flow (Fallback)
 
 1. **Landing Page**: Non-authorized users are redirected to auth portal
 2. **Email Verification**: User enters email to check if pre-approved for registration
 3. **Pre-Approved Email System**: 
-   - If email is in whitelist → user can create account immediately
+   - If email is in whitelist → user sees status message
    - If email not pre-approved → user sees authorization error message
    - Admin can manage pre-approved emails through Users > Pre-Approved Emails tab
-4. **Account Creation**: Email-verified users create account with secure password
-5. **Email Verification**: Firebase sends verification email before account activation
-   - If user not found → shows contact administrator message
-4. **Account Setup**: Users follow invite link to create password and activate account
-5. **Role-Based Access**: Navigation filtered by user permissions
+4. **Status-Based Response**: System shows appropriate guidance based on invitation status
 
 ### Invite Link Flow
 - Admin invites user via email in Users Management

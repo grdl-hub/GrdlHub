@@ -9,6 +9,7 @@ import {
   signInUser,
   SecurityUtils
 } from './auth-standalone.js'
+import { validateMagicLink, sendEmailInvitation } from './pages/preApprovedEmails.js'
 
 class StandaloneAuthApp {
   constructor() {
@@ -35,6 +36,12 @@ class StandaloneAuthApp {
         return
       }
       
+      // Check for magic link in URL first
+      const magicLinkResult = await this.checkMagicLink()
+      if (magicLinkResult.handled) {
+        return // Magic link was processed, don't show normal auth interface
+      }
+      
       // Show auth interface
       this.setupAuthInterface()
       
@@ -42,6 +49,168 @@ class StandaloneAuthApp {
       console.error('Auth initialization error:', error)
       this.showError('Failed to initialize authentication system')
     }
+  }
+
+  async checkMagicLink() {
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    const email = urlParams.get('email')
+    
+    if (!token || !email) {
+      return { handled: false } // No magic link parameters
+    }
+    
+    // Show loading state
+    document.getElementById('auth-container').innerHTML = `
+      <div class="auth-card standalone">
+        <div class="auth-header">
+          <h1>GrdlHub</h1>
+          <p>Validating your invitation...</p>
+        </div>
+        <div class="auth-loading">
+          <div class="spinner"></div>
+          <p>Processing your secure invitation link...</p>
+        </div>
+      </div>
+    `
+    
+    try {
+      // Validate the magic link
+      const validation = await validateMagicLink(token, email)
+      
+      if (!validation.valid) {
+        this.showMagicLinkError(validation.reason || 'Invalid invitation link')
+        return { handled: true }
+      }
+      
+      // Magic link is valid, proceed with passwordless registration/login
+      await this.processMagicLinkAuth(email, validation.emailData, validation.documentId)
+      return { handled: true }
+      
+    } catch (error) {
+      console.error('Magic link validation error:', error)
+      this.showMagicLinkError('Error processing invitation link. Please try again.')
+      return { handled: true }
+    }
+  }
+
+  async processMagicLinkAuth(email, emailData, documentId) {
+    try {
+      // Check if user already exists
+      const existingUser = getCurrentAuthUser()
+      
+      if (existingUser && existingUser.email === email) {
+        // User is already signed in with this email
+        this.showMagicLinkSuccess('Welcome back! Loading your workspace...')
+        setTimeout(() => this.loadMainApp(), 1500)
+        return
+      }
+      
+      // Create account without password using the magic link
+      const result = await this.createAccountFromMagicLink(email, emailData)
+      
+      if (result.success) {
+        // Mark the email as registered and clear the magic link
+        await this.updateEmailAfterRegistration(documentId)
+        
+        this.showMagicLinkSuccess('Account created successfully! Welcome to GrdlHub!')
+        setTimeout(() => this.loadMainApp(), 2000)
+      } else {
+        this.showMagicLinkError(result.error || 'Failed to create account')
+      }
+      
+    } catch (error) {
+      console.error('Magic link auth processing error:', error)
+      this.showMagicLinkError('Error creating your account. Please contact support.')
+    }
+  }
+
+  async createAccountFromMagicLink(email, emailData) {
+    try {
+      // Generate a secure random password (user won't need to know it)
+      const randomPassword = this.generateSecurePassword()
+      
+      // Use the existing registration system but with auto-generated password
+      const result = await registerWithPreApprovedEmail(email, randomPassword, emailData.fullName || 'User')
+      
+      return result
+      
+    } catch (error) {
+      console.error('Magic link account creation error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async updateEmailAfterRegistration(documentId) {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore')
+      const { db } = await import('./auth-standalone.js')
+      
+      const emailRef = doc(db, 'preApprovedEmails', documentId)
+      await updateDoc(emailRef, {
+        status: 'registered',
+        registeredAt: new Date(),
+        magicToken: null, // Clear the token
+        magicLinkExpiresAt: null
+      })
+      
+    } catch (error) {
+      console.error('Error updating email status:', error)
+      // Don't throw - this is not critical for the user experience
+    }
+  }
+
+  generateSecurePassword() {
+    // Generate a cryptographically secure random password
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
+    let password = ''
+    const array = new Uint8Array(16)
+    crypto.getRandomValues(array)
+    
+    for (let i = 0; i < 16; i++) {
+      password += chars[array[i] % chars.length]
+    }
+    
+    return password
+  }
+
+  showMagicLinkSuccess(message) {
+    document.getElementById('auth-container').innerHTML = `
+      <div class="auth-card standalone">
+        <div class="auth-header">
+          <h1>🎉 Welcome to GrdlHub</h1>
+        </div>
+        <div class="auth-result success">
+          <div class="success-icon">✅</div>
+          <h2>Access Granted!</h2>
+          <p>${message}</p>
+          <div class="loading-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  showMagicLinkError(message) {
+    document.getElementById('auth-container').innerHTML = `
+      <div class="auth-card standalone">
+        <div class="auth-header">
+          <h1>GrdlHub</h1>
+          <p>Authentication Portal</p>
+        </div>
+        <div class="auth-result error">
+          <div class="error-icon">❌</div>
+          <h2>Invalid Invitation</h2>
+          <p>${message}</p>
+          <div class="form-actions">
+            <button onclick="window.location.href = window.location.pathname" class="btn btn-primary">
+              Request New Invitation
+            </button>
+          </div>
+        </div>
+      </div>
+    `
   }
 
   setupAuthInterface() {
@@ -70,12 +239,17 @@ class StandaloneAuthApp {
           </form>
           
           <div class="auth-info">
-            <p><strong>Access Requirements:</strong></p>
+            <p><strong>🔗 Easy Access with Magic Links:</strong></p>
+            <ul>
+              <li>✨ No passwords required - just click your invitation link</li>
+              <li>📧 Check your email for invitation links</li>
+              <li>🔒 Secure, one-time access links</li>
+              <li>⏰ Links are valid for 24 hours</li>
+            </ul>
+            <p><strong>Don't have an invitation link?</strong></p>
             <ul>
               <li>Your email must be pre-authorized by an administrator</li>
-              <li>Invitation links are valid for 24 hours</li>
-              <li>All connections are secured with end-to-end encryption</li>
-              <li>Two-factor authentication may be required</li>
+              <li>Contact your administrator to be added to the system</li>
             </ul>
             <em>This is a secure, invite-only system designed for authorized users only.</em>
           </div>
@@ -185,19 +359,55 @@ class StandaloneAuthApp {
         return
       }
 
-      // Check if user already has an account by trying to get user data
-      // For now, we'll assume they need to create an account if they reach this point
-      // In a real system, you'd check if a user document exists
+      // Check the status of this pre-approved email
+      const emailStatus = await this.getEmailStatus(email)
       
-      // Show create account form (in future iterations, check if account exists first)
-      document.getElementById('create-email').value = email
-      this.showStep('create-account')
+      if (emailStatus.status === 'registered') {
+        // User already has account, show sign-in option
+        this.showResult('info', 'You already have an account! Please check your email for a new magic link, or contact an administrator if you need assistance.')
+        return
+      }
+      
+      if (emailStatus.status === 'invited' && emailStatus.magicToken && emailStatus.magicLinkExpiresAt > new Date()) {
+        // User has a valid invitation
+        this.showResult('info', 'You have a pending invitation! Please check your email for the magic link to access your account. No password required.')
+        return
+      }
+      
+      // If we get here, the user needs a new invitation or their invitation expired
+      this.showResult('info', 'Your email is pre-approved! Please contact an administrator to send you a new magic link invitation. No password is required - just click the link in your email to access the system.')
       
     } catch (error) {
       console.error('Check access error:', error)
       this.showResult('error', 'Unable to verify email authorization. Please try again.')
     } finally {
       this.showLoading(false)
+    }
+  }
+
+  async getEmailStatus(email) {
+    try {
+      const { collection, query, where, getDocs } = await import('firebase/firestore')
+      const { db } = await import('./auth-standalone.js')
+      
+      const emailsRef = collection(db, 'preApprovedEmails')
+      const q = query(emailsRef, where('email', '==', email.toLowerCase()))
+      const snapshot = await getDocs(q)
+      
+      if (snapshot.empty) {
+        return { status: 'not_found' }
+      }
+      
+      const emailData = snapshot.docs[0].data()
+      return {
+        status: emailData.status,
+        magicToken: emailData.magicToken,
+        magicLinkExpiresAt: emailData.magicLinkExpiresAt?.toDate()
+      }
+      
+    } catch (error) {
+      console.error('Error getting email status:', error)
+      return { status: 'error' }
     }
   }
 
