@@ -11,7 +11,8 @@ A modern, **invite-only Progressive Web App (PWA)** built with security-first ar
 
 ### 🔐 Security-First Architecture
 - **Isolated Authentication**: Completely separate auth module from main app
-- **Invite-Only Access**: Secure invitation system with time-limited tokens
+- **Invite-Only Access**: Pre-approved email whitelist system for secure registration
+- **Email Verification**: Email-based authorization before account creation
 - **Role-Based Permissions**: Granular access control for different user roles
 - **Content Security Policy**: Strict CSP headers for XSS protection
 - **Secure Headers**: Anti-clickjacking, MIME sniffing prevention
@@ -151,7 +152,7 @@ Enable Email/Password authentication in the Firebase Console.
 
 ### Admin
 - Full access to all features
-- User management capabilities
+- User management and pre-approved email whitelist capabilities
 - System configuration
 - Default permissions: `["home", "users", "pages", "content", "settings"]`
 
@@ -162,11 +163,14 @@ Enable Email/Password authentication in the Firebase Console.
 
 ## Authentication Flow
 
-1. **Landing Page**: Non-authorized users see welcome page with "Request Access"
-2. **Email Check**: User enters email to verify if they've been invited
-3. **Invite System**: 
-   - If user is invited but hasn't set up account → sends invite link
-   - If user is active → shows they can sign in with existing credentials
+1. **Landing Page**: Non-authorized users are redirected to auth portal
+2. **Email Verification**: User enters email to check if pre-approved for registration
+3. **Pre-Approved Email System**: 
+   - If email is in whitelist → user can create account immediately
+   - If email not pre-approved → user sees authorization error message
+   - Admin can manage pre-approved emails through Users > Pre-Approved Emails tab
+4. **Account Creation**: Email-verified users create account with secure password
+5. **Email Verification**: Firebase sends verification email before account activation
    - If user not found → shows contact administrator message
 4. **Account Setup**: Users follow invite link to create password and activate account
 5. **Role-Based Access**: Navigation filtered by user permissions

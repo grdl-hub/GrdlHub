@@ -59,6 +59,12 @@ service cloud.firestore {
       allow write: if request.auth != null && 
         isAdmin(request.auth.uid);
     }
+    
+    // Pre-approved emails management (admin only)
+    match /preApprovedEmails/{emailId} {
+      allow read, write: if request.auth != null && 
+        isAdmin(request.auth.uid);
+    }
   }
 }
 ```
@@ -113,7 +119,68 @@ const firebaseConfig = {
 }
 ```
 
-## 8. Enable Firebase Hosting (Optional)
+## 8. Set Up Pre-Approved Emails Collection
+
+The app uses a pre-approved emails system for invite-only registration. Set up the collection manually:
+
+### Create the Collection
+
+1. Go to **Firestore Database > Data**
+2. Click **Start collection**
+3. Collection ID: `preApprovedEmails`
+4. Add the first document with these fields:
+
+```javascript
+{
+  email: "admin@example.com",        // string (required)
+  addedBy: "System Admin",           // string (required)
+  notes: "Initial admin account",    // string (optional)
+  status: "pending",                 // string (pending|invited|registered)
+  createdAt: [Firestore Timestamp], // timestamp (auto-generated)
+  updatedAt: [Firestore Timestamp]  // timestamp (optional)
+}
+```
+
+### Email Status Workflow
+
+The system tracks email status through these states:
+
+1. **pending** - Email added to whitelist, waiting for user registration
+2. **invited** - Email invitation has been sent (future feature)
+3. **registered** - User has successfully created an account
+
+### Usage
+
+1. **Adding Emails**: Admins can add emails through the Users > Pre-Approved Emails tab
+2. **Registration**: Users can only register if their email is in this collection
+3. **Status Tracking**: The system automatically updates status when users register
+4. **Management**: Full CRUD operations available for admins
+
+### Sample Data Structure
+
+```javascript
+// Collection: preApprovedEmails
+{
+  "doc1": {
+    email: "user1@company.com",
+    addedBy: "admin@company.com",
+    notes: "Marketing team member",
+    status: "pending",
+    createdAt: Timestamp,
+    updatedAt: Timestamp
+  },
+  "doc2": {
+    email: "user2@company.com", 
+    addedBy: "admin@company.com",
+    notes: "Developer",
+    status: "registered",
+    createdAt: Timestamp,
+    updatedAt: Timestamp
+  }
+}
+```
+
+## 9. Enable Firebase Hosting (Optional)
 
 1. Go to **Hosting**
 2. Click **Get started**
@@ -125,7 +192,7 @@ const firebaseConfig = {
 8. Configure as single-page app: Yes
 9. Don't overwrite index.html: No
 
-## 9. Deploy Your App
+## 10. Deploy Your App
 
 ```bash
 # Build the app
@@ -135,7 +202,7 @@ npm run build
 firebase deploy
 ```
 
-## 10. Test Your Setup
+## 11. Test Your Setup
 
 1. Run your app locally: `npm run dev`
 2. Try to sign in with your admin credentials
