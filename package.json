@@ -7,9 +7,10 @@
   "keywords": ["pwa", "firebase", "vite", "javascript", "hub", "dashboard"],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build", 
     "preview": "vite preview",
-    "deploy": "npm run build && firebase deploy"
+    "deploy": "npm run build && firebase deploy",
+    "setup-firebase": "node scripts/setup-firebase.js"
   },
   "devDependencies": {
     "firebase": "^12.2.1",
