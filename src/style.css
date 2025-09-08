@@ -926,86 +926,187 @@ body.authenticated #auth-nav-link {
   display: none;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-  .header .container {
-    flex-direction: column;
-    height: auto;
-    padding: var(--spacing-md);
-  }
-  
-  .nav {
-    margin-top: var(--spacing-md);
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .hero-title {
-    font-size: var(--font-size-2xl);
-  }
-  
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-md);
-  }
-  
-  .users-controls {
-    flex-direction: column;
-  }
-  
-  .modal-content {
-    margin: var(--spacing-md);
-    width: calc(100% - 2rem);
-  }
-  
-  .notification-container {
-    left: var(--spacing-md);
-    right: var(--spacing-md);
-  }
-  
-  .install-prompt {
-    left: var(--spacing-md);
-    right: var(--spacing-md);
-  }
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--gray-200);
+  margin-bottom: var(--spacing-xl);
 }
 
-@media (max-width: 480px) {
-  .container {
-    padding: 0 var(--spacing-sm);
+.tab-button {
+  background: none;
+  border: none;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition-fast);
+}
+
+.tab-button:hover {
+  color: var(--primary-color);
+  background: var(--gray-50);
+}
+
+.tab-button.active {
+  color: var(--primary-color);
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary-color);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Stats row for headers */
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.stats-row {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.stat-item {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+}
+
+.stat-item span {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+/* Description box */
+.description-box {
+  background: var(--info-color);
+  color: white;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.description-box p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* Email management specific styles */
+.emails-controls {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+  align-items: center;
+}
+
+.emails-table-container {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.emails-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.emails-table th,
+.emails-table td {
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.emails-table th {
+  background: var(--gray-50);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.email-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.email-address {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.email-notes {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-pending {
+  background: var(--warning-color);
+  color: white;
+}
+
+.status-invited {
+  background: var(--info-color);
+  color: white;
+}
+
+.status-registered {
+  background: var(--success-color);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .header-actions {
+    align-items: stretch;
   }
   
-  .nav {
-    gap: var(--spacing-sm);
+  .stats-row {
+    justify-content: space-between;
   }
   
-  .nav-link {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: var(--font-size-sm);
+  .emails-controls {
+    flex-direction: column;
+    align-items: stretch;
   }
   
-  .hero {
-    padding: var(--spacing-xl) 0;
-  }
-  
-  .dashboard-card {
-    padding: var(--spacing-lg);
-  }
-  
-  .auth-card {
-    padding: var(--spacing-xl);
-  }
-  
-  .users-table {
-    font-size: var(--font-size-sm);
-  }
-  
-  .users-table th,
-  .users-table td {
-    padding: var(--spacing-sm);
+  .tab-button {
+    flex: 1;
+    text-align: center;
   }
 }

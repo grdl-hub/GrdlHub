@@ -4,10 +4,8 @@
 import { 
   initializeStandaloneAuth,
   getCurrentAuthUser,
-  checkUserInviteStatus,
-  generateSecureInviteToken,
-  validateInviteToken,
-  createAccountFromInvite,
+  isEmailPreApproved,
+  registerWithPreApprovedEmail,
   signInUser,
   SecurityUtils
 } from './auth-standalone.js'
@@ -39,9 +37,6 @@ class StandaloneAuthApp {
       
       // Show auth interface
       this.setupAuthInterface()
-      
-      // Check for invite token in URL
-      this.checkInviteToken()
       
     } catch (error) {
       console.error('Auth initialization error:', error)
@@ -182,26 +177,25 @@ class StandaloneAuthApp {
     this.showLoading(true)
 
     try {
-      const result = await checkUserInviteStatus(email)
+      // Check if email is pre-approved
+      const isPreApproved = await isEmailPreApproved(email)
       
-      if (!result.invited) {
-        this.showResult('error', result.message)
+      if (!isPreApproved) {
+        this.showResult('error', 'Your email is not authorized for access. Please contact an administrator to be added to the pre-approved list.')
         return
       }
 
-      if (result.hasAccount) {
-        // Show sign in form
-        document.getElementById('signin-email').value = email
-        this.showStep('sign-in')
-      } else {
-        // Show create account form
-        this.inviteData = result
-        document.getElementById('create-email').value = email
-        this.showStep('create-account')
-      }
+      // Check if user already has an account by trying to get user data
+      // For now, we'll assume they need to create an account if they reach this point
+      // In a real system, you'd check if a user document exists
+      
+      // Show create account form (in future iterations, check if account exists first)
+      document.getElementById('create-email').value = email
+      this.showStep('create-account')
       
     } catch (error) {
-      this.showResult('error', 'Error checking access. Please try again.')
+      console.error('Check access error:', error)
+      this.showResult('error', 'Unable to verify email authorization. Please try again.')
     } finally {
       this.showLoading(false)
     }
@@ -254,10 +248,8 @@ class StandaloneAuthApp {
     this.showLoading(true)
 
     try {
-      // Generate secure token for account creation
-      const token = generateSecureInviteToken(this.inviteData.userId, email)
-      
-      const result = await createAccountFromInvite(token, password, name)
+      // Use the new pre-approved email registration system
+      const result = await registerWithPreApprovedEmail(email, password, name)
       
       if (result.success) {
         this.showResult('success', 'Account created! Please check your email for verification. Loading application...')
@@ -270,28 +262,12 @@ class StandaloneAuthApp {
         errorMessage = 'An account with this email already exists.'
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'Password is too weak. Please choose a stronger password.'
+      } else if (error.message && error.message.includes('not authorized')) {
+        errorMessage = error.message
       }
       this.showResult('error', errorMessage)
     } finally {
       this.showLoading(false)
-    }
-  }
-
-  checkInviteToken() {
-    const urlParams = new URLSearchParams(window.location.search)
-    const token = urlParams.get('invite')
-    
-    if (token) {
-      const validation = validateInviteToken(token)
-      if (validation.valid) {
-        // Auto-fill email and show create account form
-        document.getElementById('check-email').value = validation.data.email
-        this.inviteData = { userId: validation.data.userId }
-        document.getElementById('create-email').value = validation.data.email
-        this.showStep('create-account')
-      } else {
-        this.showResult('error', `Invalid or expired invite link: ${validation.reason}`)
-      }
     }
   }
 

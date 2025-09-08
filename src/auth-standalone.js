@@ -201,6 +201,81 @@ export async function signOutUser() {
   }
 }
 
+// Check if email is pre-approved for registration
+export async function isEmailPreApproved(email) {
+  try {
+    const emailsRef = collection(db, 'preApprovedEmails')
+    const q = query(emailsRef, where('email', '==', email.toLowerCase()))
+    const snapshot = await getDocs(q)
+    
+    return !snapshot.empty
+  } catch (error) {
+    console.error('Error checking pre-approved email:', error)
+    return false
+  }
+}
+
+// Update email status in pre-approved list
+export async function updatePreApprovedEmailStatus(email, status) {
+  try {
+    const emailsRef = collection(db, 'preApprovedEmails')
+    const q = query(emailsRef, where('email', '==', email.toLowerCase()))
+    const snapshot = await getDocs(q)
+    
+    if (!snapshot.empty) {
+      const emailDoc = snapshot.docs[0]
+      await setDoc(doc(db, 'preApprovedEmails', emailDoc.id), {
+        status,
+        updatedAt: serverTimestamp()
+      }, { merge: true })
+      return true
+    }
+    
+    return false
+  } catch (error) {
+    console.error('Error updating email status:', error)
+    return false
+  }
+}
+
+// Enhanced registration with email verification
+export async function registerWithPreApprovedEmail(email, password, displayName) {
+  try {
+    // First check if email is pre-approved
+    const isPreApproved = await isEmailPreApproved(email)
+    if (!isPreApproved) {
+      throw new Error('This email is not authorized for registration. Please contact an administrator.')
+    }
+    
+    // Create Firebase auth account
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+    const user = userCredential.user
+    
+    // Send email verification
+    await sendEmailVerification(user)
+    
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      displayName: displayName,
+      email: email.toLowerCase(),
+      role: 'user', // Default role
+      emailVerified: false,
+      isActive: true,
+      createdAt: serverTimestamp(),
+      lastSignIn: null,
+      firebaseUid: user.uid
+    })
+    
+    // Update pre-approved email status
+    await updatePreApprovedEmailStatus(email, 'registered')
+    
+    return { success: true, user: user }
+  } catch (error) {
+    console.error('Error registering user:', error)
+    throw error
+  }
+}
+
 // Security utilities
 export const SecurityUtils = {
   // Clear sensitive data from memory
@@ -226,5 +301,8 @@ export const AuthAPI = {
   initializeStandaloneAuth,
   getCurrentAuthUser,
   signOutUser,
+  isEmailPreApproved,
+  registerWithPreApprovedEmail,
+  updatePreApprovedEmailStatus,
   SecurityUtils
 }
