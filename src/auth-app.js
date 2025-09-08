@@ -7,9 +7,11 @@ import {
   isEmailPreApproved,
   registerWithPreApprovedEmail,
   signInUser,
+  sendFirebaseSignInLink,
+  signInWithFirebaseLink,
+  isFirebaseSignInLink,
   SecurityUtils
 } from './auth-standalone.js'
-import { validateMagicLink, sendEmailInvitation } from './pages/preApprovedEmails.js'
 
 class StandaloneAuthApp {
   constructor() {
@@ -52,12 +54,9 @@ class StandaloneAuthApp {
   }
 
   async checkMagicLink() {
-    const urlParams = new URLSearchParams(window.location.search)
-    const token = urlParams.get('token')
-    const email = urlParams.get('email')
-    
-    if (!token || !email) {
-      return { handled: false } // No magic link parameters
+    // Check if the current URL is a Firebase sign-in link
+    if (!isFirebaseSignInLink()) {
+      return { handled: false } // No Firebase sign-in link
     }
     
     // Show loading state
@@ -75,21 +74,30 @@ class StandaloneAuthApp {
     `
     
     try {
-      // Validate the magic link
-      const validation = await validateMagicLink(token, email)
+      // Get email from URL parameter or localStorage
+      const urlParams = new URLSearchParams(window.location.search)
+      const email = urlParams.get('email') || window.localStorage.getItem('emailForSignIn')
       
-      if (!validation.valid) {
-        this.showMagicLinkError(validation.reason || 'Invalid invitation link')
+      if (!email) {
+        this.showMagicLinkError('Email address is required to complete sign-in. Please contact support.')
         return { handled: true }
       }
       
-      // Magic link is valid, proceed with passwordless registration/login
-      await this.processMagicLinkAuth(email, validation.emailData, validation.documentId)
+      // Sign in with the Firebase email link
+      const result = await signInWithFirebaseLink(email, window.location.href)
+      
+      if (result.success) {
+        this.showMagicLinkSuccess('Welcome to GrdlHub! Your account is ready.')
+        setTimeout(() => this.loadMainApp(), 2000)
+      } else {
+        this.showMagicLinkError(result.error || 'Failed to complete sign-in')
+      }
+      
       return { handled: true }
       
     } catch (error) {
-      console.error('Magic link validation error:', error)
-      this.showMagicLinkError('Error processing invitation link. Please try again.')
+      console.error('Firebase sign-in link error:', error)
+      this.showMagicLinkError('Error processing invitation link. Please try again or contact support.')
       return { handled: true }
     }
   }
@@ -227,31 +235,33 @@ class StandaloneAuthApp {
 
         <!-- Step 1: Check Access -->
         <div id="step-check-access" class="auth-step active">
-          <h2>Request Access</h2>
-          <p>Enter your email address to verify your invitation status</p>
+          <h2>🔗 Instant Magic Link Access</h2>
+          <p>Enter your email to receive an instant secure access link</p>
           
           <form id="check-access-form">
             <div class="form-group">
               <label for="check-email">Email Address</label>
               <input type="email" id="check-email" required autocomplete="email" placeholder="your.email@example.com">
             </div>
-            <button type="submit" class="btn btn-primary">Verify Invitation</button>
+            <button type="submit" class="btn btn-primary">📧 Send Magic Link</button>
           </form>
           
           <div class="auth-info">
-            <p><strong>🔗 Easy Access with Magic Links:</strong></p>
+            <p><strong>✨ How it works:</strong></p>
             <ul>
-              <li>✨ No passwords required - just click your invitation link</li>
-              <li>📧 Check your email for invitation links</li>
-              <li>🔒 Secure, one-time access links</li>
-              <li>⏰ Links are valid for 24 hours</li>
+              <li>🔍 Enter your email address above</li>
+              <li>⚡ Get an instant magic link (if pre-approved)</li>
+              <li>� Check your email and click the link</li>
+              <li>🎉 Automatic access - no password needed!</li>
             </ul>
-            <p><strong>Don't have an invitation link?</strong></p>
+            <p><strong>🔒 Security Features:</strong></p>
             <ul>
-              <li>Your email must be pre-authorized by an administrator</li>
-              <li>Contact your administrator to be added to the system</li>
+              <li>🛡️ Links expire after 24 hours</li>
+              <li>🔐 Cryptographically secure tokens</li>
+              <li>✅ Invite-only access control</li>
+              <li>👴 Perfect for users of all ages</li>
             </ul>
-            <em>This is a secure, invite-only system designed for authorized users only.</em>
+            <em>This is a secure, invite-only system. If your email isn't pre-approved, please contact an administrator.</em>
           </div>
         </div>
 
@@ -359,55 +369,22 @@ class StandaloneAuthApp {
         return
       }
 
-      // Check the status of this pre-approved email
-      const emailStatus = await this.getEmailStatus(email)
+      // Email is pre-approved! Send Firebase sign-in link immediately
+      this.showResult('info', 'Generating your secure access link...')
       
-      if (emailStatus.status === 'registered') {
-        // User already has account, show sign-in option
-        this.showResult('info', 'You already have an account! Please check your email for a new magic link, or contact an administrator if you need assistance.')
-        return
+      const result = await sendFirebaseSignInLink(email)
+      
+      if (result.success) {
+        this.showResult('success', `✅ Sign-in link sent to ${email}! Check your email and click the link to access GrdlHub. No password required! Links are managed by Firebase for maximum security.`)
+      } else {
+        this.showResult('error', result.error || 'Failed to send sign-in link. Please try again or contact support.')
       }
-      
-      if (emailStatus.status === 'invited' && emailStatus.magicToken && emailStatus.magicLinkExpiresAt > new Date()) {
-        // User has a valid invitation
-        this.showResult('info', 'You have a pending invitation! Please check your email for the magic link to access your account. No password required.')
-        return
-      }
-      
-      // If we get here, the user needs a new invitation or their invitation expired
-      this.showResult('info', 'Your email is pre-approved! Please contact an administrator to send you a new magic link invitation. No password is required - just click the link in your email to access the system.')
       
     } catch (error) {
       console.error('Check access error:', error)
       this.showResult('error', 'Unable to verify email authorization. Please try again.')
     } finally {
       this.showLoading(false)
-    }
-  }
-
-  async getEmailStatus(email) {
-    try {
-      const { collection, query, where, getDocs } = await import('firebase/firestore')
-      const { db } = await import('./auth-standalone.js')
-      
-      const emailsRef = collection(db, 'preApprovedEmails')
-      const q = query(emailsRef, where('email', '==', email.toLowerCase()))
-      const snapshot = await getDocs(q)
-      
-      if (snapshot.empty) {
-        return { status: 'not_found' }
-      }
-      
-      const emailData = snapshot.docs[0].data()
-      return {
-        status: emailData.status,
-        magicToken: emailData.magicToken,
-        magicLinkExpiresAt: emailData.magicLinkExpiresAt?.toDate()
-      }
-      
-    } catch (error) {
-      console.error('Error getting email status:', error)
-      return { status: 'error' }
     }
   }
 

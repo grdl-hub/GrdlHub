@@ -147,28 +147,17 @@ export async function addPreApprovedEmail(emailData) {
       throw new Error('Email is already in the pre-approved list')
     }
     
-    // Generate magic link token and expiration
-    const magicToken = generateMagicToken()
-    const magicLinkExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-    
-    // Add the email with magic link data
+    // Add the email (Firebase will handle sign-in links automatically)
     const docRef = await addDoc(emailsRef, {
       email: emailData.email.toLowerCase(),
       addedBy: emailData.addedBy,
       notes: emailData.notes || '',
+      fullName: emailData.fullName || 'User', // For user document creation
       createdAt: serverTimestamp(),
-      status: 'invited', // Auto-set to invited since we're sending the link
-      magicToken: magicToken,
-      magicLinkExpiresAt: magicLinkExpiresAt,
-      invitedAt: serverTimestamp()
+      status: 'pending' // Will be updated to 'registered' when user signs in
     })
     
-    // Generate magic link
-    const magicLink = `${window.location.origin}/auth.html?token=${magicToken}&email=${encodeURIComponent(emailData.email)}`
-    
-    // Show success with the magic link
-    showNotification('Email added and invitation sent! Magic link generated.', 'success')
-    showMagicLinkModal(emailData.email, magicLink)
+    showNotification('Email added to pre-approved list! Users can now request sign-in links at the auth portal.', 'success')
     
     return true
   } catch (error) {
@@ -314,6 +303,18 @@ function showAddEmailModal() {
         </div>
         
         <div class="form-group">
+          <label for="fullname-input">Full Name (Optional)</label>
+          <input 
+            type="text" 
+            id="fullname-input" 
+            name="fullName" 
+            placeholder="User's full name"
+            autocomplete="name"
+          />
+          <div class="form-help">This will be used for the user's account when they sign in</div>
+        </div>
+        
+        <div class="form-group">
           <label for="notes-input">Notes (Optional)</label>
           <textarea 
             id="notes-input" 
@@ -321,6 +322,15 @@ function showAddEmailModal() {
             rows="3"
             placeholder="Additional notes about this email..."
           ></textarea>
+        </div>
+        
+        <div class="auth-info">
+          <p><strong>🔗 Firebase Sign-In Links:</strong></p>
+          <ul>
+            <li>✨ Users will receive secure sign-in links via email</li>
+            <li>🔒 No passwords required - managed by Firebase</li>
+            <li>📧 Users can request links at the auth portal</li>
+          </ul>
         </div>
         
         <div class="form-actions">
@@ -347,6 +357,7 @@ async function handleEmailFormSubmit(e) {
   const formData = new FormData(e.target)
   const emailData = {
     email: formData.get('email').trim(),
+    fullName: formData.get('fullName').trim() || 'User',
     notes: formData.get('notes').trim(),
     addedBy: 'Admin' // TODO: Get from current user context
   }

@@ -7,6 +7,9 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  sendSignInLinkToEmail,
+  signInWithEmailLink,
+  isSignInWithEmailLink,
   onAuthStateChanged,
   signOut as firebaseSignOut
 } from 'firebase/auth'
@@ -285,6 +288,106 @@ export async function registerWithPreApprovedEmail(email, password, displayName)
   }
 }
 
+// Firebase Sign-In Link Functions (Native Firebase Auth)
+
+export async function sendFirebaseSignInLink(email) {
+  try {
+    const actionCodeSettings = {
+      // URL you want to redirect back to. The domain (www.example.com) for this URL
+      // must be in the authorized domains list in the Firebase Console.
+      url: `${window.location.origin}/auth.html?email=${encodeURIComponent(email)}`,
+      // This must be true.
+      handleCodeInApp: true,
+    }
+
+    await sendSignInLinkToEmail(auth, email, actionCodeSettings)
+    
+    // Save the email locally so you don't need to ask the user for it again
+    // if they open the link on the same device.
+    window.localStorage.setItem('emailForSignIn', email)
+    
+    return { success: true, message: 'Sign-in link sent successfully!' }
+  } catch (error) {
+    console.error('Error sending sign-in link:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function signInWithFirebaseLink(email, link) {
+  try {
+    // Get the email if available. This should be available if the user completes
+    // the flow on the same device where they started it.
+    const emailFromStorage = window.localStorage.getItem('emailForSignIn')
+    const emailToUse = email || emailFromStorage
+    
+    if (!emailToUse) {
+      throw new Error('Email address is required to complete sign-in')
+    }
+
+    // The client SDK will parse the code from the link for you.
+    const result = await signInWithEmailLink(auth, emailToUse, link)
+    
+    // Clear email from storage.
+    window.localStorage.removeItem('emailForSignIn')
+    
+    // Create user document if it doesn't exist
+    await createUserDocument(result.user, emailToUse)
+    
+    return { success: true, user: result.user }
+  } catch (error) {
+    console.error('Error signing in with email link:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export function isFirebaseSignInLink(link) {
+  return isSignInWithEmailLink(auth, link || window.location.href)
+}
+
+async function createUserDocument(firebaseUser, email) {
+  try {
+    const userRef = doc(db, 'users', firebaseUser.uid)
+    const userDoc = await getDoc(userRef)
+    
+    if (!userDoc.exists()) {
+      // Check if this email was pre-approved and get user data
+      const preApprovedData = await getPreApprovedEmailData(email)
+      
+      await setDoc(userRef, {
+        email: email.toLowerCase(),
+        name: preApprovedData?.fullName || 'User',
+        role: 'user', // Default role
+        permissions: ['home', 'content'], // Default permissions
+        status: 'active',
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp()
+      })
+      
+      // Update pre-approved email status
+      await updatePreApprovedEmailStatus(email, 'registered')
+    }
+  } catch (error) {
+    console.error('Error creating user document:', error)
+    // Don't throw - user is still authenticated even if document creation fails
+  }
+}
+
+async function getPreApprovedEmailData(email) {
+  try {
+    const emailsRef = collection(db, 'preApprovedEmails')
+    const q = query(emailsRef, where('email', '==', email.toLowerCase()))
+    const snapshot = await getDocs(q)
+    
+    if (!snapshot.empty) {
+      return snapshot.docs[0].data()
+    }
+    return null
+  } catch (error) {
+    console.error('Error getting pre-approved email data:', error)
+    return null
+  }
+}
+
 // Security utilities
 export const SecurityUtils = {
   // Clear sensitive data from memory
@@ -313,5 +416,8 @@ export const AuthAPI = {
   isEmailPreApproved,
   registerWithPreApprovedEmail,
   updatePreApprovedEmailStatus,
-  SecurityUtils
+  SecurityUtils,
+  sendFirebaseSignInLink,
+  signInWithFirebaseLink,
+  isFirebaseSignInLink
 }

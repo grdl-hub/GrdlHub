@@ -164,43 +164,52 @@ Enable Email/Password authentication in the Firebase Console.
 - Cannot manage other users
 - Default permissions: `["home", "content"]`
 
-## Magic Link Authentication Workflow
+## Firebase Sign-In Link Authentication
 
-### 🔗 Passwordless Access (Preferred Method)
+### ⚡ **Instant Firebase Sign-In Links (Native Firebase Auth)**
 
-1. **Admin Adds Email**: Administrator adds user email to pre-approved list
-2. **Auto-Invite Generation**: System automatically creates magic link with 24-hour validity
-3. **Manual Email Sharing**: Administrator copies magic link and emails it to user
-4. **One-Click Access**: User clicks magic link → automatically creates account and logs in
-5. **No Password Needed**: Simplified access especially beneficial for older users
+1. **User enters email** on auth page
+2. **Firebase instantly sends sign-in link** (if email is pre-approved)
+3. **User receives email** with secure Firebase-generated link
+4. **User clicks link** → automatic account creation and login via Firebase
+5. **No passwords ever needed** - managed entirely by Firebase Auth
 
-### ⚡ Magic Link Features
+### 🎯 **User Experience Flow**
 
-- **Secure Tokens**: Cryptographically secure random tokens (256-bit)
-- **Time-Limited**: Links expire after 24 hours for security
-- **One-Time Use**: Tokens are cleared after successful registration
-- **Email Validation**: Links are tied to specific email addresses
-- **Auto-Registration**: Creates Firebase account with secure random password
+1. **Visit auth page** → Enter email address → Click "Request Access"
+2. **If pre-approved** → Firebase sends sign-in link to email instantly
+3. **User checks email** → Clicks Firebase-generated secure link
+4. **Automatic sign-in** → Firebase handles authentication and account creation
+5. **Welcome to GrdlHub** → User is logged in and ready to go
 
-### 📧 Manual Invitation Process
+### ✨ **Key Benefits**
 
-1. Admin accesses **Users > Pre-Approved Emails**
-2. Clicks **"Add Email"** and enters user's email address
-3. System shows magic link modal with:
-   - Copy-ready magic link URL
-   - Email template for easy sharing
-   - 24-hour validity notice
-4. Admin copies and emails the link to user
-5. User clicks link → instant secure access
+- **Zero friction**: No account creation forms, passwords, or manual steps
+- **Instant delivery**: Firebase handles email sending and delivery
+- **Senior-friendly**: Just click the link in your email - no complex setup
+- **Enterprise security**: Firebase's built-in security and anti-abuse measures
+- **No manual admin work**: Completely automated process
 
-### 🔄 Legacy Authentication (Fallback)
+### 🛠 **Technical Implementation**
 
-For users without magic links:
-1. **Email Check**: User enters email to verify pre-approval status
-2. **Status Messages**: System shows appropriate message based on email status:
-   - Not pre-approved → Contact administrator
-   - Has pending invite → Check email for magic link
-   - Registered → Contact administrator for new link
+- **Firebase Auth API**: Uses native `sendSignInLinkToEmail` and `signInWithEmailLink`
+- **Automatic Email Delivery**: Firebase manages email sending and templates
+- **Domain Security**: Links only work on pre-configured authorized domains
+- **Account Auto-Creation**: Creates user document in Firestore on first sign-in
+- **Pre-Approval Check**: Validates email against admin-managed whitelist
+
+### 📧 **Current Email Process** (Manual)
+
+- Admin receives modal with copy-ready magic link and email template
+- Admin manually emails the link to user
+- **Future enhancement**: Automatic email sending via SendGrid/AWS SES
+
+### 🔄 **Admin Pre-Approval Workflow**
+
+1. **Admin accesses** Users > Pre-Approved Emails
+2. **Adds user email** to whitelist (one-time setup)
+3. **User visits auth page** anytime and gets instant magic link
+4. **No ongoing admin work** - users can request links themselves
 
 ## Authentication Flow
 

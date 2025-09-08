@@ -14,7 +14,18 @@
 2. Click **Get started**
 3. Go to **Sign-in method** tab
 4. Enable **Email/Password** provider
-5. Save changes
+5. **Enable Email link (passwordless sign-in)** - This is crucial for our magic link functionality
+6. Save changes
+
+### 2.1 Configure Authorized Domains
+
+1. In **Authentication > Settings**
+2. Go to **Authorized domains** tab
+3. Add your domain(s):
+   - `localhost` (for development)
+   - `your-domain.com` (for production)
+   - Any other domains where you'll host the app
+4. Firebase will automatically send sign-in links to these authorized domains
 
 ## 3. Create Firestore Database
 
