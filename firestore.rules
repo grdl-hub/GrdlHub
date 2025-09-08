@@ -24,9 +24,10 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Pre-approved emails collection - admin only access
+    // Pre-approved emails collection - allow read for auth check, admin only for write
     match /preApprovedEmails/{emailId} {
-      allow read, write: if isAuthenticated() && isAdmin(request.auth.uid);
+      allow read: if true; // Allow anyone to read for email verification during signup
+      allow write: if isAuthenticated() && isAdmin(request.auth.uid);
     }
     
     // Pages collection - role-based access
