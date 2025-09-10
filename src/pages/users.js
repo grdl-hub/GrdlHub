@@ -214,12 +214,13 @@ function filterUsersByRole(role) {
 
 // Show add user modal
 function showAddUserModal() {
-  console.log('🔧 Showing add user modal')
-  
-  // Setup permissions checkboxes for add modal
-  setupPermissionsCheckboxes('add-user-permissions')
-  
+  // Show modal first so elements are in DOM
   showModal('add-user-modal')
+  
+  // Then setup permissions checkboxes after modal is visible
+  setTimeout(() => {
+    setupPermissionsCheckboxes('add-user-permissions')
+  }, 100)
 }
 
 // Setup permissions checkboxes
@@ -438,26 +439,25 @@ window.editUser = function(userId) {
   const user = usersData.find(u => u.id === userId)
   if (!user) return
   
-  console.log('🔧 Editing user:', user)
-  
   // Set editing state
   currentEditingUserId = userId
   
-  // Setup permissions first
-  setupPermissionsCheckboxes('edit-user-permissions')
-  
-  // Fill form with user data
-  document.getElementById('edit-user-name').value = user.name || ''
-  document.getElementById('edit-user-congregation').value = user.congregation || ''
-  document.getElementById('edit-user-email').value = user.email
-  document.getElementById('edit-user-role').value = user.role || 'user'
-  
-  // Setup permissions and select current ones
-  updatePermissionsCheckboxes('edit-user-permissions', user.permissions || [])
-  
-  console.log('✅ Edit user modal populated successfully')
-  
+  // Show modal first
   showModal('edit-user-modal')
+  
+  // Setup permissions and populate form after modal is visible
+  setTimeout(() => {
+    setupPermissionsCheckboxes('edit-user-permissions')
+    
+    // Fill form with user data
+    document.getElementById('edit-user-name').value = user.name || ''
+    document.getElementById('edit-user-congregation').value = user.congregation || ''
+    document.getElementById('edit-user-email').value = user.email
+    document.getElementById('edit-user-role').value = user.role || 'user'
+    
+    // Setup permissions and select current ones
+    updatePermissionsCheckboxes('edit-user-permissions', user.permissions || [])
+  }, 100)
 }
 
 // Delete user

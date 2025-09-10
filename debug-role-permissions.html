@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Role/Permissions Connection</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .permissions-grid {
+            display: grid;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        
+        .permission-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .permission-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            flex: 1;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            transition: background-color 0.2s;
+        }
+        
+        .permission-label:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .permission-icon {
+            font-size: 18px;
+        }
+        
+        .permission-name {
+            font-weight: 500;
+        }
+        
+        .permission-desc {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .form-group {
+            margin: 16px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-width: 200px;
+        }
+        
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 4px 4px 4px 0;
+        }
+        
+        button:hover {
+            background: #1565c0;
+        }
+        
+        .output {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .error {
+            background: #ffeaa7;
+            border-color: #fdcb6e;
+        }
+        
+        .success {
+            background: #d4fcd9;
+            border-color: #00b894;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Debug Role/Permissions Connection</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Exact Modal Structure (Add User)</h2>
+        
+        <!-- Exact same structure as the modal -->
+        <form id="add-user-form">
+            <div class="form-group">
+                <label for="add-user-role">Role:</label>
+                <select id="add-user-role" name="user-role" required>
+                    <option value="">Select Role</option>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Permissions:</label>
+                <div id="add-user-permissions" class="permissions-grid">
+                    <!-- Will be populated -->
+                </div>
+            </div>
+        </form>
+        
+        <button onclick="debugAddForm()">Debug Add Form</button>
+        <div id="add-output" class="output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Exact Modal Structure (Edit User)</h2>
+        
+        <!-- Exact same structure as the modal -->
+        <form id="edit-user-form">
+            <div class="form-group">
+                <label for="edit-user-role">Role:</label>
+                <select id="edit-user-role" name="user-role" required>
+                    <option value="">Select Role</option>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Permissions:</label>
+                <div id="edit-user-permissions" class="permissions-grid">
+                    <!-- Will be populated -->
+                </div>
+            </div>
+        </form>
+        
+        <button onclick="debugEditForm()">Debug Edit Form</button>
+        <div id="edit-output" class="output"></div>
+    </div>
+
+    <script type="module">
+        import { getRolePermissions, getAvailablePages, validatePermissions } from './src/accessControl.js'
+        
+        let debugOutput = ''
+        
+        function log(message) {
+            debugOutput += message + '\n'
+            console.log(message)
+        }
+        
+        function showOutput(elementId) {
+            const outputEl = document.getElementById(elementId)
+            if (outputEl) {
+                outputEl.textContent = debugOutput
+                outputEl.className = 'output success'
+            }
+        }
+        
+        // Exact same setupPermissionsCheckboxes function from users.js
+        function setupPermissionsCheckboxes(containerId) {
+            log(`🔧 Setting up permissions checkboxes for: ${containerId}`)
+            
+            const permissionsContainer = document.getElementById(containerId)
+            if (!permissionsContainer) {
+                log(`❌ Permissions container not found: ${containerId}`)
+                return
+            }
+            
+            const availablePages = getAvailablePages()
+            log(`📄 Available pages: ${Object.keys(availablePages).join(', ')}`)
+            
+            permissionsContainer.innerHTML = Object.entries(availablePages).map(([pageId, pageInfo]) => `
+                <div class="permission-item">
+                    <input type="checkbox" id="${containerId}-permission-${pageId}" name="permissions" value="${pageId}">
+                    <label for="${containerId}-permission-${pageId}" class="permission-label">
+                        <span class="permission-icon">${pageInfo.icon}</span>
+                        <span class="permission-name">${pageInfo.name}</span>
+                        <span class="permission-desc">${pageInfo.description}</span>
+                    </label>
+                </div>
+            `).join('')
+            
+            log(`✅ Created ${Object.keys(availablePages).length} permission checkboxes for ${containerId}`)
+            
+            // Handle role change to update default permissions
+            const roleSelectId = containerId.replace('-permissions', '-role')
+            log(`🎯 Looking for role select with ID: ${roleSelectId}`)
+            
+            const roleSelect = document.getElementById(roleSelectId)
+            if (roleSelect) {
+                log(`✅ Found role select: ${roleSelectId}`)
+                
+                // Remove existing listeners to prevent duplicates
+                const newRoleSelect = roleSelect.cloneNode(true)
+                roleSelect.parentNode.replaceChild(newRoleSelect, roleSelect)
+                
+                newRoleSelect.addEventListener('change', (e) => {
+                    const role = e.target.value
+                    log(`🔄 Role changed to: "${role}" for ${containerId}`)
+                    if (role) {
+                        const defaultPermissions = getRolePermissions(role)
+                        log(`📋 Default permissions for ${role}: ${JSON.stringify(defaultPermissions)}`)
+                        updatePermissionsCheckboxes(containerId, defaultPermissions)
+                    } else {
+                        log(`⚠️ No role selected, clearing permissions`)
+                        updatePermissionsCheckboxes(containerId, [])
+                    }
+                })
+                
+                log(`🎛️ Role change listener added for ${roleSelectId}`)
+            } else {
+                log(`❌ Role select not found: ${roleSelectId}`)
+                log(`🔍 Available elements:`)
+                document.querySelectorAll('select').forEach(select => {
+                    log(`  - Select found: id="${select.id}", name="${select.name}"`)
+                })
+            }
+        }
+        
+        function updatePermissionsCheckboxes(containerId, permissions) {
+            log(`🔄 Updating permissions for ${containerId}: ${JSON.stringify(permissions)}`)
+            
+            const container = document.getElementById(containerId)
+            if (!container) {
+                log(`❌ Container not found for updating permissions: ${containerId}`)
+                return
+            }
+            
+            const checkboxes = container.querySelectorAll('input[name="permissions"]')
+            log(`📋 Found ${checkboxes.length} permission checkboxes`)
+            
+            checkboxes.forEach(checkbox => {
+                const wasChecked = checkbox.checked
+                checkbox.checked = permissions.includes(checkbox.value)
+                log(`  - ${checkbox.value}: ${wasChecked} → ${checkbox.checked}`)
+            })
+            
+            log(`✅ Updated permissions for ${containerId}`)
+        }
+        
+        // Test functions
+        window.debugAddForm = function() {
+            debugOutput = ''
+            log('🚀 Starting Add Form Debug')
+            log('=====================================')
+            
+            setupPermissionsCheckboxes('add-user-permissions')
+            
+            log('=====================================')
+            log('✅ Add Form Debug Complete')
+            
+            showOutput('add-output')
+        }
+        
+        window.debugEditForm = function() {
+            debugOutput = ''
+            log('🚀 Starting Edit Form Debug')
+            log('=====================================')
+            
+            setupPermissionsCheckboxes('edit-user-permissions')
+            
+            log('=====================================')
+            log('✅ Edit Form Debug Complete')
+            
+            showOutput('edit-output')
+        }
+        
+        console.log('🔧 Debug role/permissions page loaded')
+    </script>
+</body>
+</html>

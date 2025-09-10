@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Header - GrdlHub</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    .header {
+      background-color: #ffffff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+    
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1976d2;
+    }
+    
+    .nav {
+      display: flex;
+      gap: 1.5rem;
+    }
+    
+    .nav-link {
+      color: #757575;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    
+    .nav-link:hover, .nav-link.active {
+      color: #1976d2;
+      background-color: #f5f5f5;
+    }
+    
+    .user-menu {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      background: #1976d2;
+      color: white;
+    }
+    
+    .content {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="container">
+        <h1 class="logo">GrdlHub</h1>
+        <nav class="nav">
+          <a href="#home" class="nav-link">🏠 Home</a>
+          <a href="#users" class="nav-link active">👥 Users</a>
+          <a href="#pages" class="nav-link">📄 Pages</a>
+          <a href="#content" class="nav-link">📝 Content</a>
+          <a href="#settings" class="nav-link">⚙️ Settings</a>
+        </nav>
+        <div class="user-menu">
+          <span id="user-name">User Name</span>
+          <button id="logout-btn" class="btn">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <h2>🧪 Header Test Page</h2>
+      <p>This page tests if the header navigation is visible.</p>
+      <br>
+      <p><strong>You should see:</strong></p>
+      <ul>
+        <li>✅ GrdlHub logo on the left</li>
+        <li>✅ Navigation menu in the center (🏠 Home 👥 Users 📄 Pages 📝 Content ⚙️ Settings)</li>
+        <li>✅ "User Name" and "Logout" button on the right</li>
+      </ul>
+      <br>
+      <p>If you can see all these elements, the header is working correctly!</p>
+    </main>
+  </div>
+</body>
+</html>

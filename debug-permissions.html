@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Permissions Flow</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+        
+        .permissions-grid {
+            display: grid;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        
+        .permission-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .permission-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            flex: 1;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            transition: background-color 0.2s;
+        }
+        
+        .permission-label:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .permission-icon {
+            font-size: 18px;
+        }
+        
+        .permission-name {
+            font-weight: 500;
+        }
+        
+        .permission-desc {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .form-group {
+            margin: 16px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 4px 4px 4px 0;
+        }
+        
+        button:hover {
+            background: #1565c0;
+        }
+        
+        .output {
+            background: #f1f3f4;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+        }
+        
+        .error {
+            background: #ffeaa7;
+            border-color: #fdcb6e;
+        }
+        
+        .success {
+            background: #d4fcd9;
+            border-color: #00b894;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Debug Permissions Flow</h1>
+    
+    <div class="debug-section">
+        <h2>Step 1: Test Form Creation (like Add User Modal)</h2>
+        
+        <div class="form-section">
+            <form id="test-add-form">
+                <div class="form-group">
+                    <label for="test-name">Name:</label>
+                    <input type="text" id="test-name" name="user-name" value="Test User" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="test-congregation">Congregation:</label>
+                    <input type="text" id="test-congregation" name="user-congregation" value="Test Congregation" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="test-email">Email:</label>
+                    <input type="email" id="test-email" name="user-email" value="test@example.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="test-add-role">Role:</label>
+                    <select id="test-add-role" name="user-role" required>
+                        <option value="">Select Role</option>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Permissions:</label>
+                    <div id="test-add-permissions" class="permissions-grid">
+                        <!-- Will be populated -->
+                    </div>
+                </div>
+                
+                <button type="submit">Submit Test Add Form</button>
+            </form>
+        </div>
+        
+        <div id="add-output" class="output"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Step 2: Test Form Population (like Edit User Modal)</h2>
+        
+        <div class="form-section">
+            <form id="test-edit-form">
+                <div class="form-group">
+                    <label for="edit-name">Name:</label>
+                    <input type="text" id="edit-name" name="user-name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-congregation">Congregation:</label>
+                    <input type="text" id="edit-congregation" name="user-congregation" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-email">Email:</label>
+                    <input type="email" id="edit-email" name="user-email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="test-edit-role">Role:</label>
+                    <select id="test-edit-role" name="user-role" required>
+                        <option value="">Select Role</option>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Permissions:</label>
+                    <div id="test-edit-permissions" class="permissions-grid">
+                        <!-- Will be populated -->
+                    </div>
+                </div>
+                
+                <button type="submit">Submit Test Edit Form</button>
+            </form>
+        </div>
+        
+        <button onclick="populateEditForm()">🔄 Populate Edit Form with Test Data</button>
+        
+        <div id="edit-output" class="output"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Step 3: Manual Permission Tests</h2>
+        <button onclick="testAvailablePages()">Get Available Pages</button>
+        <button onclick="testRolePermissions('user')">Get User Role Permissions</button>
+        <button onclick="testRolePermissions('admin')">Get Admin Role Permissions</button>
+        <button onclick="testValidatePermissions()">Test Validate Permissions</button>
+        
+        <div id="manual-output" class="output"></div>
+    </div>
+
+    <script type="module">
+        import { getRolePermissions, getAvailablePages, validatePermissions } from './src/accessControl.js'
+        
+        // Make functions available globally
+        window.getRolePermissions = getRolePermissions
+        window.getAvailablePages = getAvailablePages
+        window.validatePermissions = validatePermissions
+        
+        let debugOutput = ''
+        
+        function log(message) {
+            debugOutput += message + '\n'
+            console.log(message)
+        }
+        
+        // Setup permissions checkboxes (similar to users.js)
+        function setupPermissionsCheckboxes(containerId) {
+            log(`📝 Setting up permissions for: ${containerId}`)
+            
+            const permissionsContainer = document.getElementById(containerId)
+            if (!permissionsContainer) {
+                log(`❌ Container not found: ${containerId}`)
+                return
+            }
+            
+            const availablePages = getAvailablePages()
+            log(`📄 Available pages: ${JSON.stringify(availablePages)}`)
+            
+            const html = Object.entries(availablePages).map(([pageId, pageInfo]) => `
+                <div class="permission-item">
+                    <input type="checkbox" id="${containerId}-permission-${pageId}" name="permissions" value="${pageId}">
+                    <label for="${containerId}-permission-${pageId}" class="permission-label">
+                        <span class="permission-icon">${pageInfo.icon}</span>
+                        <span class="permission-name">${pageInfo.name}</span>
+                        <span class="permission-desc">${pageInfo.description}</span>
+                    </label>
+                </div>
+            `).join('')
+            
+            permissionsContainer.innerHTML = html
+            log(`✅ Permissions HTML created for ${containerId}`)
+            
+            // Handle role change
+            const roleSelectId = containerId.replace('-permissions', '-role')
+            const roleSelect = document.getElementById(roleSelectId)
+            if (roleSelect) {
+                roleSelect.addEventListener('change', (e) => {
+                    const role = e.target.value
+                    log(`🔄 Role changed to: ${role}`)
+                    if (role) {
+                        const defaultPermissions = getRolePermissions(role)
+                        log(`📋 Default permissions for ${role}: ${JSON.stringify(defaultPermissions)}`)
+                        updatePermissionsCheckboxes(containerId, defaultPermissions)
+                    }
+                })
+                log(`🎛️ Role change listener added for ${roleSelectId}`)
+            } else {
+                log(`❌ Role select not found: ${roleSelectId}`)
+            }
+        }
+        
+        function updatePermissionsCheckboxes(containerId, permissions) {
+            log(`🔄 Updating permissions for ${containerId}: ${JSON.stringify(permissions)}`)
+            
+            const container = document.getElementById(containerId)
+            if (!container) {
+                log(`❌ Container not found: ${containerId}`)
+                return
+            }
+            
+            const checkboxes = container.querySelectorAll('input[name="permissions"]')
+            log(`📋 Found ${checkboxes.length} checkboxes`)
+            
+            checkboxes.forEach(checkbox => {
+                const wasChecked = checkbox.checked
+                checkbox.checked = permissions.includes(checkbox.value)
+                log(`  - ${checkbox.value}: ${wasChecked} → ${checkbox.checked}`)
+            })
+        }
+        
+        function getSelectedPermissions(containerId) {
+            log(`📋 Getting selected permissions from ${containerId}`)
+            
+            const container = document.getElementById(containerId)
+            if (!container) {
+                log(`❌ Container not found: ${containerId}`)
+                return []
+            }
+            
+            const checkboxes = container.querySelectorAll('input[name="permissions"]:checked')
+            const permissions = Array.from(checkboxes).map(checkbox => checkbox.value)
+            log(`✅ Selected permissions: ${JSON.stringify(permissions)}`)
+            
+            return permissions
+        }
+        
+        // Form submission handlers
+        function handleFormSubmit(e, formType) {
+            e.preventDefault()
+            log(`\n🚀 ${formType} form submitted`)
+            debugOutput = '' // Clear previous output
+            
+            const formData = new FormData(e.target)
+            const name = formData.get('user-name')
+            const congregation = formData.get('user-congregation')
+            const email = formData.get('user-email')
+            const role = formData.get('user-role')
+            
+            log(`👤 Form data:`)
+            log(`  - Name: ${name}`)
+            log(`  - Congregation: ${congregation}`)
+            log(`  - Email: ${email}`)
+            log(`  - Role: ${role}`)
+            
+            // Get permissions based on form type
+            const containerId = formType === 'add' ? 'test-add-permissions' : 'test-edit-permissions'
+            const permissions = getSelectedPermissions(containerId)
+            
+            log(`🔐 Permissions from form: ${JSON.stringify(permissions)}`)
+            
+            // Test validation
+            const validatedPermissions = validatePermissions(permissions)
+            log(`✅ Validated permissions: ${JSON.stringify(validatedPermissions)}`)
+            
+            // Show results
+            const outputId = formType === 'add' ? 'add-output' : 'edit-output'
+            const outputEl = document.getElementById(outputId)
+            if (outputEl) {
+                outputEl.textContent = debugOutput
+                outputEl.className = 'output success'
+            }
+        }
+        
+        // Test functions
+        window.populateEditForm = function() {
+            log(`\n🔄 Populating edit form with test data`)
+            debugOutput = ''
+            
+            // Set form values
+            document.getElementById('edit-name').value = 'Jane Smith'
+            document.getElementById('edit-congregation').value = 'North Congregation'
+            document.getElementById('edit-email').value = 'jane@example.com'
+            document.getElementById('test-edit-role').value = 'admin'
+            
+            // Set permissions
+            const testPermissions = ['home', 'users', 'content']
+            updatePermissionsCheckboxes('test-edit-permissions', testPermissions)
+            
+            log(`✅ Edit form populated`)
+            
+            const outputEl = document.getElementById('edit-output')
+            if (outputEl) {
+                outputEl.textContent = debugOutput
+                outputEl.className = 'output success'
+            }
+        }
+        
+        window.testAvailablePages = function() {
+            const pages = getAvailablePages()
+            document.getElementById('manual-output').textContent = `Available Pages: ${JSON.stringify(pages, null, 2)}`
+        }
+        
+        window.testRolePermissions = function(role) {
+            const permissions = getRolePermissions(role)
+            document.getElementById('manual-output').textContent = `${role} permissions: ${JSON.stringify(permissions, null, 2)}`
+        }
+        
+        window.testValidatePermissions = function() {
+            const testPerms = ['home', 'users', 'invalid', 'content', 'fake']
+            const validated = validatePermissions(testPerms)
+            document.getElementById('manual-output').textContent = `Input: ${JSON.stringify(testPerms)}\nValidated: ${JSON.stringify(validated)}`
+        }
+        
+        // Initialize
+        setTimeout(() => {
+            console.log('🔧 Initializing debug permissions page')
+            
+            try {
+                setupPermissionsCheckboxes('test-add-permissions')
+                setupPermissionsCheckboxes('test-edit-permissions')
+                
+                // Add form listeners
+                document.getElementById('test-add-form').addEventListener('submit', (e) => {
+                    handleFormSubmit(e, 'add')
+                })
+                
+                document.getElementById('test-edit-form').addEventListener('submit', (e) => {
+                    handleFormSubmit(e, 'edit')
+                })
+                
+                console.log('✅ Debug page initialized successfully')
+            } catch (error) {
+                console.error('❌ Error initializing debug page:', error)
+            }
+        }, 100)
+    </script>
+</body>
+</html>

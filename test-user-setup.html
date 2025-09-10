@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Test User Setup</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 8px 8px 8px 0;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #1565c0;
+        }
+        
+        .output {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .error {
+            background: #ffeaa7;
+            border-color: #fdcb6e;
+        }
+        
+        .success {
+            background: #d4fcd9;
+            border-color: #00b894;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Quick Test User Setup</h1>
+    
+    <div class="section">
+        <h2>Create Test Admin User</h2>
+        <p>This will create a test admin user that can access the users page to test permissions.</p>
+        <button onclick="createTestUser()">Create Test Admin User</button>
+        <button onclick="listUsers()">List All Users</button>
+        <button onclick="clearUsers()">Clear All Users</button>
+        <div id="output" class="output"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'firebase/app'
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore'
+        
+        // Firebase config
+        const firebaseConfig = {
+          apiKey: "AIzaSyC89ItqKUbsNkJRAQY8Z1kKuuNXmH2VNL8",
+          authDomain: "grdlhub-dev.firebaseapp.com",
+          projectId: "grdlhub-dev",
+          storageBucket: "grdlhub-dev.firebasestorage.app",
+          messagingSenderId: "667675265488",
+          appId: "1:667675265488:web:8d8fedb6f3d3f9c7f51d7e"
+        }
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig)
+        const db = getFirestore(app)
+        
+        let output = ''
+        
+        function log(message) {
+            output += message + '\n'
+            console.log(message)
+            updateOutput()
+        }
+        
+        function updateOutput() {
+            const outputEl = document.getElementById('output')
+            if (outputEl) {
+                outputEl.textContent = output
+            }
+        }
+        
+        window.createTestUser = async function() {
+            try {
+                output = ''
+                log('🚀 Creating test admin user...')
+                
+                const testUser = {
+                    name: 'Test Admin',
+                    congregation: 'Test Congregation',
+                    email: 'admin@test.com',
+                    role: 'admin',
+                    permissions: ['home', 'users', 'pages', 'content', 'settings'],
+                    status: 'active',
+                    createdAt: new Date()
+                }
+                
+                const docRef = await addDoc(collection(db, 'users'), testUser)
+                log(`✅ Test admin user created with ID: ${docRef.id}`)
+                log(`📧 Email: ${testUser.email}`)
+                log(`🔐 Role: ${testUser.role}`)
+                log(`📋 Permissions: ${JSON.stringify(testUser.permissions)}`)
+                
+                const outputEl = document.getElementById('output')
+                if (outputEl) outputEl.className = 'output success'
+                
+            } catch (error) {
+                log(`❌ Error creating test user: ${error.message}`)
+                console.error('Error:', error)
+                
+                const outputEl = document.getElementById('output')
+                if (outputEl) outputEl.className = 'output error'
+            }
+        }
+        
+        window.listUsers = async function() {
+            try {
+                output = ''
+                log('📋 Listing all users...')
+                
+                const querySnapshot = await getDocs(collection(db, 'users'))
+                
+                if (querySnapshot.empty) {
+                    log('📭 No users found in database')
+                    return
+                }
+                
+                querySnapshot.forEach((doc) => {
+                    const userData = doc.data()
+                    log(`👤 User ID: ${doc.id}`)
+                    log(`  - Name: ${userData.name}`)
+                    log(`  - Email: ${userData.email}`)
+                    log(`  - Role: ${userData.role}`)
+                    log(`  - Permissions: ${JSON.stringify(userData.permissions || [])}`)
+                    log(`  - Status: ${userData.status}`)
+                    log('')
+                })
+                
+                const outputEl = document.getElementById('output')
+                if (outputEl) outputEl.className = 'output success'
+                
+            } catch (error) {
+                log(`❌ Error listing users: ${error.message}`)
+                console.error('Error:', error)
+                
+                const outputEl = document.getElementById('output')
+                if (outputEl) outputEl.className = 'output error'
+            }
+        }
+        
+        window.clearUsers = async function() {
+            try {
+                if (!confirm('Are you sure you want to delete ALL users? This cannot be undone!')) {
+                    return
+                }
+                
+                output = ''
+                log('🗑️ Deleting all users...')
+                
+                const querySnapshot = await getDocs(collection(db, 'users'))
+                
+                if (querySnapshot.empty) {
+                    log('📭 No users found to delete')
+                    return
+                }
+                
+                let deleteCount = 0
+                for (const docSnapshot of querySnapshot.docs) {
+                    await deleteDoc(doc(db, 'users', docSnapshot.id))
+                    deleteCount++
+                    log(`🗑️ Deleted user: ${docSnapshot.data().name} (${docSnapshot.id})`)
+                }
+                
+                log(`✅ Deleted ${deleteCount} users`)
+                
+                const outputEl = document.getElementById('output')
+                if (outputEl) outputEl.className = 'output success'
+                
+            } catch (error) {
+                log(`❌ Error deleting users: ${error.message}`)
+                console.error('Error:', error)
+                
+                const outputEl = document.getElementById('output')
+                if (outputEl) outputEl.className = 'output error'
+            }
+        }
+        
+        console.log('🔧 Test user setup page loaded')
+    </script>
+</body>
+</html>

@@ -92,15 +92,15 @@ class MainApp {
           <div class="container">
             <h1 class="logo">GrdlHub</h1>
             <nav class="nav">
-              <a href="#home" class="nav-link active">Home</a>
-              <a href="#users" class="nav-link auth-required">Users</a>
-              <a href="#pages" class="nav-link auth-required">Pages</a>
-              <a href="#content" class="nav-link auth-required">Content</a>
-              <a href="#settings" class="nav-link auth-required">Settings</a>
+              <a href="#home" class="nav-link active">🏠 Home</a>
+              <a href="#users" class="nav-link auth-required">👥 Users</a>
+              <a href="#pages" class="nav-link auth-required">📄 Pages</a>
+              <a href="#content" class="nav-link auth-required">📝 Content</a>
+              <a href="#settings" class="nav-link auth-required">⚙️ Settings</a>
             </nav>
             <div class="user-menu">
               <span id="user-name">${this.currentUser.displayName || this.currentUser.email}</span>
-              <button id="logout-btn" class="btn btn-secondary btn-small">Logout</button>
+              <button id="logout-btn" class="btn btn-secondary btn-small">[Logout]</button>
             </div>
           </div>
         </header>
