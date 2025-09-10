@@ -337,6 +337,49 @@ class MainApp {
       <!-- Notification Container -->
       <div id="notification-container" class="notification-container"></div>
 
+      <!-- User Modal -->
+      <div id="user-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="user-modal-title">Add New User</h3>
+            <button class="close-btn">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="user-form">
+              <div class="form-group">
+                <label for="user-name" class="form-label">Full Name</label>
+                <input type="text" id="user-name" name="user-name" class="form-input" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="user-email" class="form-label">Email Address</label>
+                <input type="email" id="user-email" name="user-email" class="form-input" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="user-role" class="form-label">Role</label>
+                <select id="user-role" name="user-role" class="form-select" required>
+                  <option value="">Select Role</option>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Permissions</label>
+                <div id="user-permissions" class="permissions-grid">
+                  <!-- Permissions checkboxes will be populated here -->
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary">Cancel</button>
+            <button type="submit" id="save-user-btn" class="btn btn-primary" form="user-form">Save User</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Modals will be added by page modules -->
     `
   }
