@@ -54,10 +54,15 @@ function setupUsersPage() {
     })
   }
   
-  // User form
-  const userForm = document.getElementById('user-form')
-  if (userForm) {
-    userForm.addEventListener('submit', handleUserFormSubmit)
+  // User form submission handlers
+  const addUserForm = document.getElementById('add-user-form')
+  if (addUserForm) {
+    addUserForm.addEventListener('submit', handleAddUserSubmit)
+  }
+  
+  const editUserForm = document.getElementById('edit-user-form')
+  if (editUserForm) {
+    editUserForm.addEventListener('submit', handleEditUserSubmit)
   }
   
   // Setup responsive table
@@ -131,7 +136,7 @@ function renderUsers(users) {
    if (users.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="empty-state">
+        <td colspan="5" class="empty-state">
           <p>No users found</p>
           <button class="btn btn-primary" onclick="showAddUserModal()">Add First User</button>
         </td>
@@ -147,7 +152,6 @@ function renderUsers(users) {
           <div class="user-avatar">${(user.name || user.email).charAt(0).toUpperCase()}</div>
           <div>
             <div class="user-name">${user.name || 'No Name'}</div>
-            <div class="user-id">${user.id}</div>
           </div>
         </div>
       </td>
@@ -155,14 +159,6 @@ function renderUsers(users) {
       <td>${user.email}</td>
       <td>
         <span class="role-badge role-${user.role || 'user'}">${user.role || 'user'}</span>
-      </td>
-      <td>
-        <span class="status-badge status-${user.status || 'active'}">${user.status || 'active'}</span>
-      </td>
-      <td>
-        <span class="last-login">
-          ${user.lastLogin ? formatDate(user.lastLogin.toDate()) : 'Never'}
-        </span>
       </td>
       <td>
         <div class="action-buttons">
@@ -183,9 +179,10 @@ function renderUsers(users) {
 
 // Update user statistics
 function updateUserStats() {
-  const usersCount = document.getElementById('users-count')
-  if (usersCount) {
-    usersCount.textContent = usersData.length
+  const totalUsersCount = document.getElementById('total-users-count')
+  
+  if (totalUsersCount) {
+    totalUsersCount.textContent = usersData.length
   }
 }
 
@@ -217,36 +214,25 @@ function filterUsersByRole(role) {
 
 // Show add user modal
 function showAddUserModal() {
-  const modal = document.getElementById('user-modal')
-  const modalTitle = document.getElementById('user-modal-title')
-  const saveBtn = document.getElementById('save-user-btn')
+  console.log('🔧 Showing add user modal')
   
-  modalTitle.textContent = 'Add New User'
-  saveBtn.textContent = 'Save User'
+  // Setup permissions checkboxes for add modal
+  setupPermissionsCheckboxes('add-user-permissions')
   
-  // Reset editing state
-  currentEditingUserId = null
-  
-  // Reset form
-  document.getElementById('user-form').reset()
-  
-  // Setup permissions checkboxes
-  setupPermissionsCheckboxes()
-  
-  showModal('user-modal')
+  showModal('add-user-modal')
 }
 
 // Setup permissions checkboxes
-function setupPermissionsCheckboxes() {
-  const permissionsContainer = document.getElementById('user-permissions')
+function setupPermissionsCheckboxes(containerId) {
+  const permissionsContainer = document.getElementById(containerId)
   if (!permissionsContainer) return
   
   const availablePages = getAvailablePages()
   
   permissionsContainer.innerHTML = Object.entries(availablePages).map(([pageId, pageInfo]) => `
     <div class="permission-item">
-      <input type="checkbox" id="permission-${pageId}" name="permissions" value="${pageId}">
-      <label for="permission-${pageId}" class="permission-label">
+      <input type="checkbox" id="${containerId}-permission-${pageId}" name="permissions" value="${pageId}">
+      <label for="${containerId}-permission-${pageId}" class="permission-label">
         <span class="permission-icon">${pageInfo.icon}</span>
         <span class="permission-name">${pageInfo.name}</span>
         <span class="permission-desc">${pageInfo.description}</span>
@@ -255,21 +241,29 @@ function setupPermissionsCheckboxes() {
   `).join('')
   
   // Handle role change to update default permissions
-  const roleSelect = document.getElementById('user-role')
+  const roleSelectId = containerId.replace('-permissions', '-role')
+  const roleSelect = document.getElementById(roleSelectId)
   if (roleSelect) {
-    roleSelect.addEventListener('change', (e) => {
+    // Remove existing listeners to prevent duplicates
+    const newRoleSelect = roleSelect.cloneNode(true)
+    roleSelect.parentNode.replaceChild(newRoleSelect, roleSelect)
+    
+    newRoleSelect.addEventListener('change', (e) => {
       const role = e.target.value
       if (role) {
         const defaultPermissions = getRolePermissions(role)
-        updatePermissionsCheckboxes(defaultPermissions)
+        updatePermissionsCheckboxes(containerId, defaultPermissions)
       }
     })
   }
 }
 
 // Update permissions checkboxes
-function updatePermissionsCheckboxes(permissions) {
-  const checkboxes = document.querySelectorAll('input[name="permissions"]')
+function updatePermissionsCheckboxes(containerId, permissions) {
+  const container = document.getElementById(containerId)
+  if (!container) return
+  
+  const checkboxes = container.querySelectorAll('input[name="permissions"]')
   checkboxes.forEach(checkbox => {
     checkbox.checked = permissions.includes(checkbox.value)
   })
@@ -332,8 +326,8 @@ async function checkForDuplicates(name, email, excludeUserId = null) {
   return { isDuplicate: false }
 }
 
-// Handle user form submission
-async function handleUserFormSubmit(e) {
+// Handle add user form submission
+async function handleAddUserSubmit(e) {
   e.preventDefault()
   
   if (!validateForm(e.target)) {
@@ -350,7 +344,61 @@ async function handleUserFormSubmit(e) {
   // Show loading state for duplicate check
   showLoading('Checking for duplicates...')
   
-  // Check for duplicates using comprehensive check
+  // Check for duplicates
+  const duplicateCheck = await checkForDuplicates(name, email)
+  
+  if (duplicateCheck.isDuplicate) {
+    showNotification(duplicateCheck.message, 'error')
+    hideLoading()
+    return
+  }
+  
+  try {
+    showLoading('Adding user...')
+    
+    const userData = {
+      name,
+      congregation,
+      email: email.toLowerCase(),
+      role,
+      permissions: validatePermissions(permissions),
+      status: 'invited',
+      createdAt: new Date()
+    }
+    
+    // Create new user
+    const userRef = doc(collection(db, 'users'))
+    await setDoc(userRef, userData)
+    showNotification('User added successfully!', 'success')
+    
+    hideModal('add-user-modal')
+    hideLoading()
+  } catch (error) {
+    console.error('Error adding user:', error)
+    showNotification('Error adding user', 'error')
+    hideLoading()
+  }
+}
+
+// Handle edit user form submission  
+async function handleEditUserSubmit(e) {
+  e.preventDefault()
+  
+  if (!validateForm(e.target)) {
+    return
+  }
+  
+  const formData = new FormData(e.target)
+  const name = formData.get('user-name').trim()
+  const congregation = formData.get('user-congregation').trim()
+  const email = formData.get('user-email').trim().toLowerCase()
+  const role = formData.get('user-role')
+  const permissions = Array.from(formData.getAll('permissions'))
+  
+  // Show loading state for duplicate check
+  showLoading('Checking for duplicates...')
+  
+  // Check for duplicates (excluding current user)
   const duplicateCheck = await checkForDuplicates(name, email, currentEditingUserId)
   
   if (duplicateCheck.isDuplicate) {
@@ -360,34 +408,27 @@ async function handleUserFormSubmit(e) {
   }
   
   try {
-    showLoading(currentEditingUserId ? 'Updating user...' : 'Saving user...')
+    showLoading('Updating user...')
     
     const userData = {
       name,
       congregation,
-      email: email.toLowerCase(), // Normalize email to lowercase
+      email: email.toLowerCase(),
       role,
       permissions: validatePermissions(permissions),
-      ...(currentEditingUserId ? { updatedAt: new Date() } : { status: 'invited', createdAt: new Date() })
+      updatedAt: new Date()
     }
     
-    if (currentEditingUserId) {
-      // Update existing user
-      await setDoc(doc(db, 'users', currentEditingUserId), userData, { merge: true })
-      showNotification('User updated successfully!', 'success')
-    } else {
-      // Create new user
-      const userRef = doc(collection(db, 'users'))
-      await setDoc(userRef, userData)
-      showNotification('User added successfully!', 'success')
-    }
+    // Update existing user
+    await setDoc(doc(db, 'users', currentEditingUserId), userData, { merge: true })
+    showNotification('User updated successfully!', 'success')
     
-    hideModal('user-modal')
+    hideModal('edit-user-modal')
     hideLoading()
-    currentEditingUserId = null // Reset editing state
+    currentEditingUserId = null
   } catch (error) {
-    console.error('Error saving user:', error)
-    showNotification('Error saving user', 'error')
+    console.error('Error updating user:', error)
+    showNotification('Error updating user', 'error')
     hideLoading()
   }
 }
@@ -397,27 +438,26 @@ window.editUser = function(userId) {
   const user = usersData.find(u => u.id === userId)
   if (!user) return
   
-  const modal = document.getElementById('user-modal')
-  const modalTitle = document.getElementById('user-modal-title')
-  const saveBtn = document.getElementById('save-user-btn')
-  
-  modalTitle.textContent = 'Edit User'
-  saveBtn.textContent = 'Update User'
+  console.log('🔧 Editing user:', user)
   
   // Set editing state
   currentEditingUserId = userId
   
+  // Setup permissions first
+  setupPermissionsCheckboxes('edit-user-permissions')
+  
   // Fill form with user data
-  document.getElementById('user-name').value = user.name || ''
-  document.getElementById('user-congregation').value = user.congregation || ''
-  document.getElementById('user-email').value = user.email
-  document.getElementById('user-role').value = user.role || 'user'
+  document.getElementById('edit-user-name').value = user.name || ''
+  document.getElementById('edit-user-congregation').value = user.congregation || ''
+  document.getElementById('edit-user-email').value = user.email
+  document.getElementById('edit-user-role').value = user.role || 'user'
   
   // Setup permissions and select current ones
-  setupPermissionsCheckboxes()
-  updatePermissionsCheckboxes(user.permissions || [])
+  updatePermissionsCheckboxes('edit-user-permissions', user.permissions || [])
   
-  showModal('user-modal')
+  console.log('✅ Edit user modal populated successfully')
+  
+  showModal('edit-user-modal')
 }
 
 // Delete user
@@ -521,6 +561,37 @@ function formatDate(date) {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date)
+}
+
+// Sign out function
+window.signOut = async function() {
+  if (!confirm('Are you sure you want to sign out?')) {
+    return
+  }
+  
+  try {
+    showLoading('Signing out...')
+    
+    // Import auth functions
+    const { signOutUser } = await import('../auth-standalone.js')
+    
+    // Sign out user
+    await signOutUser()
+    
+    // Clear any local data
+    usersData = []
+    
+    // Redirect to auth page
+    showNotification('Signed out successfully', 'success')
+    setTimeout(() => {
+      window.location.href = '/auth.html'
+    }, 1000)
+    
+  } catch (error) {
+    console.error('Error signing out:', error)
+    showNotification('Error signing out', 'error')
+    hideLoading()
+  }
 }
 
 // Make functions available globally

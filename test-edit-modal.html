@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Edit Modal - GrdlHub</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f5f5f5;
+    }
+    
+    .test-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    
+    button {
+      background: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    
+    button:hover {
+      background: #0056b3;
+    }
+    
+    .user-data {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🧪 Test Edit Modal Field Population</h1>
+    <p>This page tests whether the edit user modal correctly pre-fills form fields.</p>
+    
+    <div class="user-data">
+      <h3>Sample User Data</h3>
+      <p><strong>Name:</strong> John Smith</p>
+      <p><strong>Congregation:</strong> Central Congregation</p>
+      <p><strong>Email:</strong> john.smith@example.com</p>
+      <p><strong>Role:</strong> admin</p>
+    </div>
+    
+    <button onclick="populateFields()">Populate Form Fields (Test)</button>
+    <button onclick="clearFields()">Clear Form Fields</button>
+    <button onclick="checkFieldValues()">Check Current Field Values</button>
+    
+    <h3>Form Fields:</h3>
+    <div class="form-group">
+      <label for="user-name">Full Name</label>
+      <input type="text" id="user-name" name="user-name" placeholder="Should show: John Smith">
+    </div>
+    
+    <div class="form-group">
+      <label for="user-congregation">Congregation</label>
+      <input type="text" id="user-congregation" name="user-congregation" placeholder="Should show: Central Congregation">
+    </div>
+    
+    <div class="form-group">
+      <label for="user-email">Email Address</label>
+      <input type="email" id="user-email" name="user-email" placeholder="Should show: john.smith@example.com">
+    </div>
+    
+    <div class="form-group">
+      <label for="user-role">Role</label>
+      <select id="user-role" name="user-role">
+        <option value="">Select Role</option>
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    
+    <div id="result" class="result" style="display: none;">
+      <h4>Test Results:</h4>
+      <div id="result-content"></div>
+    </div>
+  </div>
+
+  <script>
+    // Sample user data (like what comes from Firestore)
+    const sampleUser = {
+      id: 'test-user-123',
+      name: 'John Smith',
+      congregation: 'Central Congregation', 
+      email: 'john.smith@example.com',
+      role: 'admin'
+    }
+
+    function populateFields() {
+      console.log('🔧 Testing field population with sample user:', sampleUser)
+      
+      // This mimics exactly what the editUser function does
+      document.getElementById('user-name').value = sampleUser.name || ''
+      document.getElementById('user-congregation').value = sampleUser.congregation || ''
+      document.getElementById('user-email').value = sampleUser.email
+      document.getElementById('user-role').value = sampleUser.role || 'user'
+      
+      console.log('✅ Fields populated successfully')
+      
+      // Show results
+      const result = document.getElementById('result')
+      const content = document.getElementById('result-content')
+      
+      content.innerHTML = `
+        <p>✅ <strong>Name field:</strong> "${document.getElementById('user-name').value}"</p>
+        <p>✅ <strong>Congregation field:</strong> "${document.getElementById('user-congregation').value}"</p>
+        <p>✅ <strong>Email field:</strong> "${document.getElementById('user-email').value}"</p>
+        <p>✅ <strong>Role field:</strong> "${document.getElementById('user-role').value}"</p>
+      `
+      result.style.display = 'block'
+    }
+
+    function clearFields() {
+      document.getElementById('user-name').value = ''
+      document.getElementById('user-congregation').value = ''
+      document.getElementById('user-email').value = ''
+      document.getElementById('user-role').value = ''
+      
+      console.log('🧹 Fields cleared')
+      
+      const result = document.getElementById('result')
+      result.style.display = 'none'
+    }
+
+    function checkFieldValues() {
+      const nameValue = document.getElementById('user-name').value
+      const congregationValue = document.getElementById('user-congregation').value
+      const emailValue = document.getElementById('user-email').value
+      const roleValue = document.getElementById('user-role').value
+      
+      console.log('Current field values:')
+      console.log('- Name:', nameValue)
+      console.log('- Congregation:', congregationValue)
+      console.log('- Email:', emailValue)
+      console.log('- Role:', roleValue)
+      
+      const result = document.getElementById('result')
+      const content = document.getElementById('result-content')
+      
+      content.innerHTML = `
+        <p><strong>Current Values:</strong></p>
+        <p>Name: "${nameValue}"</p>
+        <p>Congregation: "${congregationValue}"</p>
+        <p>Email: "${emailValue}"</p>
+        <p>Role: "${roleValue}"</p>
+      `
+      result.style.display = 'block'
+    }
+
+    // Test on page load
+    window.addEventListener('load', () => {
+      console.log('🔧 Test page loaded - form field IDs verified:')
+      console.log('- user-name:', document.getElementById('user-name') ? '✅' : '❌')
+      console.log('- user-congregation:', document.getElementById('user-congregation') ? '✅' : '❌')
+      console.log('- user-email:', document.getElementById('user-email') ? '✅' : '❌')
+      console.log('- user-role:', document.getElementById('user-role') ? '✅' : '❌')
+    })
+  </script>
+</body>
+</html>

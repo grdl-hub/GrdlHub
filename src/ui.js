@@ -66,7 +66,7 @@ export function hideModal(modalId) {
     modal.classList.add('hidden')
     document.body.style.overflow = ''
     
-    // Reset form if present
+    // Reset form if present (each modal has its own form now)
     const form = modal.querySelector('form')
     if (form) {
       form.reset()

@@ -156,27 +156,11 @@ class MainApp {
           <!-- Users Management -->
           <section id="users" class="section">
             <div class="container">
-              <!-- Tab Navigation -->
-              <div class="tabs">
-                <button class="tab-button active" data-tab="registered-users">Registered Users</button>
-              </div>
-
-              <!-- Registered Users Tab -->
+              <!-- Users Content -->
               <div id="registered-users" class="tab-content active">
-                <div class="page-header">
-                  <h2 class="page-title">Registered Users</h2>
-                  <div class="header-actions">
-                    <div class="stats-row">
-                      <span class="stat-item">Total: <span id="total-users-count">0</span></span>
-                      <span class="stat-item">Active: <span id="active-users-count">0</span></span>
-                    </div>
-                    <button id="add-user-btn" class="btn btn-primary">Add New User</button>
-                  </div>
-                </div>
-
                 <div class="users-controls">
                   <div class="search-box">
-                    <input type="text" id="search-input" class="form-input" placeholder="Search users by name or email...">
+                    <input type="text" id="search-input" class="form-input" placeholder="🔍 Search users by name or email...">
                   </div>
                   <div class="filter-box">
                     <select id="role-filter" class="form-select">
@@ -184,6 +168,12 @@ class MainApp {
                       <option value="admin">Admin</option>
                       <option value="user">User</option>
                     </select>
+                  </div>
+                  <div class="stats-and-actions">
+                    <div class="stats-row">
+                      <span class="stat-item">📊 Total: <span id="total-users-count">0</span></span>
+                    </div>
+                    <button id="add-user-btn" class="btn btn-primary">+ Add New User</button>
                   </div>
                 </div>
 
@@ -196,8 +186,6 @@ class MainApp {
                           <th>Congregation</th>
                           <th>Email</th>
                           <th>Role</th>
-                          <th>Status</th>
-                          <th>Last Login</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -282,33 +270,33 @@ class MainApp {
       <!-- Notification Container -->
       <div id="notification-container" class="notification-container"></div>
 
-      <!-- User Modal -->
-      <div id="user-modal" class="modal hidden">
+      <!-- Add User Modal -->
+      <div id="add-user-modal" class="modal hidden">
         <div class="modal-content">
           <div class="modal-header">
-            <h3 id="user-modal-title">Add New User</h3>
+            <h3>Add New User</h3>
             <button class="close-btn">&times;</button>
           </div>
           <div class="modal-body">
-            <form id="user-form">
+            <form id="add-user-form">
               <div class="form-group">
-                <label for="user-name" class="form-label">Full Name</label>
-                <input type="text" id="user-name" name="user-name" class="form-input" required>
+                <label for="add-user-name" class="form-label">Full Name</label>
+                <input type="text" id="add-user-name" name="user-name" class="form-input" required>
               </div>
               
               <div class="form-group">
-                <label for="user-congregation" class="form-label">Congregation</label>
-                <input type="text" id="user-congregation" name="user-congregation" class="form-input" required>
+                <label for="add-user-congregation" class="form-label">Congregation</label>
+                <input type="text" id="add-user-congregation" name="user-congregation" class="form-input" required>
               </div>
               
               <div class="form-group">
-                <label for="user-email" class="form-label">Email Address</label>
-                <input type="email" id="user-email" name="user-email" class="form-input" required>
+                <label for="add-user-email" class="form-label">Email Address</label>
+                <input type="email" id="add-user-email" name="user-email" class="form-input" required>
               </div>
               
               <div class="form-group">
-                <label for="user-role" class="form-label">Role</label>
-                <select id="user-role" name="user-role" class="form-select" required>
+                <label for="add-user-role" class="form-label">Role</label>
+                <select id="add-user-role" name="user-role" class="form-select" required>
                   <option value="">Select Role</option>
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
@@ -317,7 +305,7 @@ class MainApp {
               
               <div class="form-group">
                 <label class="form-label">Permissions</label>
-                <div id="user-permissions" class="permissions-grid">
+                <div id="add-user-permissions" class="permissions-grid">
                   <!-- Permissions checkboxes will be populated here -->
                 </div>
               </div>
@@ -325,7 +313,55 @@ class MainApp {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary">Cancel</button>
-            <button type="submit" id="save-user-btn" class="btn btn-primary" form="user-form">Save User</button>
+            <button type="submit" id="add-user-btn" class="btn btn-primary" form="add-user-form">Add User</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit User Modal -->
+      <div id="edit-user-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="close-btn">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="edit-user-form">
+              <div class="form-group">
+                <label for="edit-user-name" class="form-label">Full Name</label>
+                <input type="text" id="edit-user-name" name="user-name" class="form-input" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="edit-user-congregation" class="form-label">Congregation</label>
+                <input type="text" id="edit-user-congregation" name="user-congregation" class="form-input" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="edit-user-email" class="form-label">Email Address</label>
+                <input type="email" id="edit-user-email" name="user-email" class="form-input" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="edit-user-role" class="form-label">Role</label>
+                <select id="edit-user-role" name="user-role" class="form-select" required>
+                  <option value="">Select Role</option>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Permissions</label>
+                <div id="edit-user-permissions" class="permissions-grid">
+                  <!-- Permissions checkboxes will be populated here -->
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary">Cancel</button>
+            <button type="submit" id="update-user-btn" class="btn btn-primary" form="edit-user-form">Update User</button>
           </div>
         </div>
       </div>

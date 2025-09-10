@@ -586,12 +586,49 @@ body {
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .search-box,
 .filter-box {
   flex: 1;
   min-width: 200px;
+}
+
+.stats-and-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  flex-shrink: 0;
+}
+
+.stats-row {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.stat-item {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .users-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .stats-and-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .stats-row {
+    gap: var(--spacing-sm);
+  }
 }
 
 /* Modals */
