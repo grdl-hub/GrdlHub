@@ -193,6 +193,7 @@ class MainApp {
                       <thead>
                         <tr>
                           <th>Name</th>
+                          <th>Congregation</th>
                           <th>Email</th>
                           <th>Role</th>
                           <th>Status</th>
@@ -293,6 +294,11 @@ class MainApp {
               <div class="form-group">
                 <label for="user-name" class="form-label">Full Name</label>
                 <input type="text" id="user-name" name="user-name" class="form-input" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="user-congregation" class="form-label">Congregation</label>
+                <input type="text" id="user-congregation" name="user-congregation" class="form-input" required>
               </div>
               
               <div class="form-group">

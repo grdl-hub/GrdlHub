@@ -6,6 +6,7 @@ import {
   setDoc, 
   deleteDoc, 
   query, 
+  where,
   orderBy,
   onSnapshot 
 } from 'firebase/firestore'
@@ -15,6 +16,7 @@ import { getRolePermissions, getAvailablePages, validatePermissions } from '../a
 
 let usersData = []
 let usersUnsubscribe = null
+let currentEditingUserId = null // Track if we're editing a user
 
 // Initialize users page
 export function initializeUsersPage() {
@@ -126,11 +128,10 @@ function unsubscribeFromUsers() {
 function renderUsers(users) {
   const tbody = document.getElementById('users-tbody')
   if (!tbody) return
-  
-  if (users.length === 0) {
+   if (users.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" class="empty-state">
+        <td colspan="7" class="empty-state">
           <p>No users found</p>
           <button class="btn btn-primary" onclick="showAddUserModal()">Add First User</button>
         </td>
@@ -138,7 +139,7 @@ function renderUsers(users) {
     `
     return
   }
-  
+
   tbody.innerHTML = users.map(user => `
     <tr>
       <td>
@@ -150,6 +151,7 @@ function renderUsers(users) {
           </div>
         </div>
       </td>
+      <td>${user.congregation || 'No Congregation'}</td>
       <td>${user.email}</td>
       <td>
         <span class="role-badge role-${user.role || 'user'}">${user.role || 'user'}</span>
@@ -194,6 +196,7 @@ function filterUsers(searchTerm) {
     return (
       (user.name || '').toLowerCase().includes(searchStr) ||
       user.email.toLowerCase().includes(searchStr) ||
+      (user.congregation || '').toLowerCase().includes(searchStr) ||
       (user.role || '').toLowerCase().includes(searchStr)
     )
   })
@@ -220,6 +223,9 @@ function showAddUserModal() {
   
   modalTitle.textContent = 'Add New User'
   saveBtn.textContent = 'Save User'
+  
+  // Reset editing state
+  currentEditingUserId = null
   
   // Reset form
   document.getElementById('user-form').reset()
@@ -269,6 +275,63 @@ function updatePermissionsCheckboxes(permissions) {
   })
 }
 
+// Check for duplicates in both local data and Firestore
+async function checkForDuplicates(name, email, excludeUserId = null) {
+  // Normalize data
+  name = name.trim()
+  email = email.trim().toLowerCase()
+  
+  // First check local data for immediate feedback
+  const existingUserByEmail = usersData.find(user => 
+    user.email.toLowerCase() === email.toLowerCase() && user.id !== excludeUserId
+  )
+  
+  const existingUserByName = usersData.find(user => 
+    user.name && user.name.toLowerCase() === name.toLowerCase() && user.id !== excludeUserId
+  )
+  
+  if (existingUserByEmail) {
+    return { isDuplicate: true, type: 'email', message: `A user with email "${email}" already exists` }
+  }
+  
+  if (existingUserByName) {
+    return { isDuplicate: true, type: 'name', message: `A user with name "${name}" already exists` }
+  }
+  
+  // Additional Firestore-level check for extra safety
+  try {
+    const usersRef = collection(db, 'users')
+    
+    // Check email duplicates in Firestore
+    const emailQuery = query(usersRef, where('email', '==', email.toLowerCase()))
+    const emailSnapshot = await getDocs(emailQuery)
+    
+    if (!emailSnapshot.empty) {
+      const existingEmailDoc = emailSnapshot.docs[0]
+      if (existingEmailDoc.id !== excludeUserId) {
+        return { isDuplicate: true, type: 'email', message: `A user with email "${email}" already exists in the database` }
+      }
+    }
+    
+    // Check name duplicates in Firestore
+    const nameQuery = query(usersRef, where('name', '==', name))
+    const nameSnapshot = await getDocs(nameQuery)
+    
+    if (!nameSnapshot.empty) {
+      const existingNameDoc = nameSnapshot.docs[0]
+      if (existingNameDoc.id !== excludeUserId) {
+        return { isDuplicate: true, type: 'name', message: `A user with name "${name}" already exists in the database` }
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error checking duplicates in Firestore:', error)
+    // Continue with local validation if Firestore check fails
+  }
+  
+  return { isDuplicate: false }
+}
+
 // Handle user form submission
 async function handleUserFormSubmit(e) {
   e.preventDefault()
@@ -278,30 +341,50 @@ async function handleUserFormSubmit(e) {
   }
   
   const formData = new FormData(e.target)
-  const name = formData.get('user-name')
-  const email = formData.get('user-email')
+  const name = formData.get('user-name').trim()
+  const congregation = formData.get('user-congregation').trim()
+  const email = formData.get('user-email').trim().toLowerCase()
   const role = formData.get('user-role')
   const permissions = Array.from(formData.getAll('permissions'))
   
+  // Show loading state for duplicate check
+  showLoading('Checking for duplicates...')
+  
+  // Check for duplicates using comprehensive check
+  const duplicateCheck = await checkForDuplicates(name, email, currentEditingUserId)
+  
+  if (duplicateCheck.isDuplicate) {
+    showNotification(duplicateCheck.message, 'error')
+    hideLoading()
+    return
+  }
+  
   try {
-    showLoading('Saving user...')
+    showLoading(currentEditingUserId ? 'Updating user...' : 'Saving user...')
     
     const userData = {
       name,
-      email,
+      congregation,
+      email: email.toLowerCase(), // Normalize email to lowercase
       role,
       permissions: validatePermissions(permissions),
-      status: 'invited',
-      createdAt: new Date()
+      ...(currentEditingUserId ? { updatedAt: new Date() } : { status: 'invited', createdAt: new Date() })
     }
     
-    // Create user document
-    const userRef = doc(collection(db, 'users'))
-    await setDoc(userRef, userData)
+    if (currentEditingUserId) {
+      // Update existing user
+      await setDoc(doc(db, 'users', currentEditingUserId), userData, { merge: true })
+      showNotification('User updated successfully!', 'success')
+    } else {
+      // Create new user
+      const userRef = doc(collection(db, 'users'))
+      await setDoc(userRef, userData)
+      showNotification('User added successfully!', 'success')
+    }
     
-    showNotification('User added successfully!', 'success')
     hideModal('user-modal')
     hideLoading()
+    currentEditingUserId = null // Reset editing state
   } catch (error) {
     console.error('Error saving user:', error)
     showNotification('Error saving user', 'error')
@@ -321,8 +404,12 @@ window.editUser = function(userId) {
   modalTitle.textContent = 'Edit User'
   saveBtn.textContent = 'Update User'
   
+  // Set editing state
+  currentEditingUserId = userId
+  
   // Fill form with user data
   document.getElementById('user-name').value = user.name || ''
+  document.getElementById('user-congregation').value = user.congregation || ''
   document.getElementById('user-email').value = user.email
   document.getElementById('user-role').value = user.role || 'user'
   
@@ -330,49 +417,7 @@ window.editUser = function(userId) {
   setupPermissionsCheckboxes()
   updatePermissionsCheckboxes(user.permissions || [])
   
-  // Update form handler for editing
-  const userForm = document.getElementById('user-form')
-  userForm.onsubmit = async (e) => {
-    e.preventDefault()
-    await updateUser(userId, e.target)
-  }
-  
   showModal('user-modal')
-}
-
-// Update user
-async function updateUser(userId, form) {
-  if (!validateForm(form)) {
-    return
-  }
-  
-  const formData = new FormData(form)
-  const name = formData.get('user-name')
-  const email = formData.get('user-email')
-  const role = formData.get('user-role')
-  const permissions = Array.from(formData.getAll('permissions'))
-  
-  try {
-    showLoading('Updating user...')
-    
-    const userData = {
-      name,
-      email,
-      role,
-      permissions: validatePermissions(permissions),
-      updatedAt: new Date()
-    }
-    
-    await setDoc(doc(db, 'users', userId), userData, { merge: true })
-    
-    showNotification('User updated successfully!', 'success')
-    hideModal('user-modal')
-    hideLoading()
-  } catch (error) {
-    console.error('Error updating user:', error)
-    showNotification('Error updating user', 'error')
-    hideLoading()
-  }
 }
 
 // Delete user

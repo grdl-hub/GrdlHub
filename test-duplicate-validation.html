@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Duplicate Validation - GrdlHub</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .form-group {
+      margin: 15px 0;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    
+    button:hover {
+      background: #1565c0;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 4px;
+      color: white;
+      font-weight: 500;
+      z-index: 1000;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    }
+    
+    .notification.show {
+      transform: translateX(0);
+    }
+    
+    .notification.success {
+      background: #4caf50;
+    }
+    
+    .notification.error {
+      background: #f44336;
+    }
+    
+    .results {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 15px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    
+    .test-users {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    .test-user {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      border-left: 4px solid #1976d2;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 GrdlHub Duplicate Validation Test</h1>
+  
+  <div class="test-section">
+    <h2>Test Scenario</h2>
+    <p>This page tests the duplicate validation system for user registration. It will:</p>
+    <ul>
+      <li>✅ Check for duplicate names (case-insensitive)</li>
+      <li>✅ Check for duplicate emails (case-insensitive, normalized)</li>
+      <li>✅ Validate both locally and against Firestore</li>
+      <li>✅ Allow editing existing users without triggering false positives</li>
+    </ul>
+  </div>
+
+  <div class="test-section">
+    <h2>🔄 Load Existing Users</h2>
+    <button onclick="loadUsers()">Load Users from Firestore</button>
+    <div id="usersList" class="results"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>➕ Add Test User</h2>
+    <form id="testForm">
+      <div class="test-users">
+        <div>
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="testName" required placeholder="John Doe">
+          </div>
+          <div class="form-group">
+            <label>Congregation *</label>
+            <input type="text" id="testCongregation" required placeholder="Central Congregation">
+          </div>
+        </div>
+        <div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" id="testEmail" required placeholder="john@example.com">
+          </div>
+          <div class="form-group">
+            <label>Role</label>
+            <select id="testRole">
+              <option value="user">User</option>
+              <option value="admin">Administrator</option>
+              <option value="moderator">Moderator</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button type="submit">Add Test User</button>
+      <button type="button" onclick="fillDuplicateData()">Fill Duplicate Test Data</button>
+      <button type="button" onclick="clearForm()">Clear Form</button>
+    </form>
+    <div id="testResults" class="results"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>🧪 Duplicate Test Cases</h2>
+    <p>Click these buttons to test specific duplicate scenarios:</p>
+    <button onclick="testDuplicateEmail()">Test Duplicate Email</button>
+    <button onclick="testDuplicateName()">Test Duplicate Name</button>
+    <button onclick="testCaseInsensitive()">Test Case Insensitive</button>
+    <button onclick="testEmailNormalization()">Test Email Normalization</button>
+  </div>
+
+  <script type="module">
+    import { initializeStandaloneAuth } from './src/auth-standalone.js'
+    import { 
+      getFirestore, 
+      collection, 
+      doc, 
+      addDoc,
+      getDocs, 
+      query, 
+      where,
+      orderBy,
+      serverTimestamp 
+    } from 'firebase/firestore'
+    
+    let db
+    let users = []
+    
+    // Initialize Firebase
+    async function initialize() {
+      try {
+        await initializeStandaloneAuth()
+        db = getFirestore()
+        console.log('✅ Firebase initialized')
+        showNotification('Firebase connected successfully', 'success')
+      } catch (error) {
+        console.error('❌ Firebase initialization failed:', error)
+        showNotification('Firebase connection failed', 'error')
+      }
+    }
+    
+    // Load users from Firestore
+    window.loadUsers = async function() {
+      if (!db) {
+        showNotification('Firebase not initialized', 'error')
+        return
+      }
+      
+      try {
+        const usersRef = collection(db, 'users')
+        const q = query(usersRef, orderBy('createdAt', 'desc'))
+        const querySnapshot = await getDocs(q)
+        
+        users = []
+        querySnapshot.forEach((doc) => {
+          users.push({
+            id: doc.id,
+            ...doc.data()
+          })
+        })
+        
+        const usersList = document.getElementById('usersList')
+        if (users.length === 0) {
+          usersList.textContent = 'No users found in database.'
+        } else {
+          usersList.textContent = `Loaded ${users.length} users:\n\n` + 
+            users.map(user => `• ${user.name} (${user.email}) - ${user.role} - ${user.congregation}`).join('\n')
+        }
+        
+        showNotification(`Loaded ${users.length} users`, 'success')
+      } catch (error) {
+        console.error('❌ Error loading users:', error)
+        showNotification('Error loading users', 'error')
+      }
+    }
+    
+    // Check for duplicates
+    async function checkForDuplicates(name, email, excludeUserId = null) {
+      // Local check
+      const existingUserByEmail = users.find(user => 
+        user.email.toLowerCase() === email.toLowerCase() && user.id !== excludeUserId
+      )
+      
+      const existingUserByName = users.find(user => 
+        user.name && user.name.toLowerCase() === name.toLowerCase() && user.id !== excludeUserId
+      )
+      
+      if (existingUserByEmail) {
+        return { isDuplicate: true, type: 'email', message: `A user with email "${email}" already exists (local check)` }
+      }
+      
+      if (existingUserByName) {
+        return { isDuplicate: true, type: 'name', message: `A user with name "${name}" already exists (local check)` }
+      }
+      
+      // Firestore check
+      try {
+        const usersRef = collection(db, 'users')
+        
+        // Check email duplicates
+        const emailQuery = query(usersRef, where('email', '==', email.toLowerCase()))
+        const emailSnapshot = await getDocs(emailQuery)
+        
+        if (!emailSnapshot.empty) {
+          const existingEmailDoc = emailSnapshot.docs[0]
+          if (existingEmailDoc.id !== excludeUserId) {
+            return { isDuplicate: true, type: 'email', message: `A user with email "${email}" already exists (Firestore check)` }
+          }
+        }
+        
+        // Check name duplicates
+        const nameQuery = query(usersRef, where('name', '==', name))
+        const nameSnapshot = await getDocs(nameQuery)
+        
+        if (!nameSnapshot.empty) {
+          const existingNameDoc = nameSnapshot.docs[0]
+          if (existingNameDoc.id !== excludeUserId) {
+            return { isDuplicate: true, type: 'name', message: `A user with name "${name}" already exists (Firestore check)` }
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error checking duplicates in Firestore:', error)
+        return { isDuplicate: false, message: 'Firestore check failed, using local validation only' }
+      }
+      
+      return { isDuplicate: false, message: 'No duplicates found' }
+    }
+    
+    // Add test user
+    document.getElementById('testForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      
+      if (!db) {
+        showNotification('Firebase not initialized', 'error')
+        return
+      }
+      
+      const name = document.getElementById('testName').value.trim()
+      const email = document.getElementById('testEmail').value.trim().toLowerCase()
+      const congregation = document.getElementById('testCongregation').value.trim()
+      const role = document.getElementById('testRole').value
+      
+      if (!name || !email || !congregation) {
+        showNotification('All fields are required', 'error')
+        return
+      }
+      
+      const results = document.getElementById('testResults')
+      results.textContent = 'Checking for duplicates...'
+      
+      // Check for duplicates
+      const duplicateCheck = await checkForDuplicates(name, email)
+      
+      if (duplicateCheck.isDuplicate) {
+        results.textContent = `❌ DUPLICATE DETECTED: ${duplicateCheck.message}`
+        showNotification(duplicateCheck.message, 'error')
+        return
+      }
+      
+      try {
+        const userData = {
+          name,
+          email,
+          congregation,
+          role,
+          status: 'active',
+          createdAt: serverTimestamp(),
+          createdBy: 'test-script'
+        }
+        
+        const docRef = await addDoc(collection(db, 'users'), userData)
+        
+        // Add to local array
+        users.unshift({
+          id: docRef.id,
+          ...userData,
+          createdAt: new Date()
+        })
+        
+        results.textContent = `✅ SUCCESS: User "${name}" added with ID: ${docRef.id}\n\n${duplicateCheck.message}`
+        showNotification(`User "${name}" added successfully`, 'success')
+        
+        // Clear form
+        document.getElementById('testForm').reset()
+        
+      } catch (error) {
+        console.error('Error adding user:', error)
+        results.textContent = `❌ ERROR: ${error.message}`
+        showNotification('Error adding user', 'error')
+      }
+    })
+    
+    // Test functions
+    window.fillDuplicateData = function() {
+      if (users.length > 0) {
+        const firstUser = users[0]
+        document.getElementById('testName').value = firstUser.name
+        document.getElementById('testEmail').value = firstUser.email
+        document.getElementById('testCongregation').value = firstUser.congregation || 'Test Congregation'
+        showNotification('Filled form with duplicate data', 'success')
+      } else {
+        showNotification('No users loaded. Load users first.', 'error')
+      }
+    }
+    
+    window.testDuplicateEmail = function() {
+      document.getElementById('testName').value = 'Unique Name Test'
+      document.getElementById('testEmail').value = users.length > 0 ? users[0].email : 'test@example.com'
+      document.getElementById('testCongregation').value = 'Test Congregation'
+    }
+    
+    window.testDuplicateName = function() {
+      document.getElementById('testName').value = users.length > 0 ? users[0].name : 'Test User'
+      document.getElementById('testEmail').value = 'unique-email@example.com'
+      document.getElementById('testCongregation').value = 'Test Congregation'
+    }
+    
+    window.testCaseInsensitive = function() {
+      if (users.length > 0) {
+        document.getElementById('testName').value = users[0].name.toUpperCase()
+        document.getElementById('testEmail').value = users[0].email.toUpperCase()
+        document.getElementById('testCongregation').value = 'Test Congregation'
+      }
+    }
+    
+    window.testEmailNormalization = function() {
+      if (users.length > 0) {
+        document.getElementById('testName').value = 'Email Normalization Test'
+        document.getElementById('testEmail').value = users[0].email.replace('@', '+test@')
+        document.getElementById('testCongregation').value = 'Test Congregation'
+      }
+    }
+    
+    window.clearForm = function() {
+      document.getElementById('testForm').reset()
+      document.getElementById('testResults').textContent = ''
+    }
+    
+    // Notification system
+    function showNotification(message, type = 'success') {
+      // Remove existing notifications
+      const existing = document.querySelectorAll('.notification')
+      existing.forEach(n => n.remove())
+
+      const notification = document.createElement('div')
+      notification.className = `notification ${type}`
+      notification.textContent = message
+
+      document.body.appendChild(notification)
+
+      // Show notification
+      setTimeout(() => notification.classList.add('show'), 100)
+
+      // Hide notification after 4 seconds
+      setTimeout(() => {
+        notification.classList.remove('show')
+        setTimeout(() => notification.remove(), 300)
+      }, 4000)
+    }
+    
+    // Initialize on page load
+    initialize()
+  </script>
+</body>
+</html>
