@@ -216,16 +216,16 @@ export async function signOutUser() {
   }
 }
 
-// Check if email is pre-approved for registration
+// Check if email exists in users collection
 export async function isEmailPreApproved(email) {
   try {
-    const emailsRef = collection(db, 'preApprovedEmails')
-    const q = query(emailsRef, where('email', '==', email.toLowerCase()))
+    const usersRef = collection(db, 'users')
+    const q = query(usersRef, where('email', '==', email.toLowerCase()))
     const snapshot = await getDocs(q)
     
     return !snapshot.empty
   } catch (error) {
-    console.error('Error checking pre-approved email:', error)
+    console.error('Error checking email in users collection:', error)
     return false
   }
 }
@@ -309,9 +309,10 @@ export async function sendFirebaseSignInLink(email) {
     // if they open the link on the same device.
     window.localStorage.setItem('emailForSignIn', email)
     
+    console.log('✅ Firebase sign-in link sent successfully to:', email)
     return { success: true, message: 'Sign-in link sent successfully!' }
   } catch (error) {
-    console.error('Error sending sign-in link:', error)
+    console.error('❌ Error sending sign-in link:', error)
     
     // Provide specific error messages for common issues
     let userMessage = error.message
@@ -376,32 +377,35 @@ async function createUserDocument(firebaseUser, email) {
     const userDoc = await getDoc(userRef)
     
     if (!userDoc.exists()) {
-      // Check if this email was pre-approved and get user data
-      const preApprovedData = await getPreApprovedEmailData(email)
+      // Check if this email exists in users collection and get user data
+      const userData = await getUserDataByEmail(email)
       
       await setDoc(userRef, {
         email: email.toLowerCase(),
-        name: preApprovedData?.fullName || 'User',
-        role: 'user', // Default role
-        permissions: ['home', 'content'], // Default permissions
+        name: userData?.name || 'User',
+        role: userData?.role || 'user',
+        permissions: userData?.permissions || ['home', 'content'],
         status: 'active',
         createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp()
+        lastLogin: serverTimestamp(),
+        firebaseUid: firebaseUser.uid
       })
-      
-      // Update pre-approved email status
-      await updatePreApprovedEmailStatus(email, 'registered')
+    } else {
+      // Update last login time for existing user
+      await setDoc(userRef, {
+        lastLogin: serverTimestamp()
+      }, { merge: true })
     }
   } catch (error) {
-    console.error('Error creating user document:', error)
-    // Don't throw - user is still authenticated even if document creation fails
+    console.error('Error creating/updating user document:', error)
+    // Don't throw - user is still authenticated even if document update fails
   }
 }
 
-async function getPreApprovedEmailData(email) {
+async function getUserDataByEmail(email) {
   try {
-    const emailsRef = collection(db, 'preApprovedEmails')
-    const q = query(emailsRef, where('email', '==', email.toLowerCase()))
+    const usersRef = collection(db, 'users')
+    const q = query(usersRef, where('email', '==', email.toLowerCase()))
     const snapshot = await getDocs(q)
     
     if (!snapshot.empty) {
@@ -409,7 +413,7 @@ async function getPreApprovedEmailData(email) {
     }
     return null
   } catch (error) {
-    console.error('Error getting pre-approved email data:', error)
+    console.error('Error getting user data by email:', error)
     return null
   }
 }
