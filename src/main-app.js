@@ -6,7 +6,6 @@ import { AuthAPI } from './auth-standalone.js'
 import { initializeAccessControl, hasPageAccess } from './accessControl.js'
 import { initializeUI } from './ui.js'
 import { initializeUsersPage } from './pages/users.js'
-import { initializePreApprovedEmails } from './pages/preApprovedEmails.js'
 import { initializePagesPage } from './pages/pages.js'
 import { initializeContentPage } from './pages/content.js'
 import { initializeSettingsPage } from './pages/settings.js'
@@ -55,7 +54,6 @@ class MainApp {
       // Setup page modules
       console.log('🔧 Setting up page modules...')
       initializeUsersPage()
-      initializePreApprovedEmails()
       initializePagesPage()
       initializeContentPage()
       initializeSettingsPage()
@@ -161,7 +159,6 @@ class MainApp {
               <!-- Tab Navigation -->
               <div class="tabs">
                 <button class="tab-button active" data-tab="registered-users">Registered Users</button>
-                <button class="tab-button" data-tab="pre-approved-emails">Pre-Approved Emails</button>
               </div>
 
               <!-- Registered Users Tab -->
@@ -205,59 +202,6 @@ class MainApp {
                       </thead>
                       <tbody id="users-tbody">
                         <!-- Users will be populated here -->
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Pre-Approved Emails Tab -->
-              <div id="pre-approved-emails" class="tab-content">
-                <div class="page-header">
-                  <h2 class="page-title">Pre-Approved Emails</h2>
-                  <div class="header-actions">
-                    <div class="stats-row">
-                      <span class="stat-item">Total: <span id="total-emails-count">0</span></span>
-                      <span class="stat-item">Pending: <span id="pending-emails-count">0</span></span>
-                      <span class="stat-item">Invited: <span id="invited-emails-count">0</span></span>
-                      <span class="stat-item">Registered: <span id="registered-emails-count">0</span></span>
-                    </div>
-                    <button id="add-email-btn" class="btn btn-primary">Add Email</button>
-                  </div>
-                </div>
-
-                <div class="description-box">
-                  <p>Manage the list of emails that are pre-approved for registration. Only users with emails in this list can create accounts.</p>
-                </div>
-
-                <div class="emails-controls">
-                  <div class="search-box">
-                    <input type="text" id="email-search-input" class="form-input" placeholder="Search emails...">
-                  </div>
-                  <div class="filter-box">
-                    <select id="email-status-filter" class="form-select">
-                      <option value="">All Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="invited">Invited</option>
-                      <option value="registered">Registered</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="emails-table-container">
-                  <div id="emails-table" class="table-responsive">
-                    <table class="emails-table">
-                      <thead>
-                        <tr>
-                          <th>Email Address</th>
-                          <th>Status</th>
-                          <th>Added By</th>
-                          <th>Date Added</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody id="emails-tbody">
-                        <!-- Pre-approved emails will be populated here -->
                       </tbody>
                     </table>
                   </div>
