@@ -14,8 +14,40 @@
 2. Click **Get started**
 3. Go to **Sign-in method** tab
 4. Enable **Email/Password** provider
-5. **Enable Email link (passwordless sign-in)** - This is crucial for our magic link functionality
+5. **🔥 CRITICAL: Enable Email link (passwordless sign-in)**
+   - Click on **Email/Password** provider
+   - Toggle ON **"Email link (passwordless sign-in)"**
+   - Click **Save**
 6. Save changes
+
+### ⚠️ CRITICAL: Fix `auth/operation-not-allowed` Error
+
+**You're seeing this error because Email link (passwordless sign-in) is not enabled!**
+
+```
+Error sending sign-in link: FirebaseError: Firebase: Error (auth/operation-not-allowed)
+```
+
+**🔧 IMMEDIATE FIX (2 minutes):**
+
+1. **Open Firebase Console**: https://console.firebase.google.com/
+2. **Select your project**: `grdlhub-9eae1` (or your project name)
+3. **Go to Authentication** → **Sign-in method** tab
+4. **Find "Email/Password"** provider in the list
+5. **Click the Edit button** (pencil icon) next to Email/Password
+6. **YOU'LL SEE TWO TOGGLES**:
+   - ✅ Email/Password (probably already enabled)
+   - ❌ **Email link (passwordless sign-in)** ← **ENABLE THIS ONE!**
+7. **Toggle ON** "Email link (passwordless sign-in)"
+8. **Click Save**
+
+**🧪 Test the fix:**
+```bash
+npm run check-firebase  # Verify configuration
+npm run dev              # Start the app and test sign-in links
+```
+
+That's it! This is the most common setup issue.
 
 ### 2.1 Configure Authorized Domains
 

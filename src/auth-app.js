@@ -1,57 +1,103 @@
 // Standalone Auth Page - Completely isolated from main app
 // This runs independently and only loads the main app after successful auth
 
-import { 
-  initializeStandaloneAuth,
-  getCurrentAuthUser,
-  isEmailPreApproved,
-  registerWithPreApprovedEmail,
-  signInUser,
-  sendFirebaseSignInLink,
-  signInWithFirebaseLink,
-  isFirebaseSignInLink,
-  SecurityUtils
-} from './auth-standalone.js'
+console.log('🚀 Auth app module loaded')
 
-class StandaloneAuthApp {
-  constructor() {
-    this.currentStep = 'check-access'
-    this.inviteData = null
-    this.init()
-  }
-
-  async init() {
-    // Security checks
-    if (!SecurityUtils.isSecureContext()) {
-      this.showError('This application requires a secure connection (HTTPS)')
-      return
-    }
-
-    // Initialize auth
-    try {
-      await initializeStandaloneAuth()
-      const user = getCurrentAuthUser()
+// First, let's test basic functionality
+const container = document.getElementById('auth-container')
+if (!container) {
+  console.error('❌ auth-container element not found!')
+} else {
+  console.log('✅ auth-container found')
+  
+  // Test basic HTML insertion
+  container.innerHTML = `
+    <div style="max-width: 400px; margin: 0 auto; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+      <h1 style="margin: 0 0 8px 0; color: #1976d2; font-size: 2rem; font-weight: 600;">GrdlHub</h1>
+      <p style="margin: 0 0 32px 0; color: #757575; font-size: 1rem;">Secure Access Portal</p>
       
-      if (user && user.emailVerified) {
-        // User is already authenticated, load main app
-        this.loadMainApp()
-        return
+      <h2 style="margin: 0 0 16px 0; color: #212121; font-size: 1.25rem; font-weight: 500;">Access Required</h2>
+      <p style="margin: 0 0 24px 0; color: #757575; font-size: 0.875rem;">Please enter your email address to request access to GrdlHub.</p>
+      
+      <form id="simple-auth-form" style="text-align: left;">
+        <div style="margin-bottom: 16px;">
+          <label for="email-input" style="display: block; margin-bottom: 8px; color: #424242; font-weight: 500; font-size: 0.875rem;">Email Address</label>
+          <input 
+            type="email" 
+            id="email-input" 
+            placeholder="your.email@example.com" 
+            style="width: 100%; padding: 12px 16px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s ease;"
+            required
+          >
+        </div>
+        
+        <button 
+          type="submit" 
+          style="width: 100%; padding: 12px; background: #1976d2; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.3s ease;"
+        >
+          Check Access
+        </button>
+      </form>
+      
+      <div style="margin-top: 24px; padding: 16px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+        <p style="margin: 0 0 8px 0; color: #757575; font-size: 0.875rem;">� This application requires invitation-only access.</p>
+        <p style="margin: 0; color: #757575; font-size: 0.875rem;">If you need access, please contact an administrator.</p>
+      </div>
+    </div>
+  `
+  
+  console.log('✅ Basic HTML inserted')
+  
+  // Bind form event
+  const form = document.getElementById('simple-auth-form')
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault()
+      const email = document.getElementById('email-input').value.trim()
+      console.log('📧 Form submitted with email:', email)
+      
+      if (email) {
+        alert(`Testing: You entered ${email}. In the real app, this would check if the email is pre-approved and send a magic link.`)
+      } else {
+        alert('Please enter an email address.')
       }
-      
-      // Check for magic link in URL first
-      const magicLinkResult = await this.checkMagicLink()
-      if (magicLinkResult.handled) {
-        return // Magic link was processed, don't show normal auth interface
-      }
-      
-      // Show auth interface
-      this.setupAuthInterface()
-      
-    } catch (error) {
-      console.error('Auth initialization error:', error)
-      this.showError('Failed to initialize authentication system')
-    }
+    })
+    console.log('✅ Form event bound')
+  } else {
+    console.error('❌ Form not found')
   }
+}
+
+// Now try to load Firebase gradually
+console.log('� Attempting to load Firebase modules...')
+
+try {
+  import('./auth-standalone.js')
+    .then((authModule) => {
+      console.log('✅ Auth standalone module loaded:', Object.keys(authModule))
+      
+      // Try to initialize Firebase
+      return authModule.initializeStandaloneAuth()
+    })
+    .then(() => {
+      console.log('✅ Firebase initialized successfully')
+      console.log('🎉 Ready to implement full auth functionality')
+    })
+    .catch((error) => {
+      console.error('❌ Firebase initialization failed:', error)
+      
+      // Show error in UI
+      const container = document.getElementById('auth-container')
+      if (container) {
+        const errorDiv = document.createElement('div')
+        errorDiv.style.cssText = 'margin-top: 16px; padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828; font-size: 0.875rem;'
+        errorDiv.innerHTML = `<strong>Firebase Error:</strong> ${error.message}`
+        container.appendChild(errorDiv)
+      }
+    })
+} catch (error) {
+  console.error('❌ Failed to import auth module:', error)
+}
 
   async checkMagicLink() {
     // Check if the current URL is a Firebase sign-in link
@@ -87,8 +133,30 @@ class StandaloneAuthApp {
       const result = await signInWithFirebaseLink(email, window.location.href)
       
       if (result.success) {
-        this.showMagicLinkSuccess('Welcome to GrdlHub! Your account is ready.')
-        setTimeout(() => this.loadMainApp(), 2000)
+        console.log('🎉 Sign-in successful! Redirecting to main app...')
+        
+        // Show success and redirect immediately
+        document.getElementById('auth-container').innerHTML = `
+          <div class="auth-card standalone">
+            <div class="auth-header">
+              <h1>GrdlHub</h1>
+              <p>Welcome!</p>
+            </div>
+            <div class="auth-success">
+              <div class="success-icon">✅</div>
+              <p>Sign-in successful! Redirecting to your workspace...</p>
+              <div class="auth-loading">
+                <div class="spinner"></div>
+              </div>
+            </div>
+          </div>
+        `
+        
+        // Redirect to main app after a short delay
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 1500)
+        
       } else {
         this.showMagicLinkError(result.error || 'Failed to complete sign-in')
       }
@@ -102,98 +170,19 @@ class StandaloneAuthApp {
     }
   }
 
-  async processMagicLinkAuth(email, emailData, documentId) {
-    try {
-      // Check if user already exists
-      const existingUser = getCurrentAuthUser()
-      
-      if (existingUser && existingUser.email === email) {
-        // User is already signed in with this email
-        this.showMagicLinkSuccess('Welcome back! Loading your workspace...')
-        setTimeout(() => this.loadMainApp(), 1500)
-        return
-      }
-      
-      // Create account without password using the magic link
-      const result = await this.createAccountFromMagicLink(email, emailData)
-      
-      if (result.success) {
-        // Mark the email as registered and clear the magic link
-        await this.updateEmailAfterRegistration(documentId)
-        
-        this.showMagicLinkSuccess('Account created successfully! Welcome to GrdlHub!')
-        setTimeout(() => this.loadMainApp(), 2000)
-      } else {
-        this.showMagicLinkError(result.error || 'Failed to create account')
-      }
-      
-    } catch (error) {
-      console.error('Magic link auth processing error:', error)
-      this.showMagicLinkError('Error creating your account. Please contact support.')
-    }
-  }
-
-  async createAccountFromMagicLink(email, emailData) {
-    try {
-      // Generate a secure random password (user won't need to know it)
-      const randomPassword = this.generateSecurePassword()
-      
-      // Use the existing registration system but with auto-generated password
-      const result = await registerWithPreApprovedEmail(email, randomPassword, emailData.fullName || 'User')
-      
-      return result
-      
-    } catch (error) {
-      console.error('Magic link account creation error:', error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  async updateEmailAfterRegistration(documentId) {
-    try {
-      const { doc, updateDoc } = await import('firebase/firestore')
-      const { db } = await import('./auth-standalone.js')
-      
-      const emailRef = doc(db, 'preApprovedEmails', documentId)
-      await updateDoc(emailRef, {
-        status: 'registered',
-        registeredAt: new Date(),
-        magicToken: null, // Clear the token
-        magicLinkExpiresAt: null
-      })
-      
-    } catch (error) {
-      console.error('Error updating email status:', error)
-      // Don't throw - this is not critical for the user experience
-    }
-  }
-
-  generateSecurePassword() {
-    // Generate a cryptographically secure random password
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
-    let password = ''
-    const array = new Uint8Array(16)
-    crypto.getRandomValues(array)
-    
-    for (let i = 0; i < 16; i++) {
-      password += chars[array[i] % chars.length]
-    }
-    
-    return password
-  }
-
   showMagicLinkSuccess(message) {
     document.getElementById('auth-container').innerHTML = `
       <div class="auth-card standalone">
         <div class="auth-header">
-          <h1>🎉 Welcome to GrdlHub</h1>
+          <h1>GrdlHub</h1>
+          <p>Access Granted</p>
         </div>
-        <div class="auth-result success">
+        <div class="auth-success">
           <div class="success-icon">✅</div>
-          <h2>Access Granted!</h2>
           <p>${message}</p>
-          <div class="loading-dots">
-            <span></span><span></span><span></span>
+          <div class="auth-loading">
+            <div class="spinner"></div>
+            <p>Loading your workspace...</p>
           </div>
         </div>
       </div>
@@ -205,292 +194,192 @@ class StandaloneAuthApp {
       <div class="auth-card standalone">
         <div class="auth-header">
           <h1>GrdlHub</h1>
-          <p>Authentication Portal</p>
+          <p>Access Error</p>
         </div>
-        <div class="auth-result error">
+        <div class="auth-error">
           <div class="error-icon">❌</div>
-          <h2>Invalid Invitation</h2>
           <p>${message}</p>
-          <div class="form-actions">
-            <button onclick="window.location.href = window.location.pathname" class="btn btn-primary">
-              Request New Invitation
-            </button>
-          </div>
+          <button onclick="location.href='/auth.html'" class="btn btn-primary">Try Again</button>
         </div>
       </div>
     `
   }
 
   setupAuthInterface() {
-    const authContainer = document.getElementById('auth-container')
-    authContainer.innerHTML = `
-      <div class="auth-card standalone">
+    console.log('🔧 Setting up auth interface...')
+    
+    const container = document.getElementById('auth-container')
+    if (!container) {
+      console.error('❌ auth-container element not found!')
+      return
+    }
+    
+    console.log('✅ auth-container found, inserting HTML...')
+    
+    container.innerHTML = `
+      <div class="auth-card">
         <div class="auth-header">
           <h1>GrdlHub</h1>
-          <p>Secure Authentication Portal</p>
-          <div class="security-notice">
-            🔒 Invite-Only Access
-          </div>
+          <p>Secure Access Portal</p>
         </div>
-
-        <!-- Step 1: Check Access -->
-        <div id="step-check-access" class="auth-step active">
-          <h2>🔗 Instant Magic Link Access</h2>
-          <p>Enter your email to receive an instant secure access link</p>
+        
+        <div class="auth-step" id="step-check-access">
+          <h2>Access Required</h2>
+          <p>Please enter your email address to request access to GrdlHub.</p>
           
-          <form id="check-access-form">
+          <form id="check-access-form" class="auth-form">
             <div class="form-group">
-              <label for="check-email">Email Address</label>
-              <input type="email" id="check-email" required autocomplete="email" placeholder="your.email@example.com">
+              <label for="access-email">Email Address</label>
+              <input type="email" id="access-email" name="email" required 
+                     placeholder="your.email@example.com" autocomplete="email">
             </div>
-            <button type="submit" class="btn btn-primary">📧 Send Magic Link</button>
+            
+            <button type="submit" class="btn btn-primary btn-full">
+              <span class="btn-text">Check Access</span>
+              <span class="btn-loading" style="display: none;">
+                <div class="spinner"></div>
+                Checking...
+              </span>
+            </button>
           </form>
           
           <div class="auth-info">
-            <p><strong>✨ How it works:</strong></p>
-            <ul>
-              <li>🔍 Enter your email address above</li>
-              <li>⚡ Get an instant magic link (if pre-approved)</li>
-              <li>� Check your email and click the link</li>
-              <li>🎉 Automatic access - no password needed!</li>
-            </ul>
-            <p><strong>🔒 Security Features:</strong></p>
-            <ul>
-              <li>🛡️ Links expire after 24 hours</li>
-              <li>🔐 Cryptographically secure tokens</li>
-              <li>✅ Invite-only access control</li>
-              <li>👴 Perfect for users of all ages</li>
-            </ul>
-            <em>This is a secure, invite-only system. If your email isn't pre-approved, please contact an administrator.</em>
+            <p>🔒 This application requires invitation-only access.</p>
+            <p>If you need access, please contact an administrator.</p>
           </div>
         </div>
-
-        <!-- Step 2: Sign In -->
-        <div id="step-sign-in" class="auth-step">
-          <h2>Welcome Back</h2>
-          <p>Please enter your credentials to continue</p>
-          
-          <form id="sign-in-form">
-            <div class="form-group">
-              <label for="signin-email">Email Address</label>
-              <input type="email" id="signin-email" required readonly>
-            </div>
-            <div class="form-group">
-              <label for="signin-password">Password</label>
-              <input type="password" id="signin-password" required autocomplete="current-password" placeholder="Enter your password">
-            </div>
-            <button type="submit" class="btn btn-primary">Sign In Securely</button>
-          </form>
-          
-          <button id="back-to-check" class="btn btn-link">← Use different email address</button>
-        </div>
-
-        <!-- Step 3: Create Account -->
-        <div id="step-create-account" class="auth-step">
-          <h2>Create Your Account</h2>
-          <p>Complete your profile to activate your secure access</p>
-          
-          <form id="create-account-form">
-            <div class="form-group">
-              <label for="create-email">Email Address</label>
-              <input type="email" id="create-email" required readonly>
-            </div>
-            <div class="form-group">
-              <label for="create-name">Full Name</label>
-              <input type="text" id="create-name" required autocomplete="name" placeholder="Enter your full name">
-            </div>
-            <div class="form-group">
-              <label for="create-password">Secure Password</label>
-              <input type="password" id="create-password" required autocomplete="new-password" minlength="8" placeholder="Create a strong password">
-              <small>Minimum 8 characters with mixed case, numbers, and symbols</small>
-            </div>
-            <div class="form-group">
-              <label for="confirm-password">Confirm Password</label>
-              <input type="password" id="confirm-password" required autocomplete="new-password" placeholder="Confirm your password">
-            </div>
-            <button type="submit" class="btn btn-primary">Create Secure Account</button>
-          </form>
-          
-          <button id="back-to-check-2" class="btn btn-link">← Use different email address</button>
-        </div>
-
-        <!-- Loading state -->
-        <div id="auth-loading" class="auth-loading hidden">
-          <div class="spinner"></div>
-          <p>Processing your request securely...</p>
-        </div>
-
-        <!-- Results -->
-        <div id="auth-result" class="auth-result hidden"></div>
       </div>
     `
-
+    
+    console.log('✅ HTML inserted, binding events...')
     this.bindAuthEvents()
+    console.log('✅ Auth interface setup complete!')
   }
 
   bindAuthEvents() {
     // Check access form
-    document.getElementById('check-access-form').addEventListener('submit', (e) => {
-      e.preventDefault()
-      this.handleCheckAccess()
-    })
-
-    // Sign in form
-    document.getElementById('sign-in-form').addEventListener('submit', (e) => {
-      e.preventDefault()
-      this.handleSignIn()
-    })
-
-    // Create account form
-    document.getElementById('create-account-form').addEventListener('submit', (e) => {
-      e.preventDefault()
-      this.handleCreateAccount()
-    })
-
-    // Back buttons
-    document.getElementById('back-to-check').addEventListener('click', () => {
-      this.showStep('check-access')
-    })
-    document.getElementById('back-to-check-2').addEventListener('click', () => {
-      this.showStep('check-access')
-    })
+    const checkAccessForm = document.getElementById('check-access-form')
+    if (checkAccessForm) {
+      checkAccessForm.addEventListener('submit', (e) => {
+        e.preventDefault()
+        this.handleCheckAccess()
+      })
+    }
   }
 
   async handleCheckAccess() {
-    const email = document.getElementById('check-email').value
-    this.showLoading(true)
+    const email = document.getElementById('access-email').value.trim()
+    
+    if (!email) {
+      this.showFieldError('access-email', 'Email address is required')
+      return
+    }
+
+    if (!SecurityUtils.isValidEmail(email)) {
+      this.showFieldError('access-email', 'Please enter a valid email address')
+      return
+    }
+
+    this.setLoading('check-access-form', true)
 
     try {
       // Check if email is pre-approved
-      const isPreApproved = await isEmailPreApproved(email)
+      const isApproved = await isEmailPreApproved(email)
       
-      if (!isPreApproved) {
-        this.showResult('error', 'Your email is not authorized for access. Please contact an administrator to be added to the pre-approved list.')
-        return
-      }
-
-      // Email is pre-approved! Send Firebase sign-in link immediately
-      this.showResult('info', 'Generating your secure access link...')
-      
-      const result = await sendFirebaseSignInLink(email)
-      
-      if (result.success) {
-        this.showResult('success', `✅ Sign-in link sent to ${email}! Check your email and click the link to access GrdlHub. No password required! Links are managed by Firebase for maximum security.`)
+      if (isApproved) {
+        // Email is pre-approved, send the Firebase sign-in link
+        const result = await sendFirebaseSignInLink(email)
+        
+        if (result.success) {
+          this.showInviteSent(email)
+        } else {
+          this.showError(result.error || 'Failed to send invitation link')
+        }
       } else {
-        this.showResult('error', result.error || 'Failed to send sign-in link. Please try again or contact support.')
+        this.showNotInvited(email)
       }
       
     } catch (error) {
-      console.error('Check access error:', error)
-      this.showResult('error', 'Unable to verify email authorization. Please try again.')
-    } finally {
-      this.showLoading(false)
+      console.error('Access check error:', error)
+      this.showError('Unable to verify access. Please try again.')
     }
+    
+    this.setLoading('check-access-form', false)
   }
 
-  async handleSignIn() {
-    const email = document.getElementById('signin-email').value
-    const password = document.getElementById('signin-password').value
-    this.showLoading(true)
-
-    try {
-      const result = await signInUser(email, password)
-      
-      if (result.success) {
-        this.showResult('success', 'Sign in successful! Loading application...')
-        setTimeout(() => this.loadMainApp(), 1500)
-      }
-      
-    } catch (error) {
-      let errorMessage = 'Sign in failed. Please check your credentials.'
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email.'
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password.'
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many failed attempts. Please try again later.'
-      }
-      this.showResult('error', errorMessage)
-    } finally {
-      this.showLoading(false)
-    }
+  showInviteSent(email) {
+    document.getElementById('auth-container').innerHTML = `
+      <div class="auth-card">
+        <div class="auth-header">
+          <h1>GrdlHub</h1>
+          <p>Invitation Sent</p>
+        </div>
+        
+        <div class="auth-success">
+          <div class="success-icon">📧</div>
+          <h2>Check Your Email</h2>
+          <p>We've sent a secure access link to:</p>
+          <p class="email-highlight">${email}</p>
+          
+          <div class="auth-instructions">
+            <h3>Next Steps:</h3>
+            <ol>
+              <li>Check your email inbox (and spam folder)</li>
+              <li>Click the secure access link</li>
+              <li>You'll be automatically signed in</li>
+            </ol>
+          </div>
+          
+          <div class="auth-actions">
+            <button onclick="location.reload()" class="btn btn-secondary">Send Another Link</button>
+          </div>
+          
+          <div class="auth-info">
+            <p>🔒 The link will expire in 1 hour for security.</p>
+            <p>If you don't receive the email, please contact support.</p>
+          </div>
+        </div>
+      </div>
+    `
   }
 
-  async handleCreateAccount() {
-    const email = document.getElementById('create-email').value
-    const name = document.getElementById('create-name').value
-    const password = document.getElementById('create-password').value
-    const confirmPassword = document.getElementById('confirm-password').value
-
-    if (password !== confirmPassword) {
-      this.showResult('error', 'Passwords do not match')
-      return
-    }
-
-    if (password.length < 8) {
-      this.showResult('error', 'Password must be at least 8 characters')
-      return
-    }
-
-    this.showLoading(true)
-
-    try {
-      // Use the new pre-approved email registration system
-      const result = await registerWithPreApprovedEmail(email, password, name)
-      
-      if (result.success) {
-        this.showResult('success', 'Account created! Please check your email for verification. Loading application...')
-        setTimeout(() => this.loadMainApp(), 2000)
-      }
-      
-    } catch (error) {
-      let errorMessage = 'Account creation failed. Please try again.'
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'An account with this email already exists.'
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'Password is too weak. Please choose a stronger password.'
-      } else if (error.message && error.message.includes('not authorized')) {
-        errorMessage = error.message
-      }
-      this.showResult('error', errorMessage)
-    } finally {
-      this.showLoading(false)
-    }
-  }
-
-  showStep(stepName) {
-    document.querySelectorAll('.auth-step').forEach(step => {
-      step.classList.remove('active')
-    })
-    document.getElementById(`step-${stepName}`).classList.add('active')
-    this.hideResult()
-  }
-
-  showLoading(show) {
-    const loading = document.getElementById('auth-loading')
-    if (show) {
-      loading.classList.remove('hidden')
-    } else {
-      loading.classList.add('hidden')
-    }
-  }
-
-  showResult(type, message) {
-    const result = document.getElementById('auth-result')
-    result.className = `auth-result ${type}`
-    result.textContent = message
-    result.classList.remove('hidden')
-  }
-
-  hideResult() {
-    document.getElementById('auth-result').classList.add('hidden')
+  showNotInvited(email) {
+    document.getElementById('auth-container').innerHTML = `
+      <div class="auth-card">
+        <div class="auth-header">
+          <h1>GrdlHub</h1>
+          <p>Access Restricted</p>
+        </div>
+        
+        <div class="auth-error">
+          <div class="error-icon">🚫</div>
+          <h2>Invitation Required</h2>
+          <p>The email address <strong>${email}</strong> is not currently authorized for access.</p>
+          
+          <div class="auth-info">
+            <h3>Request Access:</h3>
+            <p>To request access to GrdlHub, please contact an administrator with your email address.</p>
+            <p>Once approved, you'll be able to access the platform using this email.</p>
+          </div>
+          
+          <div class="auth-actions">
+            <button onclick="location.reload()" class="btn btn-primary">Try Different Email</button>
+          </div>
+        </div>
+      </div>
+    `
   }
 
   showError(message) {
-    document.body.innerHTML = `
-      <div class="error-container">
-        <div class="error-card">
-          <h1>Security Error</h1>
+    document.getElementById('auth-container').innerHTML = `
+      <div class="auth-card">
+        <div class="auth-header">
+          <h1>GrdlHub</h1>
+          <p>Error</p>
+        </div>
+        <div class="auth-error">
+          <div class="error-icon">⚠️</div>
+          <h2>Something Went Wrong</h2>
           <p>${message}</p>
           <p>Please ensure you're accessing this page from a secure connection and try again.</p>
           <button onclick="location.reload()" class="btn btn-primary">Reload Application</button>
@@ -499,37 +388,55 @@ class StandaloneAuthApp {
     `
   }
 
-  async loadMainApp() {
-    try {
-      // Clear auth form data for security
-      SecurityUtils.clearAuthData()
-      
-      // Show loading with improved messaging
-      document.body.innerHTML = `
-        <div class="app-loading">
-          <div class="spinner large"></div>
-          <h2>Welcome to GrdlHub</h2>
-          <p>Loading your secure workspace...</p>
-          <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
-            Initializing encrypted connection and user permissions
-          </p>
-        </div>
-      `
-      
-      // Dynamically import and load the main app
-      const { default: initMainApp } = await import('./main-app.js')
-      await initMainApp()
-      
-    } catch (error) {
-      console.error('Error loading main app:', error)
-      this.showError('Failed to load main application. Please refresh and try again.')
+  setLoading(formId, isLoading) {
+    const form = document.getElementById(formId)
+    if (!form) return
+
+    const button = form.querySelector('button[type="submit"]')
+    const btnText = button.querySelector('.btn-text')
+    const btnLoading = button.querySelector('.btn-loading')
+
+    if (isLoading) {
+      button.disabled = true
+      btnText.style.display = 'none'
+      btnLoading.style.display = 'flex'
+    } else {
+      button.disabled = false
+      btnText.style.display = 'block'
+      btnLoading.style.display = 'none'
     }
+  }
+
+  showFieldError(fieldId, message) {
+    const field = document.getElementById(fieldId)
+    if (!field) return
+
+    // Remove existing error
+    const existingError = field.parentNode.querySelector('.field-error')
+    if (existingError) {
+      existingError.remove()
+    }
+
+    // Add error styling
+    field.classList.add('error')
+
+    // Add error message
+    const errorDiv = document.createElement('div')
+    errorDiv.className = 'field-error'
+    errorDiv.textContent = message
+    field.parentNode.appendChild(errorDiv)
+
+    // Focus the field
+    field.focus()
+
+    // Remove error on input
+    field.addEventListener('input', () => {
+      field.classList.remove('error')
+      const error = field.parentNode.querySelector('.field-error')
+      if (error) error.remove()
+    }, { once: true })
   }
 }
 
-// Initialize standalone auth when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => new StandaloneAuthApp())
-} else {
-  new StandaloneAuthApp()
-}
+// Initialize the auth app
+new StandaloneAuthApp()

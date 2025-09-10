@@ -7,6 +7,23 @@
 
 A modern, **invite-only Progressive Web App (PWA)** built with security-first architecture and minimalist design principles inspired by jwevent.org. Features separated authentication, role-based access control, and a clean, professional interface.
 
+## 🚨 Quick Fix: `auth/operation-not-allowed` Error
+
+**Getting this error when testing sign-in links?**
+```
+Error sending sign-in link: FirebaseError: Firebase: Error (auth/operation-not-allowed)
+```
+
+**⚡ 2-Minute Fix:**
+1. **Firebase Console** → **Authentication** → **Sign-in method**
+2. **Click "Email/Password"** → **Edit**
+3. **Enable "Email link (passwordless sign-in)" toggle** ← This is the missing piece!
+4. **Save**
+
+**🧪 Test:** `npm run check-firebase` then try sign-in again.
+
+---
+
 ## ✨ Features
 
 ### 🔐 Security-First Architecture
@@ -38,6 +55,43 @@ A modern, **invite-only Progressive Web App (PWA)** built with security-first ar
 - **Offline Capable**: Works without internet connection
 - **Fast Loading**: Code splitting and lazy loading
 - **Real-time Updates**: Live data synchronization
+
+## 🔧 Troubleshooting
+
+### Common Firebase Auth Error: `auth/operation-not-allowed`
+
+If you see this error when testing sign-in links:
+```
+Error sending sign-in link: FirebaseError: Firebase: Error (auth/operation-not-allowed)
+```
+
+**Quick Fix:**
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Go to **Authentication > Sign-in method**
+4. Click **Edit** on the "Email/Password" provider
+5. **Enable "Email link (passwordless sign-in)" toggle** ⚠️ This is separate from regular Email/Password!
+6. Click **Save**
+7. Add `localhost` to **Authentication > Settings > Authorized domains**
+
+**Verify Configuration:**
+```bash
+npm run verify-firebase
+```
+
+This script will check your Firebase configuration and provide specific instructions for your project.
+
+### Other Common Issues
+
+**Build/Development Issues:**
+- Make sure `.env.local` file exists with your Firebase config
+- Run `npm install` to ensure all dependencies are installed
+- Check that Firestore security rules are properly deployed
+
+**Authentication Issues:**
+- Verify authorized domains include your deployment domain
+- Check that pre-approved emails are added correctly
+- Ensure Firestore rules allow reading `preApprovedEmails` collection
 
 ## Tech Stack
 

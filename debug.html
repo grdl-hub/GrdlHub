@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrdlHub Debug</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      margin: 2rem;
+      background: #f5f5f5;
+    }
+    .console {
+      background: #000;
+      color: #0f0;
+      padding: 1rem;
+      border-radius: 8px;
+      height: 70vh;
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .error { color: #f00; }
+    .success { color: #0f0; }
+    .warning { color: #ff0; }
+    .info { color: #0af; }
+    button {
+      margin: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐛 GrdlHub Debug Console</h1>
+  
+  <div>
+    <button onclick="testFirebaseConfig()">Test Firebase Config</button>
+    <button onclick="testAuthState()">Test Auth State</button>
+    <button onclick="testMainApp()">Test Main App Load</button>
+    <button onclick="clearConsole()">Clear Console</button>
+  </div>
+  
+  <div id="console" class="console"></div>
+
+  <script type="module">
+    const consoleEl = document.getElementById('console');
+    
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const className = type;
+      consoleEl.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+    
+    window.log = log;
+    
+    window.clearConsole = () => {
+      consoleEl.innerHTML = '';
+    };
+    
+    window.testFirebaseConfig = async () => {
+      try {
+        log('🔥 Testing Firebase Configuration...', 'info');
+        
+        const config = {
+          apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+          appId: import.meta.env.VITE_FIREBASE_APP_ID
+        };
+        
+        log(`API Key: ${config.apiKey ? '✅ Found' : '❌ Missing'}`, config.apiKey ? 'success' : 'error');
+        log(`Auth Domain: ${config.authDomain ? '✅ Found' : '❌ Missing'}`, config.authDomain ? 'success' : 'error');
+        log(`Project ID: ${config.projectId ? '✅ Found' : '❌ Missing'}`, config.projectId ? 'success' : 'error');
+        
+        if (config.apiKey && config.authDomain && config.projectId) {
+          log('✅ Firebase configuration is complete', 'success');
+        } else {
+          log('❌ Firebase configuration is incomplete', 'error');
+        }
+        
+      } catch (error) {
+        log(`❌ Error testing Firebase config: ${error.message}`, 'error');
+      }
+    };
+    
+    window.testAuthState = async () => {
+      try {
+        log('🔐 Testing Authentication State...', 'info');
+        
+        const { AuthAPI } = await import('./src/auth-standalone.js');
+        log('✅ auth-standalone.js imported successfully', 'success');
+        
+        await AuthAPI.initializeStandaloneAuth();
+        log('✅ Authentication initialized', 'success');
+        
+        const user = AuthAPI.getCurrentAuthUser();
+        if (user) {
+          log(`✅ User found: ${user.email}`, 'success');
+          log(`Email verified: ${user.emailVerified ? '✅ Yes' : '❌ No'}`, user.emailVerified ? 'success' : 'warning');
+        } else {
+          log('ℹ️ No authenticated user found', 'info');
+        }
+        
+      } catch (error) {
+        log(`❌ Error testing auth state: ${error.message}`, 'error');
+        log(`Stack: ${error.stack}`, 'error');
+      }
+    };
+    
+    window.testMainApp = async () => {
+      try {
+        log('🚀 Testing Main App Load...', 'info');
+        
+        const { default: initMainApp } = await import('./src/main-app.js');
+        log('✅ main-app.js imported successfully', 'success');
+        log(`initMainApp type: ${typeof initMainApp}`, 'info');
+        
+        if (typeof initMainApp === 'function') {
+          log('✅ initMainApp is a function', 'success');
+          log('⚠️ Note: Not actually calling it to avoid side effects', 'warning');
+        } else {
+          log('❌ initMainApp is not a function', 'error');
+        }
+        
+      } catch (error) {
+        log(`❌ Error testing main app: ${error.message}`, 'error');
+        log(`Stack: ${error.stack}`, 'error');
+      }
+    };
+    
+    // Auto-run initial tests
+    log('🔧 Debug console initialized', 'success');
+    log('Click buttons above to run tests', 'info');
+  </script>
+</body>
+</html>

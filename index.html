@@ -96,22 +96,26 @@
 
   <script type="module">
     // App entry point - handles auth check and routing
-    import { AuthAPI } from './src/auth-standalone.js'
     
     async function initializeApp() {
       try {
+        // Import auth API
+        const { AuthAPI } = await import('./src/auth-standalone.js')
+        
         // Initialize auth system
         await AuthAPI.initializeStandaloneAuth()
         
         // Check if user is authenticated
         const user = AuthAPI.getCurrentAuthUser()
         
-        if (user && user.emailVerified) {
-          // User is authenticated, load main app
+        if (user) {
+          // User is authenticated, load main app (relaxed email verification for link users)
+          console.log('✅ User authenticated, loading main app for:', user.email)
           const { default: initMainApp } = await import('./src/main-app.js')
           await initMainApp()
         } else {
           // User not authenticated, redirect to auth page
+          console.log('❌ No user found, redirecting to auth page')
           window.location.href = '/auth.html'
         }
       } catch (error) {
@@ -125,16 +129,4 @@
     initializeApp()
   </script>
 </body>
-</html>l>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite App</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
 </html>

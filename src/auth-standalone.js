@@ -61,10 +61,13 @@ export async function initializeStandaloneAuth() {
       currentAuthUser = user
       if (!authStateInitialized) {
         authStateInitialized = true
-        unsubscribe() // Only listen for initial state
         resolve(user)
+        // Keep listening for auth state changes for sign-in flows
       }
     })
+    
+    // Store the unsubscribe function so we can clean up later if needed
+    window._authUnsubscribe = unsubscribe
   })
 }
 
@@ -309,7 +312,26 @@ export async function sendFirebaseSignInLink(email) {
     return { success: true, message: 'Sign-in link sent successfully!' }
   } catch (error) {
     console.error('Error sending sign-in link:', error)
-    return { success: false, error: error.message }
+    
+    // Provide specific error messages for common issues
+    let userMessage = error.message
+    if (error.code === 'auth/operation-not-allowed') {
+      userMessage = '🚨 Firebase Setup Required: Email link sign-in is not enabled.\n\n' +
+                   '✅ Quick Fix:\n' +
+                   '1. Go to Firebase Console → Authentication → Sign-in method\n' +
+                   '2. Click "Email/Password" provider → Edit\n' +
+                   '3. Enable "Email link (passwordless sign-in)" toggle\n' +
+                   '4. Save changes\n\n' +
+                   'Note: This is separate from regular Email/Password authentication!'
+    } else if (error.code === 'auth/invalid-email') {
+      userMessage = 'Please enter a valid email address.'
+    } else if (error.code === 'auth/unauthorized-domain') {
+      userMessage = '🚨 Domain not authorized. Add this domain to Firebase Console → Authentication → Settings → Authorized domains'
+    } else if (error.code === 'auth/too-many-requests') {
+      userMessage = 'Too many requests. Please try again in a few minutes.'
+    }
+    
+    return { success: false, error: userMessage }
   }
 }
 
@@ -329,6 +351,10 @@ export async function signInWithFirebaseLink(email, link) {
     
     // Clear email from storage.
     window.localStorage.removeItem('emailForSignIn')
+    
+    // Update the current user state immediately
+    currentAuthUser = result.user
+    console.log('✅ User signed in via Firebase link:', result.user.email)
     
     // Create user document if it doesn't exist
     await createUserDocument(result.user, emailToUse)

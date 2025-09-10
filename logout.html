@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quick Logout</title>
+  <style>
+    body { 
+      font-family: monospace; 
+      padding: 2rem; 
+      background: #f5f5f5;
+      text-align: center;
+    }
+    .logout-card { 
+      background: white; 
+      padding: 2rem; 
+      border-radius: 8px; 
+      margin: 1rem auto;
+      max-width: 400px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button { 
+      margin: 0.5rem; 
+      padding: 1rem 2rem;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-danger { 
+      background: #dc3545; 
+      color: white; 
+    }
+    .btn-secondary { 
+      background: #6c757d; 
+      color: white; 
+    }
+    .log { 
+      margin: 0.5rem 0; 
+      padding: 0.5rem; 
+      background: #f9f9f9; 
+      border-radius: 4px; 
+      text-align: left;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h1>🚪 Quick Logout Tool</h1>
+  
+  <div class="logout-card">
+    <h2>Current Auth Status</h2>
+    <div id="auth-status">Checking...</div>
+    
+    <h3>Logout Options</h3>
+    <button class="btn-danger" onclick="doFirebaseLogout()">Firebase Logout</button>
+    <button class="btn-danger" onclick="doClearStorage()">Clear All Storage</button>
+    <button class="btn-danger" onclick="doCompleteLogout()">Complete Logout</button>
+    
+    <h3>Navigate</h3>
+    <button class="btn-secondary" onclick="location.href='/auth.html'">Go to Auth Portal</button>
+    <button class="btn-secondary" onclick="location.href='/'">Go to Main App</button>
+  </div>
+  
+  <div class="logout-card">
+    <h2>Logs</h2>
+    <div id="logs"></div>
+    <button onclick="clearLogs()">Clear Logs</button>
+  </div>
+  
+  <script type="module">
+    const logs = document.getElementById('logs');
+    const authStatus = document.getElementById('auth-status');
+    
+    function log(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `log ${type}`;
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(div);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(message);
+    }
+    
+    window.log = log;
+    window.clearLogs = () => logs.innerHTML = '';
+    
+    async function checkAuthStatus() {
+      try {
+        const { getCurrentAuthUser } = await import('./src/auth-standalone.js');
+        const user = getCurrentAuthUser();
+        
+        if (user) {
+          authStatus.innerHTML = `
+            <div style="color: #155724; font-weight: bold;">✅ Logged In</div>
+            <div>Email: ${user.email}</div>
+            <div>ID: ${user.uid}</div>
+          `;
+        } else {
+          authStatus.innerHTML = `
+            <div style="color: #721c24; font-weight: bold;">❌ Not Logged In</div>
+          `;
+        }
+      } catch (error) {
+        authStatus.innerHTML = `
+          <div style="color: #856404;">⚠️ Error checking status</div>
+          <div style="font-size: 0.8rem;">${error.message}</div>
+        `;
+      }
+    }
+    
+    window.doFirebaseLogout = async () => {
+      try {
+        log('🔥 Starting Firebase logout...');
+        
+        // Import Firebase auth
+        const { getAuth, signOut } = await import('firebase/auth');
+        const auth = getAuth();
+        
+        await signOut(auth);
+        log('✅ Firebase logout successful', 'success');
+        
+        checkAuthStatus();
+      } catch (error) {
+        log(`❌ Firebase logout error: ${error.message}`, 'error');
+      }
+    };
+    
+    window.doClearStorage = () => {
+      try {
+        log('🧹 Clearing browser storage...');
+        
+        // Clear localStorage
+        localStorage.clear();
+        log('✅ localStorage cleared');
+        
+        // Clear sessionStorage
+        sessionStorage.clear();
+        log('✅ sessionStorage cleared');
+        
+        // Clear cookies
+        document.cookie.split(";").forEach(function(c) { 
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        log('✅ Cookies cleared');
+        
+        log('✅ All storage cleared', 'success');
+        checkAuthStatus();
+      } catch (error) {
+        log(`❌ Storage clear error: ${error.message}`, 'error');
+      }
+    };
+    
+    window.doCompleteLogout = async () => {
+      try {
+        log('🚪 Starting complete logout...');
+        
+        // Firebase logout
+        await window.doFirebaseLogout();
+        
+        // Clear storage
+        window.doClearStorage();
+        
+        log('✅ Complete logout successful!', 'success');
+        log('🔄 Refreshing page in 2 seconds...');
+        
+        setTimeout(() => {
+          location.reload();
+        }, 2000);
+        
+      } catch (error) {
+        log(`❌ Complete logout error: ${error.message}`, 'error');
+      }
+    };
+    
+    // Check status on load
+    checkAuthStatus();
+  </script>
+</body>
+</html>

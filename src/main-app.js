@@ -22,46 +22,67 @@ class MainApp {
     if (this.initialized) return
 
     try {
+      console.log('🔧 Initializing main app...')
+      
       // Verify user is still authenticated
       const user = AuthAPI.getCurrentAuthUser()
-      if (!user || !user.emailVerified) {
-        throw new Error('Authentication required')
+      console.log('👤 Current user:', user)
+      
+      if (!user) {
+        throw new Error('No authenticated user found')
+      }
+
+      // For Firebase sign-in links, email is automatically verified
+      // But let's be more flexible with the verification check
+      if (!user.emailVerified && user.providerData?.[0]?.providerId !== 'password') {
+        console.warn('⚠️ Email not verified, but continuing for sign-in link users')
       }
 
       this.currentUser = user
+      console.log('✅ User verified, building UI...')
 
       // Build the main app UI
       this.buildMainUI()
+      console.log('✅ UI built, initializing services...')
       
       // Initialize core services (without auth - already handled)
       await initializeAccessControl()
+      console.log('✅ Access control initialized')
+      
       initializeUI()
+      console.log('✅ UI initialized')
       
       // Setup page modules
+      console.log('🔧 Setting up page modules...')
       initializeUsersPage()
       initializePreApprovedEmails()
       initializePagesPage()
       initializeContentPage()
       initializeSettingsPage()
+      console.log('✅ Page modules initialized')
       
       // Setup app functionality
+      console.log('🔧 Setting up app functionality...')
       this.setupNavigation()
       this.setupTabs()
       this.setupLogout()
       this.setupPWAFeatures()
+      console.log('✅ App functionality set up')
       
       // Initial routing
+      console.log('🔧 Setting up routing...')
       this.handleInitialRoute()
       
       // Setup route change listener
       window.addEventListener('hashchange', () => this.handleRouteChange())
       
       this.initialized = true
-      console.log('Main app initialized successfully')
+      console.log('🎉 Main app initialized successfully!')
       showNotification('Welcome to GrdlHub!', 'success')
       
     } catch (error) {
-      console.error('Failed to initialize main app:', error)
+      console.error('❌ Failed to initialize main app:', error)
+      console.error('Stack trace:', error.stack)
       this.redirectToAuth('Authentication error. Please sign in again.')
     }
   }

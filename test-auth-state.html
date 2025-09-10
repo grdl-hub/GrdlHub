@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Auth State Test</title>
+  <style>
+    body { font-family: monospace; padding: 2rem; background: #f5f5f5; }
+    .test-card { background: white; padding: 2rem; border-radius: 8px; margin: 1rem 0; }
+    .log { margin: 0.5rem 0; padding: 0.5rem; background: #f9f9f9; border-radius: 4px; }
+    .error { background: #fee; color: #a00; }
+    .success { background: #efe; color: #0a0; }
+    .warning { background: #ffd; color: #a60; }
+    button { margin: 0.5rem; padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>🔐 Authentication State Testing</h1>
+  
+  <div class="test-card">
+    <h2>Test Controls</h2>
+    <button onclick="testAuthInit()">1. Test Auth Initialization</button>
+    <button onclick="testCurrentUser()">2. Test Current User</button>
+    <button onclick="testWaitForUser()">3. Test Wait for User</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+  </div>
+  
+  <div class="test-card">
+    <h2>Logs</h2>
+    <div id="logs"></div>
+  </div>
+  
+  <script type="module">
+    const logs = document.getElementById('logs');
+    
+    function log(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `log ${type}`;
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(div);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(message);
+    }
+    
+    window.log = log;
+    window.clearLogs = () => logs.innerHTML = '';
+    
+    window.testAuthInit = async () => {
+      try {
+        log('🔧 Testing auth initialization...');
+        const { initializeStandaloneAuth, getCurrentAuthUser } = await import('./src/auth-standalone.js');
+        
+        log('📦 Imported auth functions');
+        
+        const initialUser = await initializeStandaloneAuth();
+        log(`🏁 Initial auth state: ${initialUser ? initialUser.email : 'No user'}`, initialUser ? 'success' : 'warning');
+        
+        const currentUser = getCurrentAuthUser();
+        log(`👤 Current user after init: ${currentUser ? currentUser.email : 'No user'}`, currentUser ? 'success' : 'warning');
+        
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'error');
+      }
+    };
+    
+    window.testCurrentUser = async () => {
+      try {
+        log('👤 Testing getCurrentAuthUser...');
+        const { getCurrentAuthUser } = await import('./src/auth-standalone.js');
+        
+        const user = getCurrentAuthUser();
+        if (user) {
+          log(`✅ User found: ${user.email}`, 'success');
+          log(`📧 Email verified: ${user.emailVerified}`);
+          log(`🆔 User ID: ${user.uid}`);
+          log(`🔗 Provider: ${JSON.stringify(user.providerData)}`);
+        } else {
+          log('⚠️ No authenticated user found', 'warning');
+        }
+        
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'error');
+      }
+    };
+    
+    window.testWaitForUser = async () => {
+      try {
+        log('⏳ Testing waitForAuthenticatedUser...');
+        const { waitForAuthenticatedUser } = await import('./src/auth-standalone.js');
+        
+        log('🔄 Waiting up to 5 seconds for authenticated user...');
+        
+        const user = await waitForAuthenticatedUser(5000);
+        log(`✅ User found via wait function: ${user.email}`, 'success');
+        
+      } catch (error) {
+        log(`❌ Wait timeout or error: ${error.message}`, 'error');
+      }
+    };
+    
+    // Auto-run initial test
+    log('🚀 Auth state test page loaded');
+    log('ℹ️ Click buttons above to run tests');
+    
+    // Auto-initialize
+    setTimeout(() => {
+      log('🔄 Auto-running auth initialization test...');
+      window.testAuthInit();
+    }, 1000);
+  </script>
+</body>
+</html>
