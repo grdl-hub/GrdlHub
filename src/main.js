@@ -1,6 +1,6 @@
 import './style.css'
 import { initializeAuth, getCurrentUser, onAuthStateChange } from './auth.js'
-import { initializeAccessControl, hasPageAccess } from './accessControl.js'
+import { initializeAccessControl, hasPageAccess, startPermissionMonitoring, filterNavigation } from './accessControl.js'
 import { initializeUI } from './ui.js'
 import { initializeUsersPage } from './pages/users.js'
 import { initializePagesPage } from './pages/pages.js'
@@ -194,12 +194,14 @@ dismissBtn.addEventListener('click', hideInstallPrompt)
 
 // Auth state observer
 function setupAuthObserver() {
-  onAuthStateChange((user) => {
+  onAuthStateChange(async (user) => {
     currentUser = user
     updateUserMenu()
     
     if (user) {
-      // User signed in
+      // User signed in - update navigation based on permissions
+      await filterNavigation()
+      
       const currentHash = window.location.hash.replace('#', '')
       if (currentHash === 'auth' || currentHash === 'landing' || !currentHash) {
         window.location.hash = '#home'
@@ -229,6 +231,9 @@ async function initApp() {
     await initializeAuth()
     await initializeAccessControl()
     initializeUI()
+    
+    // Start permission monitoring for real-time access control
+    startPermissionMonitoring()
     
     // Setup page modules
     initializeUsersPage()

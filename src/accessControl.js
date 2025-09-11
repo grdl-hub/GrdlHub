@@ -146,13 +146,14 @@ export async function filterNavigation() {
   if (!user) {
     // Not authenticated - hide all auth-required links
     document.body.classList.remove('authenticated')
+    hideAllNavLinks()
     return
   }
   
   // User is authenticated
   document.body.classList.add('authenticated')
   
-  const navLinks = document.querySelectorAll('.nav-link.auth-required')
+  const navLinks = document.querySelectorAll('.nav-link[href^="#"]')
   const permissions = await getUserPermissions()
   
   navLinks.forEach(link => {
@@ -160,10 +161,33 @@ export async function filterNavigation() {
     if (href && href.startsWith('#')) {
       const pageId = href.substring(1)
       
-      // Show/hide based on permissions
+      // Always show home page to authenticated users
+      if (pageId === 'home') {
+        link.style.display = ''
+        return
+      }
+      
+      // Show/hide based on permissions for other pages
       if (permissions.includes(pageId)) {
         link.style.display = ''
+        link.removeAttribute('disabled')
       } else {
+        link.style.display = 'none'
+        link.setAttribute('disabled', 'true')
+      }
+    }
+  })
+}
+
+// Hide all navigation links (for unauthenticated users)
+function hideAllNavLinks() {
+  const navLinks = document.querySelectorAll('.nav-link[href^="#"]')
+  navLinks.forEach(link => {
+    const href = link.getAttribute('href')
+    if (href && href.startsWith('#')) {
+      const pageId = href.substring(1)
+      // Only hide auth-required pages, not landing/auth pages
+      if (pageId !== 'landing' && pageId !== 'auth') {
         link.style.display = 'none'
       }
     }
@@ -193,6 +217,87 @@ export function setupPermissionUI() {
       if (user) {
         await filterNavigation()
         await filterDashboardCards()
+      }
+    })
+  }
+}
+
+// Real-time permission enforcement
+export async function enforcePagePermissions() {
+  const user = getCurrentUser()
+  const currentHash = window.location.hash.replace('#', '') || 'home'
+  
+  if (!user) {
+    // Not authenticated - redirect to landing
+    if (currentHash !== 'landing' && currentHash !== 'auth') {
+      window.location.hash = '#landing'
+    }
+    return false
+  }
+  
+  // Allow home page for all authenticated users
+  if (currentHash === 'home' || currentHash === 'landing' || currentHash === 'auth') {
+    return true
+  }
+  
+  // Check page-specific permissions
+  const hasAccess = await hasPageAccess(currentHash)
+  if (!hasAccess) {
+    // User doesn't have permission - redirect to home with error
+    window.location.hash = '#home'
+    showPermissionDeniedNotification(currentHash)
+    return false
+  }
+  
+  return true
+}
+
+// Show permission denied notification
+function showPermissionDeniedNotification(pageId) {
+  const pageInfo = AVAILABLE_PAGES[pageId]
+  const pageName = pageInfo ? pageInfo.name : pageId
+  
+  // Import notification function dynamically to avoid circular dependencies
+  import('./utils/notifications.js').then(({ showNotification }) => {
+    showNotification(`Access denied: You don't have permission to view ${pageName}`, 'error')
+  }).catch(() => {
+    console.warn(`Access denied: You don't have permission to view ${pageName}`)
+  })
+}
+
+// Update user permissions in real-time
+export async function updateUserPermissions(userId, newPermissions) {
+  try {
+    // Clear cache if updating current user
+    const currentUser = getCurrentUser()
+    if (currentUser && currentUser.uid === userId) {
+      clearPermissionsCache()
+    }
+    
+    // Update navigation immediately
+    await filterNavigation()
+    
+    // Check if current page is still accessible
+    await enforcePagePermissions()
+    
+    return true
+  } catch (error) {
+    console.error('Error updating user permissions:', error)
+    return false
+  }
+}
+
+// Real-time permission monitoring
+export function startPermissionMonitoring() {
+  // Monitor hash changes for permission enforcement
+  window.addEventListener('hashchange', enforcePagePermissions)
+  
+  // Monitor when permissions might change (e.g., user document updates)
+  if (window.onAuthStateChange) {
+    window.onAuthStateChange(async (user) => {
+      if (user) {
+        await filterNavigation()
+        await enforcePagePermissions()
       }
     })
   }

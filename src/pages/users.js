@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore'
 import { showModal, hideModal, validateForm, setupResponsiveTable } from '../ui.js'
 import { showNotification, showLoading, hideLoading } from '../utils/notifications.js'
-import { getRolePermissions, getAvailablePages, validatePermissions } from '../accessControl.js'
+import { getRolePermissions, getAvailablePages, validatePermissions, updateUserPermissions } from '../accessControl.js'
 
 let usersData = []
 let usersUnsubscribe = null
@@ -235,8 +235,8 @@ function setupPermissionsCheckboxes(containerId) {
       <input type="checkbox" id="${containerId}-permission-${pageId}" name="permissions" value="${pageId}">
       <label for="${containerId}-permission-${pageId}" class="permission-label">
         <span class="permission-icon">${pageInfo.icon}</span>
-        <span class="permission-name">${pageInfo.name}</span>
-        <span class="permission-desc">${pageInfo.description}</span>
+        <span class="permission-name">${pageInfo.name} Page</span>
+        <span class="permission-desc">Access to ${pageInfo.description}</span>
       </label>
     </div>
   `).join('')
@@ -370,7 +370,11 @@ async function handleAddUserSubmit(e) {
     // Create new user
     const userRef = doc(collection(db, 'users'))
     await setDoc(userRef, userData)
-    showNotification('User added successfully!', 'success')
+    
+    // Apply permission changes immediately for new user
+    await updateUserPermissions(userRef.id, userData.permissions)
+    
+    showNotification('User added successfully! Page access permissions applied immediately.', 'success')
     
     hideModal('add-user-modal')
     hideLoading()
@@ -422,7 +426,11 @@ async function handleEditUserSubmit(e) {
     
     // Update existing user
     await setDoc(doc(db, 'users', currentEditingUserId), userData, { merge: true })
-    showNotification('User updated successfully!', 'success')
+    
+    // Apply permission changes immediately
+    await updateUserPermissions(currentEditingUserId, userData.permissions)
+    
+    showNotification('User updated successfully! Permissions applied immediately.', 'success')
     
     hideModal('edit-user-modal')
     hideLoading()

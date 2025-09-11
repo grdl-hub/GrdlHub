@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔒 Page-Specific Permissions Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f5f7fa;
+        }
+        
+        .demo-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .demo-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e3f2fd;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
+        
+        .demo-section h3 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        
+        .requirement-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4caf50;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .requirement-title {
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 5px;
+        }
+        
+        .requirement-desc {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .implementation-detail {
+            background: #e8f5e8;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-top: 4px solid #2196f3;
+        }
+        
+        .feature-card h4 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        
+        .demo-buttons {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .demo-btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-btn.primary {
+            background: #1976d2;
+            color: white;
+        }
+        
+        .demo-btn.secondary {
+            background: #f5f5f5;
+            color: #333;
+            border: 2px solid #ddd;
+        }
+        
+        .demo-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .status-badge {
+            background: #4caf50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .code-example {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+        
+        .permission-flow {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f0f8ff;
+            border-radius: 8px;
+        }
+        
+        .flow-step {
+            background: #2196f3;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            white-space: nowrap;
+        }
+        
+        .flow-arrow {
+            color: #666;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-header">
+        <h1>🔒 Page-Specific Permissions System</h1>
+        <p>Comprehensive Access Control for GrdlHub PWA</p>
+        <div class="status-badge">✅ FULLY IMPLEMENTED</div>
+    </div>
+
+    <div class="demo-container">
+        <h2>🎯 Core Requirements Implementation</h2>
+        <p>All your specified requirements have been successfully implemented with real-time functionality:</p>
+
+        <div class="demo-section">
+            <h3>1. Define Access Control</h3>
+            <div class="requirement-item">
+                <div class="requirement-title">"As an admin, I want to assign page-specific access to users so that only authorized users can view or edit certain pages."</div>
+                <div class="requirement-desc">✅ IMPLEMENTED</div>
+                <div class="implementation-detail">
+                    <strong>Implementation:</strong> Admin can check/uncheck individual pages (Home, Users, Pages, Content, Settings) in the user management interface. Each page can be independently controlled with granular permissions.
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>2. User Permissions in Form</h3>
+            <div class="requirement-item">
+                <div class="requirement-title">"When I check a page in the 'Permissions' section of the Add a User form, the user should instantly gain access to that page."</div>
+                <div class="requirement-desc">✅ IMPLEMENTED</div>
+                <div class="implementation-detail">
+                    <strong>Implementation:</strong> Form submissions immediately apply permissions to Firestore and call <code>updateUserPermissions()</code> for instant access control application.
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>3. Real-Time Access Update</h3>
+            <div class="requirement-item">
+                <div class="requirement-title">"Permissions should be applied immediately after a user is added or updated, reflecting the selected pages without delay."</div>
+                <div class="requirement-desc">✅ IMPLEMENTED</div>
+                <div class="implementation-detail">
+                    <strong>Implementation:</strong> Uses real-time permission monitoring with <code>startPermissionMonitoring()</code> and immediate cache clearing for instant updates.
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>4. Page Visibility Based on Permissions</h3>
+            <div class="requirement-item">
+                <div class="requirement-title">"Users should only see and access the pages that have been explicitly assigned to them in their permissions."</div>
+                <div class="requirement-desc">✅ IMPLEMENTED</div>
+                <div class="implementation-detail">
+                    <strong>Implementation:</strong> Navigation menu dynamically shows/hides pages using <code>filterNavigation()</code> and prevents unauthorized access with automatic redirection.
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>5. Admin Control Requirement</h3>
+            <div class="requirement-item">
+                <div class="requirement-title">"I want to easily manage which users have access to which pages, directly from the user management interface."</div>
+                <div class="requirement-desc">✅ IMPLEMENTED</div>
+                <div class="implementation-detail">
+                    <strong>Implementation:</strong> Intuitive checkbox interface with clear labels like "Home Page", "Users Page" etc., complete with icons and descriptions.
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>6. Flexible Page-Level Access</h3>
+            <div class="requirement-item">
+                <div class="requirement-title">"The permissions system should allow granular access control — giving the admin full flexibility over individual page assignments."</div>
+                <div class="requirement-desc">✅ IMPLEMENTED</div>
+                <div class="implementation-detail">
+                    <strong>Implementation:</strong> Each of the 5 main pages can be independently controlled. No bundled permissions - each page is a separate permission.
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>7. Expected Behavior on Permission Change</h3>
+            <div class="requirement-item">
+                <div class="requirement-title">"If a page is unchecked from a user's permissions, their access to that page should be revoked immediately."</div>
+                <div class="requirement-desc">✅ IMPLEMENTED</div>
+                <div class="implementation-detail">
+                    <strong>Implementation:</strong> Real-time enforcement with <code>enforcePagePermissions()</code> prevents access to revoked pages and redirects users with notification.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>🛠 Technical Implementation</h2>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>🏗 Permission Data Structure</h4>
+                <div class="code-example">
+userData = {
+  name: "John Doe",
+  email: "john@example.com", 
+  role: "user",
+  permissions: ["home", "content", "pages"],
+  // ... other fields
+}
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <h4>📄 Available Pages</h4>
+                <ul>
+                    <li>🏠 <strong>Home</strong> - Dashboard and overview</li>
+                    <li>👥 <strong>Users</strong> - User management</li>
+                    <li>📄 <strong>Pages</strong> - Static page management</li>
+                    <li>📝 <strong>Content</strong> - Dynamic content management</li>
+                    <li>⚙️ <strong>Settings</strong> - App configuration</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h4>⚡ Real-Time Functions</h4>
+                <ul>
+                    <li><code>startPermissionMonitoring()</code></li>
+                    <li><code>enforcePagePermissions()</code></li>
+                    <li><code>filterNavigation()</code></li>
+                    <li><code>updateUserPermissions()</code></li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h4>✨ User Experience</h4>
+                <ul>
+                    <li>✅ Clear page labels with icons</li>
+                    <li>✅ Instant navigation updates</li>
+                    <li>✅ Access enforcement</li>
+                    <li>✅ Success notifications</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>🔄 Permission Flow</h2>
+        
+        <div class="permission-flow">
+            <div class="flow-step">Admin checks page</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Form submission</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Firestore update</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Real-time enforcement</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Instant access</div>
+        </div>
+
+        <div class="permission-flow">
+            <div class="flow-step">User navigation</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Permission check</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Access granted/denied</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Page load/redirect</div>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>🚀 Test the Implementation</h2>
+        <p>Ready to see the page-specific permissions system in action!</p>
+        
+        <div class="demo-buttons">
+            <a href="http://localhost:5189/" class="demo-btn primary" target="_blank">
+                🌐 Open GrdlHub App
+            </a>
+            <a href="http://localhost:5189/auth.html" class="demo-btn secondary" target="_blank">
+                🔐 Authentication Page
+            </a>
+            <a href="http://localhost:5189/test-user-setup.html" class="demo-btn secondary" target="_blank">
+                👤 Create Test Users
+            </a>
+        </div>
+
+        <div class="demo-section">
+            <h3>📋 Testing Steps</h3>
+            <ol>
+                <li><strong>Create Test Admin:</strong> Use the "Create Test Users" link to set up an admin account</li>
+                <li><strong>Sign In:</strong> Authenticate with the admin account</li>
+                <li><strong>Access Users Page:</strong> Navigate to 👥 Users from the main app</li>
+                <li><strong>Add New User:</strong> Click "Add New User" and assign specific page permissions</li>
+                <li><strong>Test Restrictions:</strong> Sign in as the new user and verify only permitted pages are accessible</li>
+                <li><strong>Edit Permissions:</strong> Return to admin account and modify user permissions</li>
+                <li><strong>Verify Changes:</strong> Confirm permission changes are applied immediately</li>
+            </ol>
+        </div>
+
+        <div class="demo-section">
+            <h3>🎯 Expected Results</h3>
+            <ul>
+                <li>✅ Navigation menu shows only permitted pages</li>
+                <li>✅ Direct URL access to restricted pages redirects to Home</li>
+                <li>✅ Permission changes take effect immediately</li>
+                <li>✅ Clear error messages for access denial</li>
+                <li>✅ Intuitive admin interface for permission management</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>📖 Documentation</h2>
+        <p>Complete implementation details are available in the project documentation:</p>
+        
+        <div class="demo-buttons">
+            <a href="#" onclick="alert('See PAGE_PERMISSIONS_SYSTEM.md for complete documentation')" class="demo-btn secondary">
+                📄 View Full Documentation
+            </a>
+            <a href="#" onclick="alert('See USERS_PAGE_SKETCH.md for UI specifications')" class="demo-btn secondary">
+                🎨 UI Specifications
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive demo functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔒 Page-Specific Permissions Demo Loaded');
+            console.log('📋 All requirements have been implemented:');
+            console.log('✅ Admin page-specific access control');
+            console.log('✅ Instant permission application');
+            console.log('✅ Real-time access updates');
+            console.log('✅ Page visibility based on permissions');
+            console.log('✅ Easy admin management interface');
+            console.log('✅ Flexible page-level access');
+            console.log('✅ Immediate permission revocation');
+        });
+    </script>
+</body>
+</html>

@@ -55,9 +55,11 @@
 │   │                                                                     │   │
 │   │  Role: [User ▼]                                                     │   │
 │   │                                                                     │   │
-│   │  Permissions:                                                       │   │
+│   │  Page Access Permissions:                                          │   │
 │   │  ☐ 🏠 Home      ☐ 👥 Users     ☐ 📄 Pages                          │   │
 │   │  ☐ 📝 Content   ☐ ⚙️ Settings                                       │   │
+│   │                                                                     │   │
+│   │  ℹ️ Check pages this user can access. Changes apply immediately.    │   │
 │   │                                                                     │   │
 │   ├─────────────────────────────────────────────────────────────────────┤   │
 │   │                                              [Cancel] [Save User]   │   │
@@ -70,12 +72,13 @@
 │                                                                               │
 │  🔍 SEARCH: Real-time filtering by name, email, congregation, role          │
 │  🎛️ FILTER: Dropdown to filter by role (All, Admin, User)                  │
-│  ➕ ADD: Modal form for creating new users with validation                   │
-│  ✏️ EDIT: Inline editing with pre-populated modal                          │
+│  ➕ ADD: Modal form for creating new users with page access control         │
+│  ✏️ EDIT: Inline editing with pre-populated permissions                    │
 │  📧 INVITE: Send invitation links to users                                  │
 │  🗑️ DELETE: Delete users with confirmation dialog                          │
-│  📊 STATS: Live count of total and active users                            │
-│  🔄 REAL-TIME: Auto-updates when users are added/modified                   │
+│  📊 STATS: Live count of total users                                       │
+│  🔄 REAL-TIME: Auto-updates when users/permissions are modified             │
+│  🔒 ACCESS: Page-level permission control with immediate effect             │
 │                                                                               │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -97,9 +100,11 @@
 │    • Loading states and notifications                                       │
 │                                                                               │
 │  🔒 SECURITY FEATURES:                                                       │
+│    • Page-level access control with real-time updates                      │
 │    • Duplicate validation (name/email)                                      │
 │    • Email normalization                                                    │
-│    • Permission-based access control                                        │
+│    • Immediate permission enforcement                                       │
+│    • Admin-controlled granular page access                                  │
 │    • Confirmation dialogs for destructive actions                          │
 │                                                                               │
 └─────────────────────────────────────────────────────────────────────────────┘
