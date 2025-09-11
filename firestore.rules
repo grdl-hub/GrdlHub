@@ -1,44 +1,48 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is admin
-    function isAdmin(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId)) &&
-             get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
-    }
-    
-    // Helper function to check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    // Helper function to check if user owns the document
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    // Users collection - allow public read for email checking during auth
+    // Users collection - only authenticated users can read/write their own data
     match /users/{userId} {
-      allow read: if true; // Allow anyone to read for email verification during signup
-      allow write: if true; // Temporarily allow all writes for setup
-      allow create: if true; // Temporarily allow all creates for setup
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow admins to read all users
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Allow admins to write all users
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Pages collection - role-based access
+    // Appointments collection - authenticated users can create/read/update/delete their own appointments
+    match /appointments/{appointmentId} {
+      // Allow read/write if user is authenticated and owns the appointment
+      allow read, write: if request.auth != null && 
+        (resource == null || resource.data.createdBy == request.auth.uid);
+      
+      // Allow admins to read/write all appointments
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Ensure createdBy field is set to current user on create
+      allow create: if request.auth != null && 
+        request.resource.data.createdBy == request.auth.uid;
+    }
+    
+    // Pages collection (if you have static pages)
     match /pages/{pageId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin(request.auth.uid);
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Content collection - role-based access
+    // Content collection (if you have dynamic content)
     match /content/{contentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin(request.auth.uid);
-    }
-    
-    // Settings collection - admin only
-    match /settings/{settingId} {
-      allow read, write: if isAuthenticated() && isAdmin(request.auth.uid);
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }

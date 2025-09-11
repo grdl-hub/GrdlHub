@@ -5,6 +5,7 @@ import { getCurrentUser } from './auth.js'
 // Available pages and their default permissions
 const AVAILABLE_PAGES = {
   home: { name: 'Home', icon: '🏠', description: 'Dashboard and overview' },
+  appointments: { name: 'Appointments', icon: '📅', description: 'Recurring appointments and scheduling' },
   users: { name: 'Users', icon: '👥', description: 'User management' },
   pages: { name: 'Pages', icon: '📄', description: 'Static page management' },
   content: { name: 'Content', icon: '📝', description: 'Dynamic content management' },
@@ -13,8 +14,8 @@ const AVAILABLE_PAGES = {
 
 // Default permissions for roles
 const ROLE_PERMISSIONS = {
-  admin: ['home', 'users', 'pages', 'content', 'settings'],
-  user: ['home', 'content']
+  admin: ['home', 'appointments', 'users', 'pages', 'content', 'settings'],
+  user: ['home', 'appointments', 'content']
 }
 
 let userPermissions = null

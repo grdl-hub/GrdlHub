@@ -354,7 +354,7 @@ export async function signUpUser(email, password, userData = {}) {
       email: user.email,
       name: userData.name || '',
       role: userData.role || 'user',
-      permissions: userData.permissions || ['home'],
+      permissions: userData.permissions || ['home', 'appointments', 'content'],
       status: 'active',
       createdAt: new Date(),
       lastLogin: new Date()

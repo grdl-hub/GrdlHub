@@ -9,6 +9,7 @@ import { initializeUsersPage } from './pages/users.js'
 import { initializePagesPage } from './pages/pages.js'
 import { initializeContentPage } from './pages/content.js'
 import { initializeSettingsPage } from './pages/settings.js'
+import { initializeAppointmentsPage } from './pages/appointments.js'
 import { showNotification } from './utils/notifications.js'
 
 class MainApp {
@@ -57,6 +58,7 @@ class MainApp {
       initializePagesPage()
       initializeContentPage()
       initializeSettingsPage()
+      initializeAppointmentsPage()
       console.log('✅ Page modules initialized')
       
       // Setup app functionality
@@ -73,6 +75,9 @@ class MainApp {
       
       // Setup route change listener
       window.addEventListener('hashchange', () => this.handleRouteChange())
+      
+      // Load dashboard data
+      this.loadDashboardData()
       
       this.initialized = true
       console.log('🎉 Main app initialized successfully!')
@@ -93,6 +98,7 @@ class MainApp {
             <h1 class="logo">GrdlHub</h1>
             <nav class="nav">
               <a href="#home" class="nav-link active">🏠 Home</a>
+              <a href="#appointments" class="nav-link auth-required">📅 Appointments</a>
               <a href="#users" class="nav-link auth-required">👥 Users</a>
               <a href="#pages" class="nav-link auth-required">📄 Pages</a>
               <a href="#content" class="nav-link auth-required">📝 Content</a>
@@ -111,11 +117,25 @@ class MainApp {
             <div class="container">
               <div class="dashboard">
                 <div class="welcome-section">
-                  <h2>Welcome back, <span id="welcome-user-name">${this.currentUser.displayName || 'User'}</span>!</h2>
+                  <h2>Welcome back, <span id="welcome-user-name">${this.currentUser.displayName || 'User'}</span>! 👋</h2>
+                  <p class="welcome-date">Today is <span id="current-date">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span></p>
                   <p>Manage your hub content and users from this central dashboard.</p>
+                  <div class="welcome-notifications" id="welcome-notifications">
+                    <!-- Notifications will be populated by JavaScript -->
+                  </div>
                 </div>
                 
                 <div class="dashboard-grid">
+                  <div class="dashboard-card" data-page="appointments">
+                    <div class="card-icon">📅</div>
+                    <h3>Appointments</h3>
+                    <p>Schedule and manage recurring appointments</p>
+                    <div class="card-stats">
+                      <span id="appointments-count">0</span> upcoming
+                      <div class="next-appointment" id="next-appointment">⏰ Next: Loading...</div>
+                    </div>
+                  </div>
+                  
                   <div class="dashboard-card" data-page="users">
                     <div class="card-icon">👥</div>
                     <h3>Users Management</h3>
@@ -148,6 +168,153 @@ class MainApp {
                     <h3>Settings</h3>
                     <p>Configure app settings and preferences</p>
                   </div>
+                </div>
+                
+                <!-- Recent Activity Section -->
+                <div class="recent-activity-section">
+                  <h3>📋 Recent Activity</h3>
+                  <div class="activity-feed" id="activity-feed">
+                    <div class="activity-item">
+                      <span class="activity-icon">👋</span>
+                      <span class="activity-text">Welcome to GrdlHub! Start by exploring the features above.</span>
+                      <span class="activity-time">Just now</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Appointments & Scheduling -->
+          <section id="appointments" class="section">
+            <div class="container">
+              <div class="section-header">
+                <h2>📅 Appointments & Scheduling</h2>
+                <p>Manage recurring appointments and view your schedule</p>
+              </div>
+
+              <div class="appointments-layout">
+                <!-- Calendar View Section -->
+                <div class="calendar-section">
+                  <div class="calendar-header">
+                    <h3>📆 Monthly View</h3>
+                    <div class="calendar-nav">
+                      <button id="prev-month" class="btn btn-secondary btn-small">‹ Prev</button>
+                      <span id="current-month-year" class="month-display">Loading...</span>
+                      <button id="next-month" class="btn btn-secondary btn-small">Next ›</button>
+                    </div>
+                  </div>
+                  <div id="calendar-grid" class="calendar-grid">
+                    <!-- Calendar will be built by JavaScript -->
+                  </div>
+                  <div class="calendar-legend">
+                    <span class="legend-item"><span class="legend-color meeting"></span> Meetings</span>
+                    <span class="legend-item"><span class="legend-color task"></span> Tasks</span>
+                    <span class="legend-item"><span class="legend-color event"></span> Events</span>
+                    <span class="legend-item"><span class="legend-color reminder"></span> Reminders</span>
+                  </div>
+                </div>
+
+                <!-- Create Appointment Section -->
+                <div class="appointment-form-section">
+                  <div class="form-header">
+                    <h3>➕ Create Recurring Appointment</h3>
+                  </div>
+                  
+                  <form id="appointment-form" class="appointment-form">
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label for="apt-title" class="form-label">Title</label>
+                        <input type="text" id="apt-title" class="form-input" placeholder="Meeting title..." required>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label for="apt-type" class="form-label">Type</label>
+                        <select id="apt-type" class="form-select" required>
+                          <option value="">Select type...</option>
+                          <option value="meeting">📋 Meeting</option>
+                          <option value="task">✅ Task</option>
+                          <option value="event">🎉 Event</option>
+                          <option value="reminder">⏰ Reminder</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label for="apt-date" class="form-label">Start Date</label>
+                        <input type="date" id="apt-date" class="form-input" required>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label for="apt-time" class="form-label">Time</label>
+                        <input type="time" id="apt-time" class="form-input" required>
+                      </div>
+                    </div>
+
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label for="apt-place" class="form-label">Location/Place</label>
+                        <input type="text" id="apt-place" class="form-input" placeholder="Meeting room, address, or online..." list="place-suggestions">
+                        <datalist id="place-suggestions">
+                          <option value="Conference Room A">
+                          <option value="Conference Room B">
+                          <option value="Online - Zoom">
+                          <option value="Online - Teams">
+                          <option value="Client Office">
+                        </datalist>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label for="apt-duration" class="form-label">Duration (minutes)</label>
+                        <select id="apt-duration" class="form-select">
+                          <option value="15">15 min</option>
+                          <option value="30" selected>30 min</option>
+                          <option value="45">45 min</option>
+                          <option value="60">1 hour</option>
+                          <option value="90">1.5 hours</option>
+                          <option value="120">2 hours</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label for="apt-repeat" class="form-label">Repeat Pattern</label>
+                        <select id="apt-repeat" class="form-select">
+                          <option value="">No repeat (one-time)</option>
+                          <option value="weekly">🔄 Weekly</option>
+                          <option value="biweekly">🔄 Every 2 weeks</option>
+                          <option value="monthly">🔄 Monthly</option>
+                          <option value="quarterly">🔄 Quarterly</option>
+                          <option value="yearly">🔄 Yearly</option>
+                        </select>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label for="apt-end-date" class="form-label">End Repeat (optional)</label>
+                        <input type="date" id="apt-end-date" class="form-input" placeholder="Leave empty for indefinite">
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="apt-description" class="form-label">Description (optional)</label>
+                      <textarea id="apt-description" class="form-textarea" rows="3" placeholder="Additional notes or agenda..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                      <button type="submit" class="btn btn-primary">📅 Create Appointment</button>
+                      <button type="button" id="clear-form" class="btn btn-secondary">Clear Form</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Active Appointments List -->
+              <div class="appointments-list-section">
+                <h3>📋 Active Recurring Appointments</h3>
+                <div id="appointments-list" class="appointments-list">
+                  <!-- Appointments will be loaded here -->
                 </div>
               </div>
             </div>
@@ -497,6 +664,162 @@ class MainApp {
       sessionStorage.setItem('authMessage', message)
     }
     window.location.href = '/auth.html'
+  }
+
+  // Load dashboard data and statistics
+  async loadDashboardData() {
+    try {
+      console.log('🔧 Loading dashboard data...')
+      
+      // Load appointments data
+      await this.loadAppointmentsData()
+      
+      // Load users count (if admin)
+      await this.loadUsersData()
+      
+      // Update welcome notifications
+      this.updateWelcomeNotifications()
+      
+      // Add recent activity
+      this.addRecentActivity('dashboard-loaded', 'Dashboard loaded successfully')
+      
+      console.log('✅ Dashboard data loaded')
+      
+    } catch (error) {
+      console.error('❌ Error loading dashboard data:', error)
+    }
+  }
+
+  // Load appointments statistics
+  async loadAppointmentsData() {
+    try {
+      const { db, getCurrentUser } = await import('./auth.js')
+      const { collection, query, where, getDocs, Timestamp } = await import('firebase/firestore')
+      
+      const user = getCurrentUser()
+      if (!user) return
+      
+      const appointmentsRef = collection(db, 'appointments')
+      const q = query(appointmentsRef, where('createdBy', '==', user.uid))
+      const snapshot = await getDocs(q)
+      
+      let upcomingCount = 0
+      let nextAppointment = null
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      snapshot.forEach((doc) => {
+        const appointment = doc.data()
+        const aptDate = new Date(appointment.date)
+        
+        if (aptDate >= today) {
+          upcomingCount++
+          
+          // Find the next upcoming appointment
+          if (!nextAppointment || aptDate < new Date(nextAppointment.date)) {
+            nextAppointment = appointment
+          }
+        }
+      })
+      
+      // Update UI
+      const countElement = document.getElementById('appointments-count')
+      if (countElement) {
+        countElement.textContent = upcomingCount
+      }
+      
+      const nextElement = document.getElementById('next-appointment')
+      if (nextElement && nextAppointment) {
+        const nextDate = new Date(nextAppointment.date)
+        const isToday = nextDate.toDateString() === today.toDateString()
+        const dateStr = isToday ? 'Today' : nextDate.toLocaleDateString()
+        nextElement.textContent = `⏰ Next: ${dateStr} at ${nextAppointment.time}`
+      } else if (nextElement) {
+        nextElement.textContent = '⏰ No upcoming appointments'
+      }
+      
+      // Update welcome notifications
+      if (upcomingCount > 0) {
+        this.addWelcomeNotification('info', `🔔 You have ${upcomingCount} upcoming appointment${upcomingCount > 1 ? 's' : ''} this week`)
+      }
+      
+    } catch (error) {
+      console.error('Error loading appointments data:', error)
+    }
+  }
+
+  // Load users count (admin only)
+  async loadUsersData() {
+    try {
+      const { getUserData, getCurrentUser } = await import('./auth.js')
+      const user = getCurrentUser()
+      if (!user) return
+      
+      const userData = await getUserData(user.uid)
+      if (userData?.role === 'admin') {
+        // Admin can see user count
+        const { db } = await import('./auth.js')
+        const { collection, getDocs } = await import('firebase/firestore')
+        
+        const usersRef = collection(db, 'users')
+        const snapshot = await getDocs(usersRef)
+        
+        const countElement = document.getElementById('users-count')
+        if (countElement) {
+          countElement.textContent = snapshot.size
+        }
+      }
+    } catch (error) {
+      console.error('Error loading users data:', error)
+    }
+  }
+
+  // Update welcome notifications
+  updateWelcomeNotifications() {
+    const notificationsContainer = document.getElementById('welcome-notifications')
+    if (!notificationsContainer) return
+    
+    // This will be populated by other methods as they add notifications
+  }
+
+  // Add welcome notification
+  addWelcomeNotification(type, message) {
+    const container = document.getElementById('welcome-notifications')
+    if (!container) return
+    
+    const notification = document.createElement('div')
+    notification.className = `welcome-notification ${type}`
+    notification.textContent = message
+    container.appendChild(notification)
+  }
+
+  // Add recent activity
+  addRecentActivity(type, message) {
+    const activityFeed = document.getElementById('activity-feed')
+    if (!activityFeed) return
+    
+    const activity = document.createElement('div')
+    activity.className = 'activity-item'
+    
+    const icon = type === 'appointment' ? '📅' : 
+                 type === 'user' ? '👥' : 
+                 type === 'page' ? '📄' : 
+                 type === 'content' ? '📝' : '✅'
+    
+    activity.innerHTML = `
+      <span class="activity-icon">${icon}</span>
+      <span class="activity-text">${message}</span>
+      <span class="activity-time">Just now</span>
+    `
+    
+    // Add to top of feed
+    activityFeed.insertBefore(activity, activityFeed.firstChild)
+    
+    // Keep only last 5 activities
+    const activities = activityFeed.querySelectorAll('.activity-item')
+    if (activities.length > 5) {
+      activities[activities.length - 1].remove()
+    }
   }
 }
 
