@@ -45,31 +45,354 @@ function setupEventListeners() {
     })
   }
   
-  // Appointment form
-  const appointmentForm = document.getElementById('appointment-form')
+  // Floating Action Button - Add appointment
+  const addAppointmentBtn = document.getElementById('add-appointment-btn')
+  if (addAppointmentBtn) {
+    addAppointmentBtn.addEventListener('click', () => {
+      openAppointmentModal()
+    })
+  }
+}
+
+function openAppointmentModal(preselectedDate = null) {
+  createAppointmentModal(preselectedDate)
+}
+
+// Make it globally available
+window.openAppointmentModal = openAppointmentModal
+
+function editAppointmentFromCalendar(appointmentId, occurrenceDate) {
+  const appointment = appointments.find(apt => apt.id === appointmentId)
+  if (!appointment) {
+    showNotification('Appointment not found', 'error')
+    return
+  }
+  
+  if (appointment.repeatPattern && occurrenceDate) {
+    // This is a recurring appointment - edit specific occurrence
+    editAppointmentOccurrence(appointmentId, occurrenceDate)
+  } else {
+    // This is a single appointment or edit the entire series
+    openEditAppointmentModal(appointment)
+  }
+}
+
+function createAppointmentModal(preselectedDate = null) {
+  // Remove any existing modal
+  const existingModal = document.querySelector('.appointment-modal-overlay')
+  if (existingModal) {
+    existingModal.remove()
+  }
+
+  const today = new Date().toISOString().split('T')[0]
+  const defaultDate = preselectedDate || today
+  
+  const now = new Date()
+  now.setHours(now.getHours() + 1, 0, 0, 0)
+  const defaultTime = now.toTimeString().slice(0, 5)
+
+  const modal = document.createElement('div')
+  modal.className = 'appointment-modal-overlay'
+  modal.innerHTML = `
+    <div class="appointment-modal">
+      <div class="appointment-modal-header">
+        <h3>➕ Create New Appointment</h3>
+        <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
+      </div>
+      <div class="appointment-modal-content">
+        <form id="appointment-form" class="appointment-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="apt-title" class="form-label">Title</label>
+              <input type="text" id="apt-title" class="form-input" placeholder="Meeting title..." required>
+            </div>
+            
+            <div class="form-group">
+              <label for="apt-type" class="form-label">Type</label>
+              <select id="apt-type" class="form-select" required>
+                <option value="">Select type...</option>
+                <option value="meeting">📋 Meeting</option>
+                <option value="task">✅ Task</option>
+                <option value="event">🎉 Event</option>
+                <option value="reminder">⏰ Reminder</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="apt-date" class="form-label">Date</label>
+              <input type="date" id="apt-date" class="form-input" value="${defaultDate}" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="apt-time" class="form-label">Time</label>
+              <input type="time" id="apt-time" class="form-input" value="${defaultTime}" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="apt-place" class="form-label">Location/Place</label>
+              <input type="text" id="apt-place" class="form-input" placeholder="Meeting room, address, or online..." list="place-suggestions">
+              <datalist id="place-suggestions">
+                <option value="Conference Room A">
+                <option value="Conference Room B">
+                <option value="Online - Zoom">
+                <option value="Online - Teams">
+                <option value="Client Office">
+              </datalist>
+            </div>
+            
+            <div class="form-group">
+              <label for="apt-duration" class="form-label">Duration (minutes)</label>
+              <select id="apt-duration" class="form-select">
+                <option value="15">15 min</option>
+                <option value="30" selected>30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+                <option value="120">2 hours</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Recurring Option Toggle -->
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="apt-is-recurring" class="form-checkbox">
+              <span class="checkbox-text">🔄 Make this a recurring appointment</span>
+            </label>
+          </div>
+
+          <!-- Hidden Recurring Options (shown when toggle is checked) -->
+          <div id="recurring-options" class="recurring-options" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="apt-repeat" class="form-label">Repeat Pattern</label>
+                <select id="apt-repeat" class="form-select">
+                  <option value="weekly">🔄 Weekly</option>
+                  <option value="biweekly">🔄 Every 2 weeks</option>
+                  <option value="monthly">🔄 Monthly</option>
+                  <option value="quarterly">🔄 Quarterly</option>
+                  <option value="yearly">🔄 Yearly</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="apt-end-date" class="form-label">End Repeat (optional)</label>
+                <input type="date" id="apt-end-date" class="form-input" placeholder="Leave empty for indefinite">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="apt-description" class="form-label">Description (optional)</label>
+            <textarea id="apt-description" class="form-textarea" rows="3" placeholder="Additional notes or agenda..."></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="this.closest('.appointment-modal-overlay').remove()">Cancel</button>
+            <button type="submit" class="btn btn-primary">📅 Create Appointment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+  
+  // Setup modal event listeners
+  setupModalEventListeners(modal)
+  
+  // Focus on title field
+  setTimeout(() => {
+    document.getElementById('apt-title').focus()
+  }, 100)
+  
+  // Close modal on background click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove()
+    }
+  })
+  
+  // Close modal on escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      modal.remove()
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }
+  document.addEventListener('keydown', handleEscape)
+}
+
+function openEditAppointmentModal(appointment) {
+  // Remove any existing modal
+  const existingModal = document.querySelector('.appointment-modal-overlay')
+  if (existingModal) {
+    existingModal.remove()
+  }
+
+  const modal = document.createElement('div')
+  modal.className = 'appointment-modal-overlay'
+  modal.innerHTML = `
+    <div class="appointment-modal">
+      <div class="appointment-modal-header">
+        <h3>✏️ Edit ${appointment.repeatPattern ? 'Recurring ' : ''}Appointment</h3>
+        <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
+      </div>
+      <div class="appointment-modal-content">
+        <form id="appointment-form" class="appointment-form" data-editing-id="${appointment.id}">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="apt-title" class="form-label">Title</label>
+              <input type="text" id="apt-title" class="form-input" value="${appointment.title}" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="apt-type" class="form-label">Type</label>
+              <select id="apt-type" class="form-select" required>
+                <option value="meeting" ${appointment.type === 'meeting' ? 'selected' : ''}>📋 Meeting</option>
+                <option value="task" ${appointment.type === 'task' ? 'selected' : ''}>✅ Task</option>
+                <option value="event" ${appointment.type === 'event' ? 'selected' : ''}>🎉 Event</option>
+                <option value="reminder" ${appointment.type === 'reminder' ? 'selected' : ''}>⏰ Reminder</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="apt-date" class="form-label">Date</label>
+              <input type="date" id="apt-date" class="form-input" value="${appointment.date}" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="apt-time" class="form-label">Time</label>
+              <input type="time" id="apt-time" class="form-input" value="${appointment.time}" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="apt-place" class="form-label">Location/Place</label>
+              <input type="text" id="apt-place" class="form-input" value="${appointment.place || ''}" placeholder="Meeting room, address, or online..." list="place-suggestions">
+              <datalist id="place-suggestions">
+                <option value="Conference Room A">
+                <option value="Conference Room B">
+                <option value="Online - Zoom">
+                <option value="Online - Teams">
+                <option value="Client Office">
+              </datalist>
+            </div>
+            
+            <div class="form-group">
+              <label for="apt-duration" class="form-label">Duration (minutes)</label>
+              <select id="apt-duration" class="form-select">
+                <option value="15" ${appointment.duration === 15 ? 'selected' : ''}>15 min</option>
+                <option value="30" ${appointment.duration === 30 ? 'selected' : ''}>30 min</option>
+                <option value="45" ${appointment.duration === 45 ? 'selected' : ''}>45 min</option>
+                <option value="60" ${appointment.duration === 60 ? 'selected' : ''}>1 hour</option>
+                <option value="90" ${appointment.duration === 90 ? 'selected' : ''}>1.5 hours</option>
+                <option value="120" ${appointment.duration === 120 ? 'selected' : ''}>2 hours</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Recurring Option Toggle -->
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="apt-is-recurring" class="form-checkbox" ${appointment.repeatPattern ? 'checked' : ''}>
+              <span class="checkbox-text">🔄 Make this a recurring appointment</span>
+            </label>
+          </div>
+
+          <!-- Hidden Recurring Options (shown when toggle is checked) -->
+          <div id="recurring-options" class="recurring-options" style="display: ${appointment.repeatPattern ? 'block' : 'none'};">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="apt-repeat" class="form-label">Repeat Pattern</label>
+                <select id="apt-repeat" class="form-select">
+                  <option value="weekly" ${appointment.repeatPattern === 'weekly' ? 'selected' : ''}>🔄 Weekly</option>
+                  <option value="biweekly" ${appointment.repeatPattern === 'biweekly' ? 'selected' : ''}>🔄 Every 2 weeks</option>
+                  <option value="monthly" ${appointment.repeatPattern === 'monthly' ? 'selected' : ''}>🔄 Monthly</option>
+                  <option value="quarterly" ${appointment.repeatPattern === 'quarterly' ? 'selected' : ''}>🔄 Quarterly</option>
+                  <option value="yearly" ${appointment.repeatPattern === 'yearly' ? 'selected' : ''}>🔄 Yearly</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="apt-end-date" class="form-label">End Repeat (optional)</label>
+                <input type="date" id="apt-end-date" class="form-input" value="${appointment.endDate || ''}" placeholder="Leave empty for indefinite">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="apt-description" class="form-label">Description (optional)</label>
+            <textarea id="apt-description" class="form-textarea" rows="3" placeholder="Additional notes or agenda...">${appointment.description || ''}</textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="this.closest('.appointment-modal-overlay').remove()">Cancel</button>
+            <button type="submit" class="btn btn-primary">💾 Update Appointment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+  
+  // Setup modal event listeners
+  setupModalEventListeners(modal)
+  
+  // Focus on title field
+  setTimeout(() => {
+    document.getElementById('apt-title').focus()
+  }, 100)
+  
+  // Close modal on background click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove()
+    }
+  })
+  
+  // Close modal on escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      modal.remove()
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }
+  document.addEventListener('keydown', handleEscape)
+}
+
+function setupModalEventListeners(modal) {
+  // Appointment form submission
+  const appointmentForm = modal.querySelector('#appointment-form')
   if (appointmentForm) {
     appointmentForm.addEventListener('submit', handleCreateAppointment)
   }
+
+  // Recurring appointment toggle
+  const recurringCheckbox = modal.querySelector('#apt-is-recurring')
+  const recurringOptions = modal.querySelector('#recurring-options')
   
-  // Clear form button
-  const clearFormBtn = document.getElementById('clear-form')
-  if (clearFormBtn) {
-    clearFormBtn.addEventListener('click', clearForm)
-  }
-  
-  // Set default date to today
-  const dateInput = document.getElementById('apt-date')
-  if (dateInput) {
-    const today = new Date().toISOString().split('T')[0]
-    dateInput.value = today
-  }
-  
-  // Set default time to next hour
-  const timeInput = document.getElementById('apt-time')
-  if (timeInput) {
-    const now = new Date()
-    now.setHours(now.getHours() + 1, 0, 0, 0)
-    timeInput.value = now.toTimeString().slice(0, 5)
+  if (recurringCheckbox && recurringOptions) {
+    recurringCheckbox.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        recurringOptions.style.display = 'block'
+        recurringOptions.classList.add('show')
+      } else {
+        recurringOptions.style.display = 'none'
+        recurringOptions.classList.remove('show')
+        // Clear the repeat pattern when unchecked
+        modal.querySelector('#apt-repeat').value = ''
+        modal.querySelector('#apt-end-date').value = ''
+      }
+    })
   }
 }
 
@@ -90,6 +413,9 @@ async function handleCreateAppointment(e) {
     const editingId = form.dataset.editingId
     const isEditing = !!editingId
     
+    // Check if user wants recurring appointment
+    const isRecurring = document.getElementById('apt-is-recurring').checked
+    
     const appointmentData = {
       title: document.getElementById('apt-title').value,
       type: document.getElementById('apt-type').value,
@@ -97,8 +423,8 @@ async function handleCreateAppointment(e) {
       time: document.getElementById('apt-time').value,
       place: document.getElementById('apt-place').value,
       duration: parseInt(document.getElementById('apt-duration').value),
-      repeatPattern: document.getElementById('apt-repeat').value || null, // Ensure empty string becomes null
-      endDate: document.getElementById('apt-end-date').value || null,
+      repeatPattern: isRecurring ? document.getElementById('apt-repeat').value : null,
+      endDate: isRecurring ? (document.getElementById('apt-end-date').value || null) : null,
       description: document.getElementById('apt-description').value
     }
     
@@ -127,7 +453,10 @@ async function handleCreateAppointment(e) {
     if (isEditing) {
       // Update existing appointment
       await updateDoc(doc(db, 'appointments', editingId), appointmentData)
-      showNotification('Appointment updated successfully! All future occurrences will reflect the changes.', 'success')
+      const updateMessage = isRecurring ? 
+        'Recurring appointment updated successfully! All future occurrences will reflect the changes.' :
+        'Appointment updated successfully!'
+      showNotification(updateMessage, 'success')
       
       // Reset form from edit mode
       const submitBtn = form.querySelector('button[type="submit"]')
@@ -137,13 +466,23 @@ async function handleCreateAppointment(e) {
     } else {
       // Create new appointment
       await addDoc(collection(db, 'appointments'), appointmentData)
-      showNotification('Appointment created successfully!', 'success')
+      const createMessage = isRecurring ? 
+        'Recurring appointment created successfully! 🔄' :
+        'Appointment created successfully! 📅'
+      showNotification(createMessage, 'success')
     }
     
-    clearForm()
+    // Close modal if we're in modal context
+    const modal = document.querySelector('.appointment-modal-overlay')
+    if (modal) {
+      modal.remove()
+    } else {
+      // Clear inline form if not in modal
+      clearForm()
+    }
+    
     await loadAppointments()
     renderCalendar()
-    renderAppointmentsList()
     
   } catch (error) {
     console.error('Error creating appointment:', error)
@@ -172,6 +511,15 @@ function clearForm() {
     document.getElementById('apt-time').value = now.toTimeString().slice(0, 5)
     
     document.getElementById('apt-duration').value = '30'
+    
+    // Reset recurring options
+    const recurringCheckbox = document.getElementById('apt-is-recurring')
+    const recurringOptions = document.getElementById('recurring-options')
+    if (recurringCheckbox && recurringOptions) {
+      recurringCheckbox.checked = false
+      recurringOptions.style.display = 'none'
+      recurringOptions.classList.remove('show')
+    }
   }
 }
 
@@ -206,7 +554,6 @@ async function loadAppointments() {
       
       // Re-render calendar after loading appointments
       renderCalendar()
-      renderAppointmentsList()
       
     } catch (indexError) {
       console.warn('Index not ready yet, falling back to simple query:', indexError.message)
@@ -230,7 +577,6 @@ async function loadAppointments() {
       
       // Re-render calendar after loading appointments
       renderCalendar()
-      renderAppointmentsList()
     }
     
   } catch (error) {
@@ -308,7 +654,10 @@ function renderCalendar() {
       }
       
       appointmentsHTML += `
-        <div class="${itemClass}" title="${titleText} at ${timeText}">
+        <div class="${itemClass}" 
+             title="${titleText} at ${timeText}"
+             data-appointment-id="${apt.id}"
+             data-occurrence-date="${dateString}">
           <div class="apt-time">${timeText}</div>
           <div class="apt-title ${apt.exception?.action === 'cancelled' ? 'strikethrough' : ''}">${titleText}</div>
         </div>
@@ -334,7 +683,22 @@ function renderCalendar() {
   calendarDays.forEach(day => {
     day.addEventListener('click', (e) => {
       const date = e.currentTarget.dataset.date
-      showDayAppointments(date)
+      
+      // Check if click was on an appointment item
+      const appointmentItem = e.target.closest('.appointment-item')
+      if (appointmentItem) {
+        // Click was on an appointment - open edit modal
+        const appointmentId = appointmentItem.dataset.appointmentId
+        const occurrenceDate = appointmentItem.dataset.occurrenceDate
+        
+        if (appointmentId) {
+          editAppointmentFromCalendar(appointmentId, occurrenceDate)
+        }
+        return
+      }
+      
+      // Click was on day number or empty space - open creation modal
+      openAppointmentModal(date)
     })
   })
 }
@@ -611,6 +975,11 @@ function showDayAppointments(dateString) {
       </div>
       <div class="appointment-modal-content">
         ${appointmentsHTML}
+        <div class="day-modal-actions">
+          <button class="btn btn-primary" onclick="openAppointmentModal('${dateString}'); this.closest('.appointment-modal-overlay').remove();">
+            ➕ Create Appointment for This Day
+          </button>
+        </div>
       </div>
     </div>
   `
@@ -623,58 +992,6 @@ function showDayAppointments(dateString) {
       modal.remove()
     }
   })
-}
-
-function renderAppointmentsList() {
-  const listContainer = document.getElementById('appointments-list')
-  if (!listContainer) return
-  
-  if (appointments.length === 0) {
-    listContainer.innerHTML = `
-      <div class="empty-state">
-        <p>📅 No appointments yet</p>
-        <p>Create your first recurring appointment using the form above.</p>
-      </div>
-    `
-    return
-  }
-  
-  const appointmentsHTML = appointments.map(apt => {
-    const nextOccurrence = getNextOccurrence(apt)
-    
-    return `
-      <div class="appointment-list-item ${apt.type}">
-        <div class="appointment-icon">${getTypeIcon(apt.type)}</div>
-        <div class="appointment-content">
-          <h4>${apt.title}</h4>
-          <div class="appointment-meta">
-            <span class="meta-item">📅 ${apt.repeatPattern ? `${apt.repeatPattern} from` : ''} ${new Date(apt.date).toLocaleDateString()}</span>
-            <span class="meta-item">⏰ ${apt.time}</span>
-            <span class="meta-item">📍 ${apt.place || 'No location'}</span>
-            <span class="meta-item">⏱️ ${apt.duration} min</span>
-          </div>
-          ${nextOccurrence ? `<div class="next-occurrence">Next: ${nextOccurrence.toLocaleDateString()} at ${apt.time}</div>` : ''}
-          ${apt.description ? `<div class="appointment-description">${apt.description}</div>` : ''}
-        </div>
-        <div class="appointment-actions">
-          <button class="btn btn-small btn-secondary" onclick="editAppointment('${apt.id}')">✏️ Edit</button>
-          <button class="btn btn-small btn-danger" onclick="deleteAppointment('${apt.id}')">🗑️ Delete</button>
-        </div>
-      </div>
-    `
-  }).join('')
-  
-  listContainer.innerHTML = appointmentsHTML
-}
-
-function getTypeIcon(type) {
-  const icons = {
-    meeting: '📋',
-    task: '✅',
-    event: '🎉',
-    reminder: '⏰'
-  }
-  return icons[type] || '📅'
 }
 
 function getNextOccurrence(appointment) {
@@ -793,7 +1110,6 @@ window.bulkCancelSeries = async function(appointmentId, fromDate) {
     // Refresh views
     await loadAppointments()
     renderCalendar()
-    renderAppointmentsList()
     
   } catch (error) {
     console.error('Error cancelling appointment series:', error)
@@ -824,16 +1140,34 @@ window.editAppointment = async function(appointmentId) {
   document.getElementById('apt-time').value = appointment.time
   document.getElementById('apt-place').value = appointment.place || ''
   document.getElementById('apt-duration').value = appointment.duration
-  document.getElementById('apt-repeat').value = appointment.repeatPattern || ''
-  document.getElementById('apt-end-date').value = appointment.endDate || ''
   document.getElementById('apt-description').value = appointment.description || ''
+  
+  // Handle recurring options
+  const recurringCheckbox = document.getElementById('apt-is-recurring')
+  const recurringOptions = document.getElementById('recurring-options')
+  
+  if (appointment.repeatPattern) {
+    // This is a recurring appointment
+    recurringCheckbox.checked = true
+    recurringOptions.style.display = 'block'
+    recurringOptions.classList.add('show')
+    document.getElementById('apt-repeat').value = appointment.repeatPattern
+    document.getElementById('apt-end-date').value = appointment.endDate || ''
+  } else {
+    // This is a single appointment
+    recurringCheckbox.checked = false
+    recurringOptions.style.display = 'none'
+    recurringOptions.classList.remove('show')
+    document.getElementById('apt-repeat').value = ''
+    document.getElementById('apt-end-date').value = ''
+  }
   
   // Change form to edit mode
   const form = document.getElementById('appointment-form')
   const submitBtn = form.querySelector('button[type="submit"]')
   
   if (appointment.repeatPattern) {
-    submitBtn.textContent = '🔧 Update Entire Series'
+    submitBtn.textContent = '🔧 Update Recurring Series'
   } else {
     submitBtn.textContent = '✏️ Update Appointment'
   }
@@ -860,7 +1194,6 @@ window.deleteAppointment = async function(appointmentId) {
     
     await loadAppointments()
     renderCalendar()
-    renderAppointmentsList()
     
   } catch (error) {
     console.error('Error deleting appointment:', error)

@@ -194,7 +194,7 @@ class MainApp {
               </div>
 
               <div class="appointments-layout">
-                <!-- Calendar View Section -->
+                <!-- Full-Width Calendar View Section -->
                 <div class="calendar-section">
                   <div class="calendar-header">
                     <h3>📆 Monthly View</h3>
@@ -215,107 +215,10 @@ class MainApp {
                   </div>
                 </div>
 
-                <!-- Create Appointment Section -->
-                <div class="appointment-form-section">
-                  <div class="form-header">
-                    <h3>➕ Create Recurring Appointment</h3>
-                  </div>
-                  
-                  <form id="appointment-form" class="appointment-form">
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="apt-title" class="form-label">Title</label>
-                        <input type="text" id="apt-title" class="form-input" placeholder="Meeting title..." required>
-                      </div>
-                      
-                      <div class="form-group">
-                        <label for="apt-type" class="form-label">Type</label>
-                        <select id="apt-type" class="form-select" required>
-                          <option value="">Select type...</option>
-                          <option value="meeting">📋 Meeting</option>
-                          <option value="task">✅ Task</option>
-                          <option value="event">🎉 Event</option>
-                          <option value="reminder">⏰ Reminder</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="apt-date" class="form-label">Start Date</label>
-                        <input type="date" id="apt-date" class="form-input" required>
-                      </div>
-                      
-                      <div class="form-group">
-                        <label for="apt-time" class="form-label">Time</label>
-                        <input type="time" id="apt-time" class="form-input" required>
-                      </div>
-                    </div>
-
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="apt-place" class="form-label">Location/Place</label>
-                        <input type="text" id="apt-place" class="form-input" placeholder="Meeting room, address, or online..." list="place-suggestions">
-                        <datalist id="place-suggestions">
-                          <option value="Conference Room A">
-                          <option value="Conference Room B">
-                          <option value="Online - Zoom">
-                          <option value="Online - Teams">
-                          <option value="Client Office">
-                        </datalist>
-                      </div>
-                      
-                      <div class="form-group">
-                        <label for="apt-duration" class="form-label">Duration (minutes)</label>
-                        <select id="apt-duration" class="form-select">
-                          <option value="15">15 min</option>
-                          <option value="30" selected>30 min</option>
-                          <option value="45">45 min</option>
-                          <option value="60">1 hour</option>
-                          <option value="90">1.5 hours</option>
-                          <option value="120">2 hours</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="apt-repeat" class="form-label">Repeat Pattern</label>
-                        <select id="apt-repeat" class="form-select">
-                          <option value="">No repeat (one-time)</option>
-                          <option value="weekly">🔄 Weekly</option>
-                          <option value="biweekly">🔄 Every 2 weeks</option>
-                          <option value="monthly">🔄 Monthly</option>
-                          <option value="quarterly">🔄 Quarterly</option>
-                          <option value="yearly">🔄 Yearly</option>
-                        </select>
-                      </div>
-                      
-                      <div class="form-group">
-                        <label for="apt-end-date" class="form-label">End Repeat (optional)</label>
-                        <input type="date" id="apt-end-date" class="form-input" placeholder="Leave empty for indefinite">
-                      </div>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="apt-description" class="form-label">Description (optional)</label>
-                      <textarea id="apt-description" class="form-textarea" rows="3" placeholder="Additional notes or agenda..."></textarea>
-                    </div>
-
-                    <div class="form-actions">
-                      <button type="submit" class="btn btn-primary">📅 Create Appointment</button>
-                      <button type="button" id="clear-form" class="btn btn-secondary">Clear Form</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-
-              <!-- Active Appointments List -->
-              <div class="appointments-list-section">
-                <h3>📋 Active Recurring Appointments</h3>
-                <div id="appointments-list" class="appointments-list">
-                  <!-- Appointments will be loaded here -->
-                </div>
+                <!-- Floating Action Button -->
+                <button id="add-appointment-btn" class="floating-action-btn" title="Create New Appointment">
+                  <span class="fab-icon">+</span>
+                </button>
               </div>
             </div>
           </section>
