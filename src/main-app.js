@@ -57,7 +57,7 @@ class MainApp {
       initializeUsersPage()
       initializePagesPage()
       initializeContentPage()
-      initializeSettingsPage()
+      // Settings page will be initialized when it's shown
       initializeAppointmentsPage()
       console.log('✅ Page modules initialized')
       
@@ -301,6 +301,14 @@ class MainApp {
               </div>
               <div class="settings-grid">
                 <div class="settings-card">
+                  <h3>📋 Appointment Titles</h3>
+                  <p>Manage dropdown options for appointment creation</p>
+                  <div id="appointment-titles-management">
+                    <!-- Appointment titles management will be populated here -->
+                  </div>
+                </div>
+                
+                <div class="settings-card">
                   <h3>App Configuration</h3>
                   <div class="form-group">
                     <label class="form-label">App Name</label>
@@ -522,6 +530,14 @@ class MainApp {
     }
     if (targetLink) {
       targetLink.classList.add('active')
+    }
+    
+    // Initialize specific page functionality when it becomes active
+    if (sectionId === 'settings') {
+      // Wait a bit for the DOM to be ready, then initialize settings
+      setTimeout(() => {
+        initializeSettingsPage()
+      }, 100)
     }
   }
 

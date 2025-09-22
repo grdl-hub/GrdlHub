@@ -2123,3 +2123,229 @@ body.authenticated #auth-nav-link {
   font-weight: 600;
   margin-bottom: var(--spacing-xs);
 }
+
+/* Appointment Titles Management in Settings */
+.titles-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.titles-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.drag-instruction {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+  font-style: italic;
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.875rem;
+  border-radius: var(--border-radius-sm);
+}
+
+.titles-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.title-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius);
+  transition: all 0.2s ease;
+  cursor: grab;
+  user-select: none;
+}
+
+.title-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.1);
+}
+
+.title-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  transform: rotate(2deg);
+  z-index: 1000;
+}
+
+.title-item.drop-above {
+  border-top: 3px solid var(--primary-color);
+}
+
+.title-item.drop-below {
+  border-bottom: 3px solid var(--primary-color);
+}
+
+.title-item.inactive {
+  opacity: 0.6;
+  background: var(--gray-50);
+}
+
+.title-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+}
+
+.title-main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 500;
+}
+
+.drag-handle {
+  color: var(--gray-400);
+  cursor: grab;
+  font-size: 1.2em;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.drag-handle:hover {
+  color: var(--primary-color);
+  background: var(--gray-100);
+}
+
+.title-item.dragging .drag-handle {
+  cursor: grabbing;
+}
+
+.title-emoji {
+  font-size: 1.2em;
+  min-width: 1.5em;
+  text-align: center;
+}
+
+.title-text {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.inactive-badge {
+  background: var(--warning-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: var(--spacing-sm);
+}
+
+.title-meta {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.title-order {
+  font-weight: 500;
+}
+
+.title-usage {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.title-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2em;
+  min-height: 2em;
+}
+
+.btn-icon:hover {
+  background: var(--gray-100);
+  transform: scale(1.1);
+}
+
+.btn-icon.warning:hover {
+  background: rgba(255, 152, 0, 0.1);
+  color: var(--warning-color);
+}
+
+.btn-icon.success:hover {
+  background: rgba(76, 175, 80, 0.1);
+  color: var(--success-color);
+}
+
+.access-info {
+  text-align: center;
+  padding: var(--spacing-xl);
+  background: var(--gray-50);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+}
+
+.emoji-input {
+  width: 4em !important;
+  text-align: center;
+  font-size: 1.2em;
+}
+
+/* Responsive design for title management */
+@media (max-width: 768px) {
+  .titles-management-header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: stretch;
+  }
+  
+  .titles-actions {
+    justify-content: center;
+  }
+  
+  .drag-instruction {
+    text-align: center;
+  }
+  
+  .title-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+  }
+  
+  .title-actions {
+    justify-content: center;
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--gray-200);
+  }
+  
+  .title-meta {
+    justify-content: center;
+  }
+}

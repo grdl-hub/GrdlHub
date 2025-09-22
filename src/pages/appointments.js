@@ -14,18 +14,140 @@ import {
   Timestamp 
 } from 'firebase/firestore'
 import { showNotification } from '../utils/notifications.js'
+import { 
+  loadAppointmentTitles, 
+  generateTitleOptionsHTML,
+  initializeDefaultTitles 
+} from '../utils/appointmentTitles.js'
 
 let currentDate = new Date()
 let appointments = []
 
+// Global function for title selection handling
+window.handleTitleSelection = function(selectElement) {
+  const customInput = selectElement.parentElement.querySelector('#apt-title')
+  const selectedValue = selectElement.value
+  
+  if (selectedValue === 'custom') {
+    // Show custom input and hide select requirement
+    customInput.style.display = 'block'
+    customInput.required = true
+    customInput.focus()
+    selectElement.required = false
+  } else if (selectedValue !== '') {
+    // Hide custom input and use selected value
+    customInput.style.display = 'none'
+    customInput.required = false
+    customInput.value = selectedValue
+    selectElement.required = true
+  } else {
+    // No selection made
+    customInput.style.display = 'none'
+    customInput.required = false
+    customInput.value = ''
+    selectElement.required = true
+  }
+}
+
+// Helper function to get the current title value
+function getCurrentTitleValue() {
+  const selectElement = document.getElementById('apt-title-select')
+  const inputElement = document.getElementById('apt-title')
+  
+  if (selectElement && selectElement.value === 'custom') {
+    return inputElement.value.trim()
+  } else if (selectElement && selectElement.value !== '') {
+    return selectElement.value
+  } else {
+    return inputElement.value.trim()
+  }
+}
+
+// Helper function to initialize the title dropdown for editing
+async function initializeEditTitleDropdown(currentTitle) {
+  try {
+    const titles = await loadAppointmentTitles()
+    const selectElement = document.getElementById('apt-title-select')
+    const inputElement = document.getElementById('apt-title')
+    
+    if (!selectElement || !inputElement) {
+      console.error('Title dropdown elements not found')
+      return
+    }
+    
+    // Check if current title matches any predefined option
+    const matchingTitle = titles.find(title => title.title === currentTitle)
+    
+    if (matchingTitle) {
+      selectElement.value = currentTitle
+      inputElement.style.display = 'none'
+      inputElement.required = false
+      selectElement.required = true
+    } else {
+      // Use custom option
+      selectElement.value = 'custom'
+      inputElement.style.display = 'block'
+      inputElement.value = currentTitle
+      inputElement.required = true
+      selectElement.required = false
+    }
+  } catch (error) {
+    console.error('Error initializing edit title dropdown:', error)
+  }
+}
+
+// Helper function to create title dropdown HTML dynamically
+async function createTitleDropdownHTML(selectedTitle = '') {
+  try {
+    const titles = await loadAppointmentTitles()
+    return `
+      <select id="apt-title-select" class="form-select" onchange="handleTitleSelection(this)" required>
+        ${generateTitleOptionsHTML(titles, selectedTitle)}
+      </select>
+      <input type="text" id="apt-title" class="form-input" placeholder="Enter custom title..." style="display: none; margin-top: 8px;" value="${selectedTitle}" required>
+    `
+  } catch (error) {
+    console.error('Error loading titles for dropdown:', error)
+    // Fallback to hardcoded options
+    return `
+      <select id="apt-title-select" class="form-select" onchange="handleTitleSelection(this)" required>
+        <option value="">Select title...</option>
+        <option value="Testemunho Público" ${selectedTitle === 'Testemunho Público' ? 'selected' : ''}>🎤 Testemunho Público</option>
+        <option value="Reunião VMC" ${selectedTitle === 'Reunião VMC' ? 'selected' : ''}>📋 Reunião VMC</option>
+        <option value="Reunião de Oração" ${selectedTitle === 'Reunião de Oração' ? 'selected' : ''}>🙏 Reunião de Oração</option>
+        <option value="Estudo Bíblico" ${selectedTitle === 'Estudo Bíblico' ? 'selected' : ''}>📖 Estudo Bíblico</option>
+        <option value="Culto Dominical" ${selectedTitle === 'Culto Dominical' ? 'selected' : ''}>⛪ Culto Dominical</option>
+        <option value="custom">✏️ Custom...</option>
+      </select>
+      <input type="text" id="apt-title" class="form-input" placeholder="Enter custom title..." style="display: none; margin-top: 8px;" value="${selectedTitle}" required>
+    `
+  }
+}
+
 export function initializeAppointmentsPage() {
   console.log('🔧 Initializing appointments page...')
+  
+  // Initialize default appointment titles if needed
+  initializeDefaultTitlesWithCheck()
   
   setupEventListeners()
   loadAppointments()
   renderCalendar()
   
   console.log('✅ Appointments page initialized')
+}
+
+// Helper function to initialize default titles with better error handling
+async function initializeDefaultTitlesWithCheck() {
+  try {
+    await initializeDefaultTitles()
+  } catch (error) {
+    console.error('Failed to initialize default titles:', error)
+    // Show a user-friendly message
+    setTimeout(() => {
+      showNotification('Note: Using default appointment titles. Admin can add custom titles later.', 'info')
+    }, 2000)
+  }
 }
 
 function setupEventListeners() {
@@ -54,14 +176,32 @@ function setupEventListeners() {
   }
 }
 
-function openAppointmentModal(preselectedDate = null) {
-  createAppointmentModal(preselectedDate)
+async function openAppointmentModal(preselectedDate = null) {
+  await createAppointmentModal(preselectedDate)
 }
 
 // Make it globally available
 window.openAppointmentModal = openAppointmentModal
 
-function editAppointmentFromCalendar(appointmentId, occurrenceDate) {
+// Debug function to manually initialize appointment titles (temporary)
+window.initAppointmentTitlesManually = async function() {
+  try {
+    console.log('🔧 Manually initializing appointment titles...')
+    await initializeDefaultTitles()
+    showNotification('Appointment titles initialized successfully!', 'success')
+    
+    // Refresh the page to load the new titles
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
+    
+  } catch (error) {
+    console.error('❌ Failed to initialize appointment titles:', error)
+    showNotification('Failed to initialize appointment titles. Check console for details.', 'error')
+  }
+}
+
+async function editAppointmentFromCalendar(appointmentId, occurrenceDate) {
   const appointment = appointments.find(apt => apt.id === appointmentId)
   if (!appointment) {
     showNotification('Appointment not found', 'error')
@@ -73,11 +213,11 @@ function editAppointmentFromCalendar(appointmentId, occurrenceDate) {
     editAppointmentOccurrence(appointmentId, occurrenceDate)
   } else {
     // This is a single appointment or edit the entire series
-    openEditAppointmentModal(appointment)
+    await openEditAppointmentModal(appointment)
   }
 }
 
-function createAppointmentModal(preselectedDate = null) {
+async function createAppointmentModal(preselectedDate = null) {
   // Remove any existing modal
   const existingModal = document.querySelector('.appointment-modal-overlay')
   if (existingModal) {
@@ -91,6 +231,9 @@ function createAppointmentModal(preselectedDate = null) {
   now.setHours(now.getHours() + 1, 0, 0, 0)
   const defaultTime = now.toTimeString().slice(0, 5)
 
+  // Get dynamic title dropdown HTML
+  const titleDropdownHTML = await createTitleDropdownHTML()
+
   const modal = document.createElement('div')
   modal.className = 'appointment-modal-overlay'
   modal.innerHTML = `
@@ -103,8 +246,8 @@ function createAppointmentModal(preselectedDate = null) {
         <form id="appointment-form" class="appointment-form">
           <div class="form-row">
             <div class="form-group">
-              <label for="apt-title" class="form-label">Title</label>
-              <input type="text" id="apt-title" class="form-input" placeholder="Meeting title..." required>
+              <label for="apt-title-select" class="form-label">Title</label>
+              ${titleDropdownHTML}
             </div>
             
             <div class="form-group">
@@ -227,12 +370,15 @@ function createAppointmentModal(preselectedDate = null) {
   document.addEventListener('keydown', handleEscape)
 }
 
-function openEditAppointmentModal(appointment) {
+async function openEditAppointmentModal(appointment) {
   // Remove any existing modal
   const existingModal = document.querySelector('.appointment-modal-overlay')
   if (existingModal) {
     existingModal.remove()
   }
+
+  // Get dynamic title dropdown HTML with current appointment title
+  const titleDropdownHTML = await createTitleDropdownHTML(appointment.title)
 
   const modal = document.createElement('div')
   modal.className = 'appointment-modal-overlay'
@@ -246,8 +392,8 @@ function openEditAppointmentModal(appointment) {
         <form id="appointment-form" class="appointment-form" data-editing-id="${appointment.id}">
           <div class="form-row">
             <div class="form-group">
-              <label for="apt-title" class="form-label">Title</label>
-              <input type="text" id="apt-title" class="form-input" value="${appointment.title}" required>
+              <label for="apt-title-select" class="form-label">Title</label>
+              ${titleDropdownHTML}
             </div>
             
             <div class="form-group">
@@ -349,7 +495,13 @@ function openEditAppointmentModal(appointment) {
   
   // Focus on title field
   setTimeout(() => {
-    document.getElementById('apt-title').focus()
+    const titleSelect = document.getElementById('apt-title-select')
+    const titleInput = document.getElementById('apt-title')
+    if (titleSelect && titleSelect.value === 'custom') {
+      titleInput.focus()
+    } else if (titleSelect) {
+      titleSelect.focus()
+    }
   }, 100)
   
   // Close modal on background click
@@ -417,7 +569,7 @@ async function handleCreateAppointment(e) {
     const isRecurring = document.getElementById('apt-is-recurring').checked
     
     const appointmentData = {
-      title: document.getElementById('apt-title').value,
+      title: getCurrentTitleValue(),
       type: document.getElementById('apt-type').value,
       date: document.getElementById('apt-date').value,
       time: document.getElementById('apt-time').value,

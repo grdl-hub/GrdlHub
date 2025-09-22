@@ -13,6 +13,10 @@ service cloud.firestore {
       allow write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Allow unauthenticated read for email checking during authentication
+      // This is needed for the invite system to check if emails exist
+      allow read: if true;
     }
     
     // Appointments collection - authenticated users can create/read/update/delete their own appointments
@@ -29,6 +33,30 @@ service cloud.firestore {
       // Ensure createdBy field is set to current user on create
       allow create: if request.auth != null && 
         request.resource.data.createdBy == request.auth.uid;
+    }
+    
+    // Appointment titles collection - authenticated users can read, only admins can write
+    match /appointmentTitles/{titleId} {
+      // All authenticated users can read appointment titles
+      allow read: if request.auth != null;
+      
+      // Only admins can create/update/delete appointment titles
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Allow system initialization (for creating default titles)
+      allow create: if request.auth != null && 
+        (request.resource.data.createdBy == 'system' || 
+         (request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.updatedBy == request.auth.uid));
+      
+      // Allow updates by admins or for system documents
+      allow update: if request.auth != null && 
+        (resource.data.createdBy == 'system' ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+          request.resource.data.updatedBy == request.auth.uid));
     }
     
     // Pages collection (if you have static pages)
