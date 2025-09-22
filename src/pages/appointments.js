@@ -251,13 +251,39 @@ async function createAppointmentModal(preselectedDate = null) {
             </div>
             
             <div class="form-group">
+              <label for="apt-place" class="form-label">Location/Place</label>
+              <input type="text" id="apt-place" class="form-input" placeholder="Meeting room, address, or online..." list="place-suggestions">
+              <datalist id="place-suggestions">
+                <option value="Conference Room A">
+                <option value="Conference Room B">
+                <option value="Online - Zoom">
+                <option value="Online - Teams">
+                <option value="Client Office">
+              </datalist>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
               <label for="apt-type" class="form-label">Type</label>
-              <select id="apt-type" class="form-select" required>
+              <select id="apt-type" class="form-select">
                 <option value="">Select type...</option>
                 <option value="meeting">📋 Meeting</option>
                 <option value="task">✅ Task</option>
                 <option value="event">🎉 Event</option>
                 <option value="reminder">⏰ Reminder</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="apt-duration" class="form-label">Duration (minutes)</label>
+              <select id="apt-duration" class="form-select">
+                <option value="15">15 min</option>
+                <option value="30" selected>30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+                <option value="120">2 hours</option>
               </select>
             </div>
           </div>
@@ -271,32 +297,6 @@ async function createAppointmentModal(preselectedDate = null) {
             <div class="form-group">
               <label for="apt-time" class="form-label">Time</label>
               <input type="time" id="apt-time" class="form-input" value="${defaultTime}" required>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="apt-place" class="form-label">Location/Place</label>
-              <input type="text" id="apt-place" class="form-input" placeholder="Meeting room, address, or online..." list="place-suggestions">
-              <datalist id="place-suggestions">
-                <option value="Conference Room A">
-                <option value="Conference Room B">
-                <option value="Online - Zoom">
-                <option value="Online - Teams">
-                <option value="Client Office">
-              </datalist>
-            </div>
-            
-            <div class="form-group">
-              <label for="apt-duration" class="form-label">Duration (minutes)</label>
-              <select id="apt-duration" class="form-select">
-                <option value="15">15 min</option>
-                <option value="30" selected>30 min</option>
-                <option value="45">45 min</option>
-                <option value="60">1 hour</option>
-                <option value="90">1.5 hours</option>
-                <option value="120">2 hours</option>
-              </select>
             </div>
           </div>
 
@@ -753,23 +753,22 @@ function renderCalendar() {
   // Get first day of month and number of days
   const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
   const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-  const firstDayOfWeek = firstDay.getDay()
+  // Adjust for Monday start: 0=Sunday becomes 6, 1=Monday becomes 0, etc.
+  const firstDayOfWeek = (firstDay.getDay() + 6) % 7
   const daysInMonth = lastDay.getDate()
-  
-  // Build calendar HTML
+
+  // Build calendar HTML - Starting with Monday
   let calendarHTML = `
     <div class="calendar-header-row">
-      <div class="calendar-day-header">Sun</div>
       <div class="calendar-day-header">Mon</div>
       <div class="calendar-day-header">Tue</div>
       <div class="calendar-day-header">Wed</div>
       <div class="calendar-day-header">Thu</div>
       <div class="calendar-day-header">Fri</div>
       <div class="calendar-day-header">Sat</div>
+      <div class="calendar-day-header">Sun</div>
     </div>
-  `
-  
-  // Add empty cells for days before first day of month
+  `  // Add empty cells for days before first day of month
   for (let i = 0; i < firstDayOfWeek; i++) {
     calendarHTML += '<div class="calendar-day empty"></div>'
   }
