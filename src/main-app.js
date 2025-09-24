@@ -3,19 +3,98 @@
 
 import './style.css'
 import { AuthAPI } from './auth-standalone.js'
-import { initializeAccessControl, hasPageAccess } from './accessControl.js'
+import { initializeAccessControl, hasPageAccess, filterNavigation } from './accessControl.js'
 import { initializeUI } from './ui.js'
 import { initializeUsersPage } from './pages/users.js'
 import { initializePagesPage } from './pages/pages.js'
 import { initializeContentPage } from './pages/content.js'
 import { initializeSettingsPage } from './pages/settings.js'
 import { initializeAppointmentsPage } from './pages/appointments.js'
+import { initializeAvailability } from './pages/availability.js'
 import { showNotification } from './utils/notifications.js'
 
 class MainApp {
   constructor() {
     this.currentUser = null
     this.initialized = false
+    this.setupErrorTracking()
+  }
+
+  // Add global error tracking
+  setupErrorTracking() {
+    window.addEventListener('error', (event) => {
+      console.error('🚨 Global JavaScript error:', event.error)
+      console.error('🚨 Error details:', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
+      })
+    })
+
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('🚨 Unhandled promise rejection:', event.reason)
+    })
+  }
+
+  // Debug navigation elements
+  debugNavigationElements(when = '') {
+    setTimeout(() => {
+      console.log(`🔍 Navigation debug (${when}):`)
+      const userMenu = document.querySelector('.user-menu')
+      const userNameSpan = document.getElementById('user-name')
+      const availabilityLink = document.querySelector('a[href="#availability"]')
+      const authRequiredLinks = document.querySelectorAll('.auth-required')
+      const bodyHasAuthClass = document.body.classList.contains('authenticated')
+      
+      console.log('  - Body has authenticated class:', bodyHasAuthClass)
+      console.log('  - Body classes:', Array.from(document.body.classList))
+      console.log('  - User menu exists:', !!userMenu)
+      console.log('  - User name span exists:', !!userNameSpan)
+      console.log('  - User name content:', userNameSpan?.textContent)
+      console.log('  - Availability link exists:', !!availabilityLink)
+      console.log('  - Availability link visible:', availabilityLink ? window.getComputedStyle(availabilityLink).display !== 'none' : false)
+      console.log('  - Auth required links count:', authRequiredLinks.length)
+      console.log('  - Auth required links visible:', Array.from(authRequiredLinks).map(link => ({
+        href: link.getAttribute('href'),
+        text: link.textContent,
+        visible: window.getComputedStyle(link).display !== 'none'
+      })))
+      
+      // Update debug panel
+      const debugNavElements = document.getElementById('debug-nav-elements')
+      if (debugNavElements) {
+        debugNavElements.textContent = `Nav: Menu=${!!userMenu} Name=${!!userNameSpan} Links=${authRequiredLinks.length}`
+      }
+      
+      const debugAvailLink = document.getElementById('debug-availability-link')
+      if (debugAvailLink) {
+        const linkVisible = availabilityLink ? window.getComputedStyle(availabilityLink).display !== 'none' : false
+        debugAvailLink.textContent = `Avail Link: ${!!availabilityLink ? (linkVisible ? 'VISIBLE' : 'HIDDEN') : 'NOT FOUND'}`
+      }
+    }, 100)
+  }
+
+  // Debug helper functions
+  updateDebugPanel(section, data) {
+    const debugPanel = document.getElementById('debug-panel')
+    if (!debugPanel) return
+    
+    const timestamp = document.getElementById('debug-timestamp')
+    if (timestamp) timestamp.textContent = `Time: ${new Date().toLocaleTimeString()}`
+    
+    if (section === 'auth') {
+      const authStatus = document.getElementById('debug-auth-status')
+      if (authStatus) authStatus.textContent = `Auth: ${data.status}`
+      
+      const userInfo = document.getElementById('debug-user-info')
+      if (userInfo) userInfo.textContent = `User: ${data.user ? data.user.email || 'Unknown' : 'None'}`
+    }
+    
+    if (section === 'navigation') {
+      const currentSection = document.getElementById('debug-current-section')
+      if (currentSection) currentSection.textContent = `Section: ${data.sectionId || 'None'}`
+    }
   }
 
   async initialize() {
@@ -27,10 +106,20 @@ class MainApp {
       // Verify user is still authenticated
       const user = AuthAPI.getCurrentAuthUser()
       console.log('👤 Current user:', user)
+      console.log('👤 User details:', {
+        email: user?.email,
+        displayName: user?.displayName,
+        emailVerified: user?.emailVerified,
+        uid: user?.uid
+      })
       
       if (!user) {
+        console.error('❌ No authenticated user found - redirecting to auth')
+        this.updateDebugPanel('auth', { status: 'No user found', user: null })
         throw new Error('No authenticated user found')
       }
+      
+      this.updateDebugPanel('auth', { status: 'User found', user: user })
 
       // For Firebase sign-in links, email is automatically verified
       // But let's be more flexible with the verification check
@@ -44,10 +133,21 @@ class MainApp {
       // Build the main app UI
       this.buildMainUI()
       console.log('✅ UI built, initializing services...')
+      this.updateDebugPanel('auth', { status: 'UI built', user: user })
+      
+      // Debug navigation elements before auth
+      this.debugNavigationElements('before-auth')
       
       // Initialize core services (without auth - already handled)
       await initializeAccessControl()
       console.log('✅ Access control initialized')
+      
+      // Filter navigation to show auth-required elements
+      await filterNavigation()
+      console.log('✅ Navigation filtered for authenticated user')
+      
+      // Debug navigation elements after auth
+      this.debugNavigationElements('after-auth')
       
       initializeUI()
       console.log('✅ UI initialized')
@@ -59,6 +159,7 @@ class MainApp {
       initializeContentPage()
       // Settings page will be initialized when it's shown
       initializeAppointmentsPage()
+      initializeAvailability()
       console.log('✅ Page modules initialized')
       
       // Setup app functionality
@@ -81,11 +182,13 @@ class MainApp {
       
       this.initialized = true
       console.log('🎉 Main app initialized successfully!')
+      this.updateDebugPanel('auth', { status: 'SUCCESS: App initialized', user: this.currentUser })
       showNotification('Welcome to GrdlHub!', 'success')
       
     } catch (error) {
       console.error('❌ Failed to initialize main app:', error)
       console.error('Stack trace:', error.stack)
+      this.updateDebugPanel('auth', { status: `FAILED: ${error.message}`, user: null })
       this.redirectToAuth('Authentication error. Please sign in again.')
     }
   }
@@ -99,17 +202,29 @@ class MainApp {
             <nav class="nav">
               <a href="#home" class="nav-link active">🏠 Home</a>
               <a href="#appointments" class="nav-link auth-required">📅 Appointments</a>
+              <a href="#availability" class="nav-link auth-required">📋 Availability</a>
               <a href="#users" class="nav-link auth-required">👥 Users</a>
               <a href="#pages" class="nav-link auth-required">📄 Pages</a>
               <a href="#content" class="nav-link auth-required">📝 Content</a>
               <a href="#settings" class="nav-link auth-required">⚙️ Settings</a>
             </nav>
             <div class="user-menu">
-              <span id="user-name">${this.currentUser.displayName || this.currentUser.email}</span>
+              <span id="user-name">${this.currentUser?.displayName || this.currentUser?.email || 'Loading...'}</span>
               <button id="logout-btn" class="btn btn-secondary btn-small">[Logout]</button>
             </div>
           </div>
         </header>
+
+        <!-- Debug Panel (remove in production) -->
+        <div id="debug-panel" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; z-index: 9999; max-width: 300px;">
+          <div><strong>🐛 DEBUG PANEL</strong></div>
+          <div id="debug-auth-status">Auth: Loading...</div>
+          <div id="debug-user-info">User: Not loaded</div>
+          <div id="debug-current-section">Section: None</div>
+          <div id="debug-nav-elements">Nav: Checking...</div>
+          <div id="debug-availability-link">Avail Link: Checking...</div>
+          <div id="debug-timestamp">Time: ${new Date().toLocaleTimeString()}</div>
+        </div>
 
         <main class="main">
           <!-- Home Page -->
@@ -117,7 +232,7 @@ class MainApp {
             <div class="container">
               <div class="dashboard">
                 <div class="welcome-section">
-                  <h2>Welcome back, <span id="welcome-user-name">${this.currentUser.displayName || 'User'}</span>! 👋</h2>
+                  <h2>Welcome back, <span id="welcome-user-name">${this.currentUser?.displayName || 'User'}</span>! 👋</h2>
                   <p class="welcome-date">Today is <span id="current-date">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span></p>
                   <p>Manage your hub content and users from this central dashboard.</p>
                   <div class="welcome-notifications" id="welcome-notifications">
@@ -219,6 +334,44 @@ class MainApp {
                 <button id="add-appointment-btn" class="floating-action-btn" title="Create New Appointment">
                   <span class="fab-icon">+</span>
                 </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Availability Management -->
+          <section id="availability" class="section">
+            <div class="container">
+              <div class="section-header">
+                <h2>📋 Availability Management</h2>
+                <p>Mark your availability for upcoming appointments</p>
+              </div>
+
+              <!-- Date Range Selector -->
+              <div class="availability-controls">
+                <div class="date-range-selector">
+                  <label for="availability-start-date">From:</label>
+                  <input type="date" id="availability-start-date" class="form-input">
+                  <label for="availability-end-date">To:</label>
+                  <input type="date" id="availability-end-date" class="form-input">
+                  <button id="load-availability" class="btn btn-primary">Load Appointments</button>
+                </div>
+              </div>
+
+              <!-- Available Appointments List -->
+              <div id="availability-content">
+                <div class="loading-state" style="display: none;">
+                  <div class="loading-spinner"></div>
+                  <p>Loading appointments...</p>
+                </div>
+                
+                <div class="empty-state" id="no-appointments-message" style="display: none;">
+                  <h3>📅 No Appointments Found</h3>
+                  <p>No appointments available for the selected date range.</p>
+                </div>
+
+                <div id="appointments-list" class="appointments-availability-list">
+                  <!-- Appointments will be loaded here -->
+                </div>
               </div>
             </div>
           </section>
@@ -603,14 +756,21 @@ class MainApp {
   }
 
   showSection(sectionId) {
+    console.log('🎯 Navigating to section:', sectionId)
+    this.updateDebugPanel('navigation', { sectionId: sectionId })
+    
     const sections = document.querySelectorAll('.section')
     const navLinks = document.querySelectorAll('.nav-link')
+    
+    console.log('🔍 Found sections:', sections.length, 'nav links:', navLinks.length)
     
     sections.forEach(section => section.classList.remove('active'))
     navLinks.forEach(link => link.classList.remove('active'))
     
     const targetSection = document.getElementById(sectionId)
     const targetLink = document.querySelector(`[href="#${sectionId}"]`)
+    
+    console.log('🎯 Target section found:', !!targetSection, 'Target link found:', !!targetLink)
     
     if (targetSection) {
       targetSection.classList.add('active')
@@ -625,6 +785,10 @@ class MainApp {
       setTimeout(() => {
         initializeSettingsPage()
       }, 100)
+    }
+    if (sectionId === 'availability') {
+      // Initialize availability page when it becomes active
+      console.log('🎯 Availability section activated')
     }
   }
 
