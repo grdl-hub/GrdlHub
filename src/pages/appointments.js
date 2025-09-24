@@ -918,6 +918,10 @@ function renderCalendar() {
   const firstDayOfWeek = (firstDay.getDay() + 6) % 7
   const daysInMonth = lastDay.getDate()
 
+  // Calculate previous month details for leading days
+  const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 0)
+  const daysInPrevMonth = prevMonth.getDate()
+
   // Build calendar HTML - Starting with Monday
   let calendarHTML = `
     <div class="calendar-header-row">
@@ -929,9 +933,58 @@ function renderCalendar() {
       <div class="calendar-day-header">Sat</div>
       <div class="calendar-day-header">Sun</div>
     </div>
-  `  // Add empty cells for days before first day of month
-  for (let i = 0; i < firstDayOfWeek; i++) {
-    calendarHTML += '<div class="calendar-day empty"></div>'
+  `
+
+  // Add trailing days from previous month
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    const prevDay = daysInPrevMonth - i
+    const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, prevDay)
+    const dateString = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-${String(prevDay).padStart(2, '0')}`
+    
+    // Check if there are appointments on this day
+    const dayAppointments = getAppointmentsForDate(dateString)
+    const isToday = prevMonthDate.toDateString() === new Date().toDateString()
+    
+    let dayClass = 'calendar-day other-month'
+    if (isToday) dayClass += ' today'
+    if (dayAppointments.length > 0) dayClass += ' has-appointments'
+    
+    let appointmentsHTML = ''
+    dayAppointments.slice(0, 2).forEach(apt => {
+      let itemClass = `appointment-item ${apt.type}`
+      let titleText = apt.title
+      let timeText = apt.time
+      
+      // Add exception styling
+      if (apt.exception) {
+        if (apt.exception.action === 'cancelled') {
+          itemClass += ' cancelled'
+        } else if (apt.exception.action === 'modified') {
+          itemClass += ' modified'
+        }
+      }
+      
+      appointmentsHTML += `
+        <div class="${itemClass}" 
+             title="${titleText} at ${timeText}"
+             data-appointment-id="${apt.id}"
+             data-occurrence-date="${apt.occurrenceDate || apt.date}">
+          <span class="appointment-time">${timeText}</span>
+          <span class="appointment-title">${titleText}</span>
+        </div>
+      `
+    })
+    
+    if (dayAppointments.length > 2) {
+      appointmentsHTML += `<div class="more-appointments">+${dayAppointments.length - 2} more</div>`
+    }
+    
+    calendarHTML += `
+      <div class="${dayClass}" data-date="${dateString}">
+        <div class="day-number">${prevDay}</div>
+        <div class="day-appointments">${appointmentsHTML}</div>
+      </div>
+    `
   }
   
   // Add days of month
@@ -984,6 +1037,61 @@ function renderCalendar() {
       <div class="${dayClass}" data-date="${dateString}">
         <div class="day-number">${day}</div>
         <div class="appointments-preview">${appointmentsHTML}</div>
+      </div>
+    `
+  }
+
+  // Calculate how many cells we need to fill the rest of the calendar (complete weeks)
+  const totalCellsUsed = firstDayOfWeek + daysInMonth
+  const remainingCells = (7 - (totalCellsUsed % 7)) % 7
+  
+  // Add leading days from next month to complete the calendar
+  for (let day = 1; day <= remainingCells; day++) {
+    const nextMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, day)
+    const dateString = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    
+    // Check if there are appointments on this day
+    const dayAppointments = getAppointmentsForDate(dateString)
+    const isToday = nextMonthDate.toDateString() === new Date().toDateString()
+    
+    let dayClass = 'calendar-day other-month'
+    if (isToday) dayClass += ' today'
+    if (dayAppointments.length > 0) dayClass += ' has-appointments'
+    
+    let appointmentsHTML = ''
+    dayAppointments.slice(0, 2).forEach(apt => {
+      let itemClass = `appointment-item ${apt.type}`
+      let titleText = apt.title
+      let timeText = apt.time
+      
+      // Add exception styling
+      if (apt.exception) {
+        if (apt.exception.action === 'cancelled') {
+          itemClass += ' cancelled'
+        } else if (apt.exception.action === 'modified') {
+          itemClass += ' modified'
+        }
+      }
+      
+      appointmentsHTML += `
+        <div class="${itemClass}" 
+             title="${titleText} at ${timeText}"
+             data-appointment-id="${apt.id}"
+             data-occurrence-date="${apt.occurrenceDate || apt.date}">
+          <span class="appointment-time">${timeText}</span>
+          <span class="appointment-title">${titleText}</span>
+        </div>
+      `
+    })
+    
+    if (dayAppointments.length > 2) {
+      appointmentsHTML += `<div class="more-appointments">+${dayAppointments.length - 2} more</div>`
+    }
+    
+    calendarHTML += `
+      <div class="${dayClass}" data-date="${dateString}">
+        <div class="day-number">${day}</div>
+        <div class="day-appointments">${appointmentsHTML}</div>
       </div>
     `
   }

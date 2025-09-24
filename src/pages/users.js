@@ -13,15 +13,18 @@ import {
 import { showModal, hideModal, validateForm, setupResponsiveTable } from '../ui.js'
 import { showNotification, showLoading, hideLoading } from '../utils/notifications.js'
 import { getRolePermissions, getAvailablePages, validatePermissions, updateUserPermissions } from '../accessControl.js'
+import { loadActivePrivileges } from '../utils/privilegeManagement.js'
 
 let usersData = []
 let usersUnsubscribe = null
 let currentEditingUserId = null // Track if we're editing a user
+let privilegesCache = [] // Cache privileges for display names
 
 // Initialize users page
 export function initializeUsersPage() {
   try {
     setupUsersPage()
+    loadPrivilegesCache()
     console.log('Users page initialized')
   } catch (error) {
     console.error('Error initializing users page:', error)
@@ -136,7 +139,7 @@ function renderUsers(users) {
    if (users.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="5" class="empty-state">
+        <td colspan="6" class="empty-state">
           <p>No users found</p>
           <button class="btn btn-primary" onclick="showAddUserModal()">Add First User</button>
         </td>
@@ -159,6 +162,9 @@ function renderUsers(users) {
       <td>${user.email}</td>
       <td>
         <span class="role-badge role-${user.role || 'user'}">${user.role || 'user'}</span>
+      </td>
+      <td>
+        <span class="privilege-badge">${getPrivilegeDisplayName(user.privileges || user.privilege)}</span>
       </td>
       <td>
         <div class="action-buttons">
@@ -217,9 +223,24 @@ function showAddUserModal() {
   // Show modal first so elements are in DOM
   showModal('add-user-modal')
   
-  // Then setup permissions checkboxes after modal is visible
+  // Reset the form to clear any previous values
+  const form = document.getElementById('add-user-form')
+  if (form) {
+    form.reset()
+  }
+  
+  // Then setup permissions checkboxes and privileges after modal is visible
   setTimeout(() => {
     setupPermissionsCheckboxes('add-user-permissions')
+    loadPrivilegeOptions('add-user-privileges')
+    
+    // Ensure all privileges are unchecked for add user modal
+    setTimeout(() => {
+      const privilegeInputs = document.querySelectorAll('#add-user-privileges input[name="privileges"]')
+      privilegeInputs.forEach(input => {
+        input.checked = false
+      })
+    }, 50)
   }, 100)
 }
 
@@ -231,12 +252,19 @@ function setupPermissionsCheckboxes(containerId) {
   const availablePages = getAvailablePages()
   
   permissionsContainer.innerHTML = Object.entries(availablePages).map(([pageId, pageInfo]) => `
-    <div class="permission-item">
-      <input type="checkbox" id="${containerId}-permission-${pageId}" name="permissions" value="${pageId}">
-      <label for="${containerId}-permission-${pageId}" class="permission-label">
-        <span class="permission-icon">${pageInfo.icon}</span>
-        <span class="permission-name">${pageInfo.name} Page</span>
-        <span class="permission-desc">Access to ${pageInfo.description}</span>
+    <div class="permission-switch-item">
+      <label class="permission-switch-label">
+        <div class="permission-info">
+          <span class="permission-icon">${pageInfo.icon}</span>
+          <div class="permission-text">
+            <span class="permission-name">${pageInfo.name} Page</span>
+            <span class="permission-desc">Access to ${pageInfo.description}</span>
+          </div>
+        </div>
+        <div class="permission-switch">
+          <input type="checkbox" id="${containerId}-permission-${pageId}" name="permissions" value="${pageId}" class="permission-switch-input">
+          <span class="permission-switch-slider"></span>
+        </div>
       </label>
     </div>
   `).join('')
@@ -268,6 +296,79 @@ function updatePermissionsCheckboxes(containerId, permissions) {
   checkboxes.forEach(checkbox => {
     checkbox.checked = permissions.includes(checkbox.value)
   })
+}
+
+// Update privilege toggle switches
+function updatePrivilegeCheckboxes(containerId, privileges) {
+  const container = document.getElementById(containerId)
+  if (!container) return
+  
+  const toggleInputs = container.querySelectorAll('input[name="privileges"]')
+  toggleInputs.forEach(input => {
+    input.checked = privileges.includes(input.value)
+  })
+}
+
+// Load privilege options into checkbox grid
+async function loadPrivilegeOptions(containerId) {
+  const container = document.getElementById(containerId)
+  if (!container) return
+  
+  try {
+    const privileges = await loadActivePrivileges()
+    
+    // Update cache for display names
+    privilegesCache = privileges
+    
+    // Create iOS-style toggle switches
+    container.innerHTML = privileges.map(privilege => `
+      <div class="privilege-switch-item">
+        <label class="privilege-switch-label">
+          <span class="privilege-switch-name">${privilege.name}</span>
+          <div class="privilege-switch">
+            <input type="checkbox" id="${containerId}-privilege-${privilege.id}" name="privileges" value="${privilege.id}" class="privilege-switch-input">
+            <span class="privilege-switch-slider"></span>
+          </div>
+        </label>
+      </div>
+    `).join('')
+    
+  } catch (error) {
+    console.error('Error loading privileges:', error)
+    container.innerHTML = '<div class="error-message">Error loading privileges</div>'
+  }
+}
+
+// Get privilege display names by IDs (supports both single string and array)
+function getPrivilegeDisplayName(privilegeData) {
+  if (!privilegeData) return 'No Privileges'
+  
+  // Handle backward compatibility - convert single privilege to array
+  let privilegeIds = []
+  if (Array.isArray(privilegeData)) {
+    privilegeIds = privilegeData
+  } else if (typeof privilegeData === 'string' && privilegeData) {
+    privilegeIds = [privilegeData]
+  }
+  
+  if (privilegeIds.length === 0) return 'No Privileges'
+  
+  const privilegeNames = privilegeIds.map(id => {
+    const privilege = privilegesCache.find(p => p.id === id)
+    return privilege ? privilege.name : 'Unknown'
+  }).filter(name => name !== 'Unknown')
+  
+  return privilegeNames.length > 0 ? privilegeNames.join(', ') : 'No Privileges'
+}
+
+// Load privileges cache for display names
+async function loadPrivilegesCache() {
+  try {
+    privilegesCache = await loadActivePrivileges()
+  } catch (error) {
+    console.error('Error loading privileges cache:', error)
+    privilegesCache = []
+  }
 }
 
 // Check for duplicates in both local data and Firestore
@@ -340,6 +441,7 @@ async function handleAddUserSubmit(e) {
   const congregation = formData.get('user-congregation').trim()
   const email = formData.get('user-email').trim().toLowerCase()
   const role = formData.get('user-role')
+  const privileges = Array.from(formData.getAll('privileges'))
   const permissions = Array.from(formData.getAll('permissions'))
   
   // Show loading state for duplicate check
@@ -362,6 +464,7 @@ async function handleAddUserSubmit(e) {
       congregation,
       email: email.toLowerCase(),
       role,
+      privileges: privileges || [],
       permissions: validatePermissions(permissions),
       status: 'invited',
       createdAt: new Date()
@@ -375,6 +478,9 @@ async function handleAddUserSubmit(e) {
     await updateUserPermissions(userRef.id, userData.permissions)
     
     showNotification('User added successfully! Page access permissions applied immediately.', 'success')
+    
+    // Reset form after successful submission
+    e.target.reset()
     
     hideModal('add-user-modal')
     hideLoading()
@@ -398,6 +504,7 @@ async function handleEditUserSubmit(e) {
   const congregation = formData.get('user-congregation').trim()
   const email = formData.get('user-email').trim().toLowerCase()
   const role = formData.get('user-role')
+  const privileges = Array.from(formData.getAll('privileges'))
   const permissions = Array.from(formData.getAll('permissions'))
   
   // Show loading state for duplicate check
@@ -420,6 +527,7 @@ async function handleEditUserSubmit(e) {
       congregation,
       email: email.toLowerCase(),
       role,
+      privileges: privileges || [],
       permissions: validatePermissions(permissions),
       updatedAt: new Date()
     }
@@ -456,6 +564,7 @@ window.editUser = function(userId) {
   // Setup permissions and populate form after modal is visible
   setTimeout(() => {
     setupPermissionsCheckboxes('edit-user-permissions')
+    loadPrivilegeOptions('edit-user-privileges')
     
     // Fill form with user data
     document.getElementById('edit-user-name').value = user.name || ''
@@ -463,8 +572,11 @@ window.editUser = function(userId) {
     document.getElementById('edit-user-email').value = user.email
     document.getElementById('edit-user-role').value = user.role || 'user'
     
-    // Setup permissions and select current ones
-    updatePermissionsCheckboxes('edit-user-permissions', user.permissions || [])
+    // Setup permissions and select current ones (with slight delay to ensure DOM is ready)
+    setTimeout(() => {
+      updatePermissionsCheckboxes('edit-user-permissions', user.permissions || [])
+      updatePrivilegeCheckboxes('edit-user-privileges', user.privileges || (user.privilege ? [user.privilege] : []))
+    }, 50)
   }, 100)
 }
 

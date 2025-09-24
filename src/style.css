@@ -896,6 +896,468 @@ body {
   font-weight: 500;
 }
 
+/* Privilege Management Styles */
+.management-header {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.privileges-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.privilege-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  transition: all 0.2s ease;
+}
+
+.privilege-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.privilege-item.inactive {
+  opacity: 0.6;
+  background: var(--gray-50);
+}
+
+.privilege-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+}
+
+.privilege-name {
+  font-weight: 500;
+  font-size: var(--font-size-md);
+}
+
+.privilege-status {
+  font-size: var(--font-size-sm);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.privilege-status.active {
+  background: var(--success-bg);
+  color: var(--success-color);
+}
+
+.privilege-status.inactive {
+  background: var(--error-bg);
+  color: var(--error-color);
+}
+
+.privilege-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.access-info {
+  text-align: center;
+  padding: var(--spacing-xl);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+}
+
+/* Multi-select privilege dropdown styles */
+select[multiple] {
+  min-height: 120px;
+  padding: var(--spacing-sm);
+}
+
+select[multiple] option {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-bottom: 2px;
+  border-radius: var(--radius-sm);
+}
+
+select[multiple] option:checked {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* Privilege badge styles for multiple items */
+.privilege-badge {
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 8px;
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+/* Privileges toggle switches - PWA native style */
+.privileges-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-height: 240px;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+}
+
+/* Toggle switch item container */
+.privilege-switch-item {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+}
+
+/* Switch label with text and toggle */
+.privilege-switch-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Privilege name text */
+.privilege-switch-name {
+  flex: 1;
+  margin-right: var(--spacing-md);
+  line-height: 1.4;
+}
+
+/* Toggle switch container */
+.privilege-switch {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+/* Hide the actual checkbox */
+.privilege-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Toggle switch track/background */
+.privilege-switch-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gray-300);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Toggle switch circle/thumb */
+.privilege-switch-slider::before {
+  content: '';
+  position: absolute;
+  height: 28px;
+  width: 28px;
+  left: 2px;
+  top: 2px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Checked state - track */
+.privilege-switch-input:checked + .privilege-switch-slider {
+  background: var(--primary-color);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Checked state - thumb */
+.privilege-switch-input:checked + .privilege-switch-slider::before {
+  transform: translateX(20px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Hover states */
+.privilege-switch-label:hover .privilege-switch-slider {
+  background: var(--gray-400);
+}
+
+.privilege-switch-input:checked + .privilege-switch-slider:hover {
+  background: var(--primary-dark, #2563eb);
+}
+
+/* Focus state for accessibility */
+.privilege-switch-input:focus + .privilege-switch-slider {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Active/pressed state */
+.privilege-switch-input:active + .privilege-switch-slider::before {
+  transform: scale(1.1);
+}
+
+.privilege-switch-input:checked:active + .privilege-switch-slider::before {
+  transform: translateX(20px) scale(1.1);
+}
+
+/* PWA-style enhancement - subtle animation on toggle */
+@keyframes switchToggle {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.privilege-switch-input:checked + .privilege-switch-slider {
+  animation: switchToggle 0.2s ease;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .privileges-grid {
+    max-height: 200px;
+    padding: var(--spacing-sm);
+    gap: var(--spacing-sm);
+  }
+  
+  .privilege-switch-item {
+    padding: var(--spacing-xs) 0;
+  }
+  
+  .privilege-switch-label {
+    font-size: var(--font-size-sm);
+  }
+  
+  .privilege-switch-name {
+    margin-right: var(--spacing-sm);
+  }
+  
+  /* Slightly larger touch target on mobile */
+  .privilege-switch {
+    width: 56px;
+    height: 34px;
+  }
+  
+  .privilege-switch-slider::before {
+    height: 30px;
+    width: 30px;
+  }
+  
+  .privilege-switch-input:checked + .privilege-switch-slider::before {
+    transform: translateX(22px);
+  }
+}
+
+/* Dark mode support (if your PWA supports it) */
+@media (prefers-color-scheme: dark) {
+  .privilege-switch-slider {
+    background: var(--gray-600, #4b5563);
+  }
+  
+  .privilege-switch-label:hover .privilege-switch-slider {
+    background: var(--gray-500, #6b7280);
+  }
+}
+
+/* Permissions toggle switches - PWA native style (similar to privileges) */
+.permission-switch-item {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.permission-switch-item:last-child {
+  border-bottom: none;
+}
+
+.permission-switch-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: var(--spacing-sm) 0;
+}
+
+.permission-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-grow: 1;
+}
+
+.permission-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.permission-icon {
+  font-size: 1.2em;
+  color: var(--primary-500);
+  min-width: 20px;
+}
+
+.permission-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
+.permission-desc {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.permission-switch {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.permission-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.permission-switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gray-300, #d1d5db);
+  border-radius: 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.permission-switch-slider::before {
+  position: absolute;
+  content: "";
+  height: 28px;
+  width: 28px;
+  left: 2px;
+  top: 2px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.permission-switch-input:checked + .permission-switch-slider {
+  background: var(--primary-500, #3b82f6);
+  box-shadow: inset 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.permission-switch-input:checked + .permission-switch-slider::before {
+  transform: translateX(20px);
+}
+
+.permission-switch-label:hover .permission-switch-slider {
+  background: var(--gray-400, #9ca3af);
+}
+
+.permission-switch-input:checked + .permission-switch-slider:hover {
+  background: var(--primary-600, #2563eb);
+}
+
+.permission-switch-input:focus + .permission-switch-slider {
+  outline: 2px solid var(--primary-200, #bfdbfe);
+  outline-offset: 2px;
+}
+
+.permission-switch-input:active + .permission-switch-slider::before {
+  transform: scaleX(1.1);
+}
+
+.permission-switch-input:checked:active + .permission-switch-slider::before {
+  transform: translateX(20px) scaleX(1.1);
+}
+
+/* iOS-style animation for permission switches */
+@media (prefers-reduced-motion: no-preference) {
+  .permission-switch-slider,
+  .permission-switch-slider::before {
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  .permission-switch-input:checked + .permission-switch-slider {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Mobile responsiveness for permission switches */
+@media (max-width: 768px) {
+  .permission-switch-item {
+    padding: var(--spacing-md) 0;
+  }
+  
+  .permission-switch-label {
+    padding: var(--spacing-sm) 0;
+  }
+  
+  .permission-name {
+    font-size: 0.95em;
+  }
+  
+  .permission-desc {
+    font-size: 0.85em;
+  }
+  
+  .permission-switch {
+    width: 48px;
+    height: 30px;
+  }
+  
+  .permission-switch-slider::before {
+    height: 26px;
+    width: 26px;
+  }
+  
+  .permission-switch-input:checked + .permission-switch-slider::before {
+    transform: translateX(18px);
+  }
+}
+
+/* Dark mode support for permission switches */
+@media (prefers-color-scheme: dark) {
+  .permission-switch-slider {
+    background: var(--gray-600, #4b5563);
+  }
+  
+  .permission-switch-label:hover .permission-switch-slider {
+    background: var(--gray-500, #6b7280);
+  }
+}
+
 /* Empty state */
 .empty-state {
   text-align: center;
@@ -1229,6 +1691,32 @@ body.authenticated #auth-nav-link {
 
 .calendar-day.has-appointments:hover {
   background: #ffe0b3;
+}
+
+.calendar-day.other-month {
+  background: var(--gray-50);
+  opacity: 0.6;
+}
+
+.calendar-day.other-month:hover {
+  background: var(--gray-100);
+  opacity: 0.8;
+}
+
+.calendar-day.other-month .day-number {
+  color: var(--text-secondary);
+}
+
+.calendar-day.other-month.has-appointments {
+  background: #f5f5f5;
+}
+
+.calendar-day.other-month.has-appointments:hover {
+  background: #eeeeee;
+}
+
+.calendar-day.other-month .appointment-item {
+  opacity: 0.7;
 }
 
 .day-number {

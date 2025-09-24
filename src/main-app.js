@@ -256,6 +256,7 @@ class MainApp {
                           <th>Congregation</th>
                           <th>Email</th>
                           <th>Role</th>
+                          <th>Privilege</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -305,6 +306,14 @@ class MainApp {
                   <p>Manage dropdown options for appointment creation</p>
                   <div id="appointment-titles-management">
                     <!-- Appointment titles management will be populated here -->
+                  </div>
+                </div>
+                
+                <div class="settings-card">
+                  <h3>👥 User Privileges</h3>
+                  <p>Manage congregation privileges and work functions</p>
+                  <div id="privileges-management">
+                    <!-- Privileges management will be populated here -->
                   </div>
                 </div>
                 
@@ -380,6 +389,14 @@ class MainApp {
                   <option value="admin">Admin</option>
                 </select>
               </div>
+
+              <div class="form-group">
+                <label class="form-label">Privileges</label>
+                <div id="add-user-privileges" class="privileges-grid">
+                  <!-- Privilege checkboxes will be populated here -->
+                </div>
+                <small class="form-help">Select multiple congregation privileges or work functions</small>
+              </div>
               
               <div class="form-group">
                 <label class="form-label">Permissions</label>
@@ -428,6 +445,14 @@ class MainApp {
                   <option value="admin">Admin</option>
                 </select>
               </div>
+
+              <div class="form-group">
+                <label class="form-label">Privileges</label>
+                <div id="edit-user-privileges" class="privileges-grid">
+                  <!-- Privilege checkboxes will be populated here -->
+                </div>
+                <small class="form-help">Select multiple congregation privileges or work functions</small>
+              </div>
               
               <div class="form-group">
                 <label class="form-label">Permissions</label>
@@ -440,6 +465,68 @@ class MainApp {
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary">Cancel</button>
             <button type="submit" id="update-user-btn" class="btn btn-primary" form="edit-user-form">Update User</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Privilege Modal -->
+      <div id="add-privilege-modal" class="modal hidden">
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <h3 class="modal-title">Add New Privilege</h3>
+            <button type="button" class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="add-privilege-form">
+              <div class="form-group">
+                <label for="add-privilege-name" class="form-label">Privilege Name</label>
+                <input type="text" id="add-privilege-name" name="privilege-name" class="form-input" required>
+                <small class="form-help">Enter the name of the congregation privilege or work function</small>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">
+                  <input type="checkbox" id="add-privilege-active" name="privilege-active" checked>
+                  Active
+                </label>
+                <small class="form-help">Uncheck to disable this privilege without deleting it</small>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary">Cancel</button>
+            <button type="submit" id="save-privilege-btn" class="btn btn-primary" form="add-privilege-form">Save Privilege</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Privilege Modal -->
+      <div id="edit-privilege-modal" class="modal hidden">
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <h3 class="modal-title">Edit Privilege</h3>
+            <button type="button" class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="edit-privilege-form">
+              <div class="form-group">
+                <label for="edit-privilege-name" class="form-label">Privilege Name</label>
+                <input type="text" id="edit-privilege-name" name="privilege-name" class="form-input" required>
+                <small class="form-help">Enter the name of the congregation privilege or work function</small>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">
+                  <input type="checkbox" id="edit-privilege-active" name="privilege-active">
+                  Active
+                </label>
+                <small class="form-help">Uncheck to disable this privilege without deleting it</small>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary">Cancel</button>
+            <button type="submit" id="update-privilege-btn" class="btn btn-primary" form="edit-privilege-form">Update Privilege</button>
           </div>
         </div>
       </div>

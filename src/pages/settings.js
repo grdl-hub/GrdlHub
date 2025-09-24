@@ -6,6 +6,13 @@ import {
   deleteAppointmentTitle,
   reorderAppointmentTitles
 } from '../utils/appointmentTitles.js'
+import {
+  loadActivePrivileges,
+  createPrivilege,
+  updatePrivilege,
+  deletePrivilege,
+  initializeDefaultPrivileges
+} from '../utils/privilegeManagement.js'
 import { db } from '../auth.js'
 import { getCurrentUser } from '../auth.js'
 import { 
@@ -20,16 +27,20 @@ import {
 import { showNotification } from '../utils/notifications.js'
 
 let appointmentTitles = []
+let privileges = []
 
 export function initializeSettingsPage() {
   console.log('🔧 Initializing settings page...')
   
-  // Debug: Check if the container exists
-  const container = document.getElementById('appointment-titles-management')
-  console.log('📋 Appointment titles container found:', !!container)
+  // Debug: Check if the containers exist
+  const appointmentContainer = document.getElementById('appointment-titles-management')
+  const privilegesContainer = document.getElementById('privileges-management')
+  console.log('📋 Appointment titles container found:', !!appointmentContainer)
+  console.log('👥 Privileges container found:', !!privilegesContainer)
   
   setupSettingsEventListeners()
   loadAppointmentTitlesForSettings()
+  loadPrivilegesForSettings()
   
   console.log('✅ Settings page initialized')
 }
@@ -589,4 +600,242 @@ async function handleEditTitle(e) {
     console.error('Error updating title:', error)
     showNotification('Failed to update title', 'error')
   }
+}
+
+// === PRIVILEGE MANAGEMENT FUNCTIONS ===
+
+async function loadPrivilegesForSettings(forceRefresh = false) {
+  try {
+    console.log('🔧 Checking admin access for privileges...')
+    
+    const isAdmin = await checkAdminAccess()
+    console.log('👤 Admin access check result:', isAdmin)
+    
+    if (!isAdmin) {
+      const container = document.getElementById('privileges-management')
+      console.log('👥 Container found for non-admin message:', !!container)
+      if (container) {
+        container.innerHTML = `
+          <div class="access-info">
+            <p class="text-muted">👤 Admin access required to manage privileges</p>
+          </div>
+        `
+        console.log('✅ Non-admin message displayed')
+      }
+      return
+    }
+    
+    console.log('👥 Loading privileges for settings...')
+    
+    // Load all privileges (including inactive ones for admin view)
+    const allPrivileges = await loadActivePrivileges(true) // Pass true to get all privileges
+    privileges = allPrivileges
+    
+    console.log('👥 Privileges loaded:', privileges.length)
+    
+    renderPrivilegesManagement()
+    
+  } catch (error) {
+    console.error('❌ Error loading privileges:', error)
+    showNotification('Failed to load privileges', 'error')
+  }
+}
+
+function renderPrivilegesManagement() {
+  const container = document.getElementById('privileges-management')
+  if (!container) {
+    console.log('❌ Privileges management container not found')
+    return
+  }
+  
+  console.log('🎨 Rendering privileges management UI...')
+  
+  container.innerHTML = `
+    <div class="management-header">
+      <button id="add-privilege-btn" class="btn btn-primary btn-sm">
+        ➕ Add Privilege
+      </button>
+      <button id="refresh-privileges-btn" class="btn btn-secondary btn-sm">
+        🔄 Refresh
+      </button>
+    </div>
+    
+    <div class="privileges-list" id="privileges-list">
+      ${renderPrivilegesList()}
+    </div>
+  `
+  
+  setupPrivilegeEventListeners()
+  console.log('✅ Privileges management UI rendered')
+}
+
+function renderPrivilegesList() {
+  if (privileges.length === 0) {
+    return `
+      <div class="empty-state">
+        <p>No privileges found</p>
+        <button class="btn btn-primary btn-sm" onclick="initializeDefaultPrivileges().then(() => loadPrivilegesForSettings(true))">
+          Initialize Default Privileges
+        </button>
+      </div>
+    `
+  }
+  
+  return privileges.map(privilege => `
+    <div class="privilege-item ${!privilege.active ? 'inactive' : ''}" data-id="${privilege.id}">
+      <div class="privilege-info">
+        <span class="privilege-name">${privilege.name}</span>
+        <span class="privilege-status ${privilege.active ? 'active' : 'inactive'}">
+          ${privilege.active ? '✅ Active' : '❌ Inactive'}
+        </span>
+      </div>
+      <div class="privilege-actions">
+        <button class="btn-action btn-edit" onclick="editPrivilege('${privilege.id}')" title="Edit">
+          ✏️
+        </button>
+        <button class="btn-action btn-delete" onclick="confirmDeletePrivilege('${privilege.id}')" title="Delete">
+          🗑️
+        </button>
+      </div>
+    </div>
+  `).join('')
+}
+
+function setupPrivilegeEventListeners() {
+  // Add privilege button
+  const addBtn = document.getElementById('add-privilege-btn')
+  if (addBtn) {
+    addBtn.addEventListener('click', openAddPrivilegeModal)
+  }
+  
+  // Refresh button  
+  const refreshBtn = document.getElementById('refresh-privileges-btn')
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => loadPrivilegesForSettings(true))
+  }
+  
+  // Modal form submissions
+  const addForm = document.getElementById('add-privilege-form')
+  if (addForm) {
+    addForm.addEventListener('submit', handleAddPrivilegeSubmit)
+  }
+  
+  const editForm = document.getElementById('edit-privilege-form')
+  if (editForm) {
+    editForm.addEventListener('submit', handleEditPrivilegeSubmit)
+  }
+  
+  // Modal close buttons
+  document.querySelectorAll('.modal-close, .btn-secondary').forEach(btn => {
+    btn.addEventListener('click', closePrivilegeModals)
+  })
+}
+
+function openAddPrivilegeModal() {
+  const modal = document.getElementById('add-privilege-modal')
+  if (modal) {
+    // Reset form
+    document.getElementById('add-privilege-form').reset()
+    document.getElementById('add-privilege-active').checked = true
+    
+    // Show modal
+    modal.classList.remove('hidden')
+    
+    // Focus on name input
+    document.getElementById('add-privilege-name').focus()
+  }
+}
+
+async function handleAddPrivilegeSubmit(e) {
+  e.preventDefault()
+  
+  const name = document.getElementById('add-privilege-name').value.trim()
+  const active = document.getElementById('add-privilege-active').checked
+  
+  if (!name) {
+    showNotification('Privilege name is required', 'error')
+    return
+  }
+  
+  try {
+    await createPrivilege({ name, active })
+    showNotification('Privilege added successfully!', 'success')
+    
+    // Close modal and refresh
+    closePrivilegeModals()
+    loadPrivilegesForSettings(true)
+    
+  } catch (error) {
+    console.error('Error adding privilege:', error)
+    showNotification('Failed to add privilege', 'error')
+  }
+}
+
+window.editPrivilege = function(privilegeId) {
+  const privilege = privileges.find(p => p.id === privilegeId)
+  if (!privilege) return
+  
+  // Fill form
+  document.getElementById('edit-privilege-name').value = privilege.name
+  document.getElementById('edit-privilege-active').checked = privilege.active
+  
+  // Store current editing ID
+  window.currentEditingPrivilegeId = privilegeId
+  
+  // Show modal
+  const modal = document.getElementById('edit-privilege-modal')
+  if (modal) {
+    modal.classList.remove('hidden')
+    document.getElementById('edit-privilege-name').focus()
+  }
+}
+
+async function handleEditPrivilegeSubmit(e) {
+  e.preventDefault()
+  
+  const privilegeId = window.currentEditingPrivilegeId
+  if (!privilegeId) return
+  
+  const name = document.getElementById('edit-privilege-name').value.trim()
+  const active = document.getElementById('edit-privilege-active').checked
+  
+  if (!name) {
+    showNotification('Privilege name is required', 'error')
+    return
+  }
+  
+  try {
+    await updatePrivilege(privilegeId, { name, active })
+    showNotification('Privilege updated successfully!', 'success')
+    
+    // Close modal and refresh
+    closePrivilegeModals()
+    loadPrivilegesForSettings(true)
+    
+  } catch (error) {
+    console.error('Error updating privilege:', error)
+    showNotification('Failed to update privilege', 'error')
+  }
+}
+
+window.confirmDeletePrivilege = async function(privilegeId) {
+  const privilege = privileges.find(p => p.id === privilegeId)
+  if (!privilege) return
+  
+  if (confirm(`Are you sure you want to delete the privilege "${privilege.name}"?\n\nThis action cannot be undone.`)) {
+    try {
+      await deletePrivilege(privilegeId)
+      showNotification('Privilege deleted successfully!', 'success')
+      loadPrivilegesForSettings(true)
+    } catch (error) {
+      console.error('Error deleting privilege:', error)
+      showNotification('Failed to delete privilege', 'error')
+    }
+  }
+}
+
+function closePrivilegeModals() {
+  document.getElementById('add-privilege-modal').classList.add('hidden')
+  document.getElementById('edit-privilege-modal').classList.add('hidden')
+  window.currentEditingPrivilegeId = null
 }
