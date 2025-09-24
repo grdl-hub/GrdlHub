@@ -1,0 +1,68 @@
+/* ✅ CSS ISOLATION STRATEGIES */
+
+/* 1. Page-specific containers */
+.admin-page {
+  /* All admin styles nested inside */
+}
+
+.admin-page .title-list {
+  background: #f0f8ff;
+  /* Only affects admin title lists */
+}
+
+.admin-page .btn-primary {
+  background: #007bff;
+  /* Admin-specific button style */
+}
+
+.settings-page .title-list {
+  background: #f8f9fa;
+  /* Different style for settings */
+}
+
+.settings-page .btn-primary {
+  background: #28a745;
+  /* Settings uses green buttons */
+}
+
+/* 2. Component prefixing */
+.admin-modal { }
+.admin-form { }
+.admin-table { }
+
+.settings-modal { }
+.settings-form { }
+.settings-table { }
+
+/* 3. CSS Custom Properties for theming */
+.admin-page {
+  --primary-color: #007bff;
+  --border-color: #dee2e6;
+}
+
+.settings-page {
+  --primary-color: #28a745;
+  --border-color: #ced4da;
+}
+
+/* Components use the variables */
+.page-btn-primary {
+  background: var(--primary-color);
+  border: 1px solid var(--border-color);
+}
+
+/* 4. Avoid global styles that affect everything */
+/* ❌ Bad - affects all buttons everywhere */
+.btn { margin: 20px; }
+
+/* ✅ Good - scoped to specific contexts */
+.admin-page .btn { margin: 20px; }
+.settings-page .btn { margin: 10px; }
+
+/* 5. Reset/isolate third-party components */
+.admin-page .external-widget {
+  /* Reset any global styles that might interfere */
+  all: initial;
+  font-family: inherit;
+  color: inherit;
+}

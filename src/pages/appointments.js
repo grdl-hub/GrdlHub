@@ -208,13 +208,8 @@ async function editAppointmentFromCalendar(appointmentId, occurrenceDate) {
     return
   }
   
-  if (appointment.repeatPattern && occurrenceDate) {
-    // This is a recurring appointment - edit specific occurrence
-    editAppointmentOccurrence(appointmentId, occurrenceDate)
-  } else {
-    // This is a single appointment or edit the entire series
-    await openEditAppointmentModal(appointment)
-  }
+  // Pass the occurrence date to show the correct date in the modal
+  await openEditAppointmentModal(appointment, occurrenceDate)
 }
 
 async function createAppointmentModal(preselectedDate = null) {
@@ -370,12 +365,15 @@ async function createAppointmentModal(preselectedDate = null) {
   document.addEventListener('keydown', handleEscape)
 }
 
-async function openEditAppointmentModal(appointment) {
+async function openEditAppointmentModal(appointment, occurrenceDate = null) {
   // Remove any existing modal
   const existingModal = document.querySelector('.appointment-modal-overlay')
   if (existingModal) {
     existingModal.remove()
   }
+
+  // Use occurrence date if provided, otherwise use original appointment date
+  const displayDate = occurrenceDate || appointment.date
 
   // Get dynamic title dropdown HTML with current appointment title
   const titleDropdownHTML = await createTitleDropdownHTML(appointment.title)
@@ -385,8 +383,11 @@ async function openEditAppointmentModal(appointment) {
   modal.innerHTML = `
     <div class="appointment-modal">
       <div class="appointment-modal-header">
-        <h3>✏️ Edit ${appointment.repeatPattern ? 'Recurring ' : ''}Appointment</h3>
-        <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
+        <h3>📋 ${appointment.repeatPattern ? 'Recurring ' : ''}Appointment Details</h3>
+        <div class="modal-header-actions">
+          <button type="button" class="btn btn-primary btn-small" id="edit-appointment-btn" style="margin-right: 8px;">✏️ Edit</button>
+          <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
+        </div>
       </div>
       <div class="appointment-modal-content">
         <form id="appointment-form" class="appointment-form" data-editing-id="${appointment.id}">
@@ -410,7 +411,7 @@ async function openEditAppointmentModal(appointment) {
           <div class="form-row">
             <div class="form-group">
               <label for="apt-date" class="form-label">Date</label>
-              <input type="date" id="apt-date" class="form-input" value="${appointment.date}" required>
+              <input type="date" id="apt-date" class="form-input" value="${displayDate}" required>
             </div>
             
             <div class="form-group">
@@ -479,16 +480,63 @@ async function openEditAppointmentModal(appointment) {
             <textarea id="apt-description" class="form-textarea" rows="3" placeholder="Additional notes or agenda...">${appointment.description || ''}</textarea>
           </div>
 
-          <div class="form-actions">
+          <div class="form-actions" id="form-actions" style="display: none;">
             <button type="button" class="btn btn-secondary" onclick="this.closest('.appointment-modal-overlay').remove()">Cancel</button>
             <button type="submit" class="btn btn-primary">💾 Update Appointment</button>
           </div>
         </form>
+        
+        <!-- Delete button at bottom -->
+        <div class="modal-footer" style="text-align: center; padding: 20px; border-top: 1px solid #e0e0e0; margin-top: 20px;">
+          <button type="button" class="btn btn-danger" id="delete-appointment-btn">🗑️ Delete Event</button>
+        </div>
       </div>
     </div>
   `
 
   document.body.appendChild(modal)
+  
+  // Initially show read-only view
+  const formElements = modal.querySelectorAll('input, select, textarea, button[type="submit"]')
+  formElements.forEach(el => {
+    if (el.type !== 'button') {
+      el.disabled = true
+    }
+  })
+  
+  // Edit button functionality
+  const editBtn = modal.querySelector('#edit-appointment-btn')
+  const formActions = modal.querySelector('#form-actions')
+  const deleteBtn = modal.querySelector('#delete-appointment-btn')
+  
+  editBtn.addEventListener('click', () => {
+    // Enable form editing
+    formElements.forEach(el => el.disabled = false)
+    
+    // Show form actions, hide delete button
+    formActions.style.display = 'flex'
+    deleteBtn.style.display = 'none'
+    editBtn.style.display = 'none'
+    
+    // Change title to edit mode
+    const title = modal.querySelector('h3')
+    title.textContent = `✏️ Edit ${appointment.repeatPattern ? 'Recurring ' : ''}Appointment`
+    
+    // Focus on first input
+    const firstInput = modal.querySelector('select, input')
+    if (firstInput) firstInput.focus()
+  })
+  
+  // Delete button functionality  
+  deleteBtn.addEventListener('click', () => {
+    if (appointment.repeatPattern) {
+      // Show recurring appointment delete options
+      showRecurringDeleteOptions(appointment, modal)
+    } else {
+      // Direct delete for single appointments
+      deleteSingleAppointment(appointment.id, modal)
+    }
+  })
   
   // Setup modal event listeners
   setupModalEventListeners(modal)
@@ -519,6 +567,119 @@ async function openEditAppointmentModal(appointment) {
     }
   }
   document.addEventListener('keydown', handleEscape)
+}
+
+// Function to show delete options for recurring appointments
+function showRecurringDeleteOptions(appointment, originalModal) {
+  // Create delete options modal
+  const deleteModal = document.createElement('div')
+  deleteModal.className = 'appointment-modal-overlay'
+  deleteModal.innerHTML = `
+    <div class="appointment-modal" style="max-width: 400px; border-radius: 20px; background: rgba(40, 40, 40, 0.95); color: white;">
+      <div class="appointment-modal-content" style="padding: 30px;">
+        <div class="delete-options" style="text-align: center;">
+          <h3 style="margin-bottom: 10px; font-size: 18px; font-weight: 500;">Are you sure you want to delete this event? This is a repeating event.</h3>
+          
+          <div class="delete-option-buttons" style="margin-top: 30px; display: flex; flex-direction: column; gap: 12px;">
+            <button type="button" class="btn btn-danger btn-full-width" id="delete-this-only" style="padding: 15px; border-radius: 25px; background: rgba(60, 60, 60, 0.8); border: none; color: #ff6b6b; font-size: 16px; cursor: pointer;">
+              Delete This Event Only
+            </button>
+            
+            <button type="button" class="btn btn-danger btn-full-width" id="delete-all-future" style="padding: 15px; border-radius: 25px; background: rgba(60, 60, 60, 0.8); border: none; color: #ff6b6b; font-size: 16px; cursor: pointer;">
+              Delete All Future Events
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+  
+  document.body.appendChild(deleteModal)
+  
+  // Delete this occurrence only
+  deleteModal.querySelector('#delete-this-only').addEventListener('click', () => {
+    deleteThisOccurrenceOnly(appointment, deleteModal, originalModal)
+  })
+  
+  // Delete all future events  
+  deleteModal.querySelector('#delete-all-future').addEventListener('click', () => {
+    deleteAllFutureEvents(appointment.id, deleteModal, originalModal)
+  })
+  
+  // Close on background click
+  deleteModal.addEventListener('click', (e) => {
+    if (e.target === deleteModal) {
+      deleteModal.remove()
+    }
+  })
+}
+
+// Delete single appointment
+async function deleteSingleAppointment(appointmentId, modal) {
+  try {
+    await deleteAppointment(appointmentId)
+    modal.remove()
+    showNotification('Appointment deleted successfully', 'success')
+  } catch (error) {
+    console.error('Error deleting appointment:', error)
+    showNotification('Error deleting appointment', 'error')
+  }
+}
+
+// Delete this occurrence only (for recurring appointments)
+async function deleteThisOccurrenceOnly(appointment, deleteModal, originalModal) {
+  try {
+    // Get the actual occurrence date from the modal or use today
+    const occurrenceDate = document.getElementById('apt-date')?.value || new Date().toISOString().split('T')[0]
+    
+    // Add exception to cancel this specific occurrence
+    const exceptions = appointment.exceptions || []
+    exceptions.push({
+      date: occurrenceDate,
+      action: 'cancelled',
+      reason: 'Deleted by user'
+    })
+    
+    await updateDoc(doc(db, 'appointments', appointment.id), {
+      exceptions: exceptions
+    })
+    
+    deleteModal.remove()
+    originalModal.remove()
+    
+    await loadAppointments()
+    renderCalendar()
+    
+    showNotification('This occurrence deleted successfully', 'success')
+  } catch (error) {
+    console.error('Error deleting occurrence:', error)
+    showNotification('Error deleting occurrence', 'error')
+  }
+}
+
+// Delete all future events (end the recurring series from today)
+async function deleteAllFutureEvents(appointmentId, deleteModal, originalModal) {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Instead of deleting the entire appointment, set an end date to today
+    // This preserves past occurrences but stops future ones
+    await updateDoc(doc(db, 'appointments', appointmentId), {
+      endDate: today,
+      lastModified: new Date().toISOString()
+    })
+    
+    deleteModal.remove()
+    originalModal.remove()
+    
+    await loadAppointments()
+    renderCalendar()
+    
+    showNotification('Future appointments cancelled. Past events preserved.', 'success')
+  } catch (error) {
+    console.error('Error ending appointment series:', error)
+    showNotification('Error ending appointment series', 'error')
+  }
 }
 
 function setupModalEventListeners(modal) {
@@ -866,6 +1027,14 @@ function getAppointmentsForDate(dateString) {
     // Check direct date match
     if (apt.date === dateString) {
       console.log(`✅ Direct date match: ${apt.title}`)
+      
+      // Check if this original occurrence has been cancelled
+      const exception = getExceptionForDate(apt, dateString)
+      if (exception && exception.action === 'cancelled') {
+        console.log(`🚫 Skipping cancelled original occurrence: ${apt.title} on ${dateString}`)
+        return // Skip this cancelled original occurrence
+      }
+      
       dayAppointments.push(apt)
       return
     }
@@ -900,17 +1069,21 @@ function getAppointmentsForDate(dateString) {
           const exception = getExceptionForDate(apt, dateString)
           
           if (exception) {
-            // Create a modified appointment object for this occurrence
-            const modifiedApt = { ...apt }
-            modifiedApt.occurrenceDate = dateString
-            modifiedApt.exception = exception
-            
-            if (exception.action === 'modified') {
-              // Apply modifications
-              Object.assign(modifiedApt, exception.modifiedData)
+            // Skip cancelled occurrences - don't add them to the calendar
+            if (exception.action === 'cancelled') {
+              console.log(`🚫 Skipping cancelled occurrence: ${apt.title} on ${dateString}`)
+              return // Skip this occurrence
             }
             
-            dayAppointments.push(modifiedApt)
+            // Handle modified occurrences
+            if (exception.action === 'modified') {
+              const modifiedApt = { ...apt }
+              modifiedApt.occurrenceDate = dateString
+              modifiedApt.exception = exception
+              // Apply modifications
+              Object.assign(modifiedApt, exception.modifiedData)
+              dayAppointments.push(modifiedApt)
+            }
           } else {
             // Normal recurring appointment
             const normalApt = { ...apt }
@@ -1034,115 +1207,6 @@ function isRecurringAppointmentOnDate(appointment, targetDate) {
       console.log('No repeat pattern or unknown pattern')
       return false
   }
-}
-
-function showDayAppointments(dateString) {
-  const dayAppointments = getAppointmentsForDate(dateString)
-  
-  if (dayAppointments.length === 0) {
-    showNotification(`No appointments on ${formatDateForDisplay(dateString)}`, 'info')
-    return
-  }
-  
-  // Create detailed appointment modal
-  const appointmentsHTML = dayAppointments.map(apt => {
-    let itemClass = `day-appointment-item ${apt.type}`
-    let statusHTML = ''
-    let actionsHTML = ''
-    
-    if (apt.exception) {
-      if (apt.exception.action === 'cancelled') {
-        itemClass += ' cancelled'
-        statusHTML = '<div class="appointment-status cancelled">❌ CANCELLED</div>'
-        actionsHTML = `
-          <button class="btn btn-small btn-success" onclick="restoreAppointmentOccurrence('${apt.id}', '${dateString}')">
-            🔄 Restore
-          </button>
-        `
-      } else if (apt.exception.action === 'modified') {
-        itemClass += ' modified'
-        statusHTML = '<div class="appointment-status modified">✏️ MODIFIED</div>'
-        actionsHTML = `
-          <button class="btn btn-small btn-secondary" onclick="editAppointmentOccurrence('${apt.id}', '${dateString}')">
-            ✏️ Edit This
-          </button>
-          <button class="btn btn-small btn-warning" onclick="cancelAppointmentOccurrence('${apt.id}', '${dateString}')">
-            ❌ Cancel This
-          </button>
-          <button class="btn btn-small btn-info" onclick="restoreAppointmentOccurrence('${apt.id}', '${dateString}')">
-            🔄 Reset to Original
-          </button>
-        `
-      }
-    } else if (apt.repeatPattern) {
-      // Normal recurring appointment - simplified actions
-      actionsHTML = `
-        <button class="btn btn-small btn-secondary" onclick="editAppointmentOccurrence('${apt.id}', '${dateString}')">
-          ✏️ Edit
-        </button>
-        <button class="btn btn-small btn-warning" onclick="cancelAppointmentOccurrence('${apt.id}', '${dateString}')">
-          ❌ Cancel This
-        </button>
-        <button class="btn btn-small btn-danger" onclick="deleteAppointment('${apt.id}')">
-          🗑️ Delete Series
-        </button>
-      `
-    } else {
-      // One-time appointment
-      actionsHTML = `
-        <button class="btn btn-small btn-secondary" onclick="editAppointment('${apt.id}')">✏️ Edit</button>
-        <button class="btn btn-small btn-danger" onclick="deleteAppointment('${apt.id}')">🗑️ Delete</button>
-      `
-    }
-    
-    return `
-      <div class="${itemClass}">
-        ${statusHTML}
-        <div class="appointment-time">${apt.time}</div>
-        <div class="appointment-details">
-          <h4 class="${apt.exception?.action === 'cancelled' ? 'strikethrough' : ''}">${apt.title}</h4>
-          <p><strong>Type:</strong> ${apt.type}</p>
-          <p><strong>Place:</strong> ${apt.place || 'Not specified'}</p>
-          <p><strong>Duration:</strong> ${apt.duration} minutes</p>
-          ${apt.description ? `<p><strong>Notes:</strong> ${apt.description}</p>` : ''}
-          ${apt.repeatPattern ? `<p><strong>Repeats:</strong> ${apt.repeatPattern}</p>` : ''}
-          ${apt.exception?.reason ? `<p><strong>Reason:</strong> ${apt.exception.reason}</p>` : ''}
-        </div>
-        <div class="appointment-actions">
-          ${actionsHTML}
-        </div>
-      </div>
-    `
-  }).join('')
-  
-  // Create and show modal
-  const modal = document.createElement('div')
-  modal.className = 'appointment-modal-overlay'
-  modal.innerHTML = `
-    <div class="appointment-modal">
-      <div class="appointment-modal-header">
-        <h3>📅 Appointments for ${formatDateForDisplay(dateString)}</h3>
-        <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
-      </div>
-      <div class="appointment-modal-content">
-        ${appointmentsHTML}
-        <div class="day-modal-actions">
-          <button class="btn btn-primary" onclick="openAppointmentModal('${dateString}'); this.closest('.appointment-modal-overlay').remove();">
-            ➕ Create Appointment for This Day
-          </button>
-        </div>
-      </div>
-    </div>
-  `
-  
-  document.body.appendChild(modal)
-  
-  // Close on background click
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      modal.remove()
-    }
-  })
 }
 
 function getNextOccurrence(appointment) {
@@ -1337,8 +1401,6 @@ window.editAppointment = async function(appointmentId) {
 }
 
 window.deleteAppointment = async function(appointmentId) {
-  if (!confirm('Are you sure you want to delete this appointment?')) return
-  
   try {
     await deleteDoc(doc(db, 'appointments', appointmentId))
     showNotification('Appointment deleted successfully', 'success')
@@ -1394,9 +1456,6 @@ window.cancelAppointmentOccurrence = async function(appointmentId, dateString) {
     const modal = document.querySelector('.appointment-modal-overlay')
     if (modal) modal.remove()
     
-    // Show the updated day view
-    setTimeout(() => showDayAppointments(dateString), 300)
-    
   } catch (error) {
     console.error('Error cancelling appointment occurrence:', error)
     showNotification('Error cancelling appointment occurrence', 'error')
@@ -1430,160 +1489,13 @@ window.restoreAppointmentOccurrence = async function(appointmentId, dateString) 
     const modal = document.querySelector('.appointment-modal-overlay')
     if (modal) modal.remove()
     
-    // Show the updated day view
-    setTimeout(() => showDayAppointments(dateString), 300)
-    
   } catch (error) {
     console.error('Error restoring appointment occurrence:', error)
     showNotification('Error restoring appointment occurrence', 'error')
   }
 }
 
-window.editAppointmentOccurrence = async function(appointmentId, dateString) {
-  const appointment = appointments.find(apt => apt.id === appointmentId)
-  if (!appointment) {
-    showNotification('Appointment not found', 'error')
-    return
-  }
-  
-  // Get current values (either from exception or original)
-  const exception = getExceptionForDate(appointment, dateString)
-  const currentValues = exception?.action === 'modified' ? 
-    { ...appointment, ...exception.modifiedData } : appointment
-  
-  // Create edit form modal
-  const modal = document.createElement('div')
-  modal.className = 'appointment-modal-overlay'
-  modal.innerHTML = `
-    <div class="appointment-modal">
-      <div class="appointment-modal-header">
-        <h3>✏️ Edit ${appointment.repeatPattern ? 'Recurring ' : ''}Appointment - ${formatDateForDisplay(dateString)}</h3>
-        <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
-      </div>
-      <div class="appointment-modal-content">
-        <form id="edit-occurrence-form" class="appointment-form">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="edit-title">Title</label>
-              <input type="text" id="edit-title" value="${currentValues.title}" required>
-            </div>
-            <div class="form-group">
-              <label for="edit-type">Type</label>
-              <select id="edit-type" required>
-                <option value="meeting" ${currentValues.type === 'meeting' ? 'selected' : ''}>📋 Meeting</option>
-                <option value="task" ${currentValues.type === 'task' ? 'selected' : ''}>✅ Task</option>
-                <option value="event" ${currentValues.type === 'event' ? 'selected' : ''}>🎉 Event</option>
-                <option value="reminder" ${currentValues.type === 'reminder' ? 'selected' : ''}>⏰ Reminder</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="edit-time">Time</label>
-              <input type="time" id="edit-time" value="${currentValues.time}" required>
-            </div>
-            <div class="form-group">
-              <label for="edit-duration">Duration (minutes)</label>
-              <input type="number" id="edit-duration" value="${currentValues.duration}" min="5" max="480" step="5" required>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="edit-place">Place</label>
-            <input type="text" id="edit-place" value="${currentValues.place || ''}" placeholder="Location or meeting room">
-          </div>
-          
-          <div class="form-group">
-            <label for="edit-description">Notes</label>
-            <textarea id="edit-description" rows="3" placeholder="Additional notes or description">${currentValues.description || ''}</textarea>
-          </div>
-          
-          ${appointment.repeatPattern ? `
-            <div class="recurring-notice">
-              <p><strong>🔄 This is a recurring appointment (${appointment.repeatPattern})</strong></p>
-              <p>When you save changes, you'll be asked if you want to apply them to all future occurrences.</p>
-            </div>
-          ` : ''}
-          
-          <div class="form-actions">
-            <button type="button" class="btn btn-secondary" onclick="this.closest('.appointment-modal-overlay').remove()">Cancel</button>
-            <button type="submit" class="btn btn-primary">💾 Save Changes</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `
-  
-  document.body.appendChild(modal)
-  
-  // Handle form submission
-  const form = modal.querySelector('#edit-occurrence-form')
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    
-    try {
-      const modifiedData = {
-        title: document.getElementById('edit-title').value,
-        type: document.getElementById('edit-type').value,
-        time: document.getElementById('edit-time').value,
-        duration: parseInt(document.getElementById('edit-duration').value),
-        place: document.getElementById('edit-place').value,
-        description: document.getElementById('edit-description').value
-      }
-      
-      // Validate form data
-      const validationErrors = validateAppointmentForm(modifiedData)
-      if (validationErrors.length > 0) {
-        showNotification(validationErrors.join(', '), 'error')
-        return
-      }
-      
-      // Close the edit modal first
-      modal.remove()
-      
-      // For recurring appointments, ask if changes should apply to all future events
-      if (appointment.repeatPattern) {
-        const applyToFuture = confirm(
-          `Do you want to apply these changes to all future occurrences of this recurring appointment?\n\n` +
-          `✅ YES = Update this and all future occurrences\n` +
-          `❌ NO = Update only this specific occurrence\n\n` +
-          `Current change: ${formatDateForDisplay(dateString)} and forward`
-        )
-        
-        if (applyToFuture) {
-          // Apply to all future occurrences by updating the series from this date
-          await updateRecurringSeriesFromDate(appointmentId, dateString, modifiedData)
-        } else {
-          // Apply only to this occurrence (create exception)
-          await updateSingleOccurrence(appointmentId, dateString, modifiedData)
-        }
-      } else {
-        // Non-recurring appointment - just update it
-        await updateDoc(doc(db, 'appointments', appointmentId), modifiedData)
-        showNotification('Appointment updated successfully', 'success')
-      }
-      
-      // Refresh the view
-      await loadAppointments()
-      renderCalendar()
-      
-      // Show the updated day view
-      setTimeout(() => showDayAppointments(dateString), 300)
-      
-    } catch (error) {
-      console.error('Error updating appointment:', error)
-      showNotification('Error updating appointment', 'error')
-    }
-  })
-  
-  // Close on background click
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      modal.remove()
-    }
-  })
-}
+
 
 // Helper function to get the previous day
 function getPreviousDay(dateString) {
