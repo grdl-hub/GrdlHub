@@ -1,5 +1,6 @@
 import { db } from '../auth.js'
 import { getCurrentUser } from '../auth.js'
+import { isAdmin } from '../accessControl.js'
 import { 
   collection, 
   query, 
@@ -16,6 +17,7 @@ import { showNotification, showLoading, hideLoading } from '../utils/notificatio
 
 let availabilityData = []
 let currentUserData = null
+let isCurrentUserAdmin = false
 let appointments = []
 let userAvailabilities = {} // Store user availability: { appointmentId_date: boolean }
 let currentDate = new Date()
@@ -73,7 +75,8 @@ async function loadUserAvailability() {
     if (!user) return
     
     currentUserData = user
-    console.log('📅 Loading availability for user:', user.email)
+    isCurrentUserAdmin = await isAdmin(user.uid)
+    console.log('📅 Loading availability for user:', user.email, '(Admin:', isCurrentUserAdmin, ')')
     
     const availabilityQuery = query(
       collection(db, 'availabilities'),
@@ -87,7 +90,8 @@ async function loadUserAvailability() {
       const data = doc.data()
       // Store availability by appointment ID and date
       const key = `${data.appointmentId}_${data.date}`
-      userAvailabilities[key] = data.isAvailable
+      // Handle both old format (isAvailable) and new format (available)
+      userAvailabilities[key] = data.available !== undefined ? data.available : data.isAvailable
     })
     
     console.log('✅ Loaded availability data:', Object.keys(userAvailabilities).length, 'entries')
@@ -232,15 +236,21 @@ function renderAvailabilityCalendar() {
   // Get first day of month and number of days
   const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
   const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-  // Adjust for Monday start: 0=Sunday becomes 6, 1=Monday becomes 0, etc.
-  const firstDayOfWeek = (firstDay.getDay() + 6) % 7
   const daysInMonth = lastDay.getDate()
 
-  // Calculate previous month details for leading days
-  const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 0)
-  const daysInPrevMonth = prevMonth.getDate()
+  // Find the first Monday of the month
+  let firstMonday = 1
+  const firstDayOfWeek = firstDay.getDay() // 0=Sunday, 1=Monday, etc.
+  
+  if (firstDayOfWeek === 0) { // Sunday
+    firstMonday = 2 // Next Monday is day 2
+  } else if (firstDayOfWeek === 1) { // Monday
+    firstMonday = 1 // First day is already Monday
+  } else { // Tuesday(2) to Saturday(6)
+    firstMonday = 8 - firstDayOfWeek + 1 // Next Monday
+  }
 
-  // Build calendar HTML - Starting with Monday (using same classes as appointments)
+  // Build calendar HTML - Starting with Monday
   let calendarHTML = `
     <div class="calendar-header-row">
       <div class="calendar-day-header">Mon</div>
@@ -253,20 +263,10 @@ function renderAvailabilityCalendar() {
     </div>
   `
 
-  // Add trailing days from previous month
-  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-    const day = daysInPrevMonth - i
-    const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, day)
-    // Fix timezone issue by using local date string format
-    const dateString = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    
-    calendarHTML += `<div class="calendar-day other-month" data-date="${dateString}">
-      <div class="day-number">${day}</div>
-    </div>`
-  }
+  // No trailing days - start directly with first Monday
   
-  // Add days of month
-  for (let day = 1; day <= daysInMonth; day++) {
+  // Add days of month starting from first Monday
+  for (let day = firstMonday; day <= daysInMonth; day++) {
     const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
     // Fix timezone issue by using local date string format (same as appointments.js)
     const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -284,17 +284,38 @@ function renderAvailabilityCalendar() {
     
     dayAppointments.forEach(apt => {
       const availabilityKey = `${apt.id}_${dateString}`
+      const hasSubmitted = userAvailabilities[availabilityKey] !== undefined
       const isAvailable = userAvailabilities[availabilityKey] === true
-      const availabilityClass = isAvailable ? 'available' : 'not-available'
-      const lockedClass = isMonthSubmitted ? 'locked' : ''
+      const isNotAvailable = userAvailabilities[availabilityKey] === false
       
-      const clickHandler = isMonthSubmitted 
+      let availabilityClass, titleText, indicator
+      
+      if (!hasSubmitted) {
+        // Default state: Available by default, not yet submitted
+        availabilityClass = 'available-default'
+        titleText = 'Tap to mark as NOT available'
+        indicator = ''
+      } else if (isAvailable) {
+        // Explicitly marked as available
+        availabilityClass = 'available'
+        titleText = 'Tap to mark as NOT available'
+        indicator = '<div class="availability-indicator">✅</div>'
+      } else {
+        // Explicitly marked as not available
+        availabilityClass = 'not-available'
+        titleText = 'Tap to mark as available'
+        indicator = '<div class="availability-indicator">❌</div>'
+      }
+      
+      const lockedClass = (isMonthSubmitted && !isCurrentUserAdmin) ? 'locked' : ''
+      
+      const clickHandler = (isMonthSubmitted && !isCurrentUserAdmin)
         ? `showNotification('🔒 Availability is locked for this month', 'warning')` 
-        : `toggleAppointmentAvailability('${apt.id}', '${dateString}', ${!isAvailable})`
+        : `toggleAppointmentAvailability('${apt.id}', '${dateString}')`
       
-      const titleText = isMonthSubmitted 
-        ? 'Availability is locked - contact admin for changes'
-        : `Tap to ${isAvailable ? 'remove availability' : 'mark as available'}`
+      if (isMonthSubmitted && !isCurrentUserAdmin) {
+        titleText = 'Availability is locked - contact admin for changes'
+      }
       
       appointmentsHTML += `
         <div class="availability-appointment-item ${apt.type} ${availabilityClass} ${lockedClass}" 
@@ -304,7 +325,7 @@ function renderAvailabilityCalendar() {
              title="${titleText}">
           <div class="apt-time">${apt.time}</div>
           <div class="apt-title">${apt.title}</div>
-          ${isAvailable ? '<div class="availability-indicator">✓</div>' : ''}
+          ${indicator}
           ${isMonthSubmitted ? '<div class="lock-indicator">🔒</div>' : ''}
         </div>
       `
@@ -318,11 +339,12 @@ function renderAvailabilityCalendar() {
     `
   }
 
-  // Calculate how many cells we need to fill the rest of the calendar (complete weeks)
-  const totalCellsUsed = firstDayOfWeek + daysInMonth
-  const remainingCells = (7 - (totalCellsUsed % 7)) % 7
+  // Calculate remaining days to complete the last week
+  const lastDayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), daysInMonth)
+  const lastDayOfWeek = (lastDayDate.getDay() + 6) % 7 // Convert to Monday=0 format
+  const remainingCells = (6 - lastDayOfWeek) % 7 // Days needed to complete the week
   
-  // Add leading days from next month to complete the calendar
+  // Add trailing days from next month to complete the calendar (if needed)
   for (let day = 1; day <= remainingCells; day++) {
     const nextMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, day)
     // Fix timezone issue by using local date string format
@@ -409,7 +431,7 @@ function isRecurringAppointmentOnDate(appointment, targetDate) {
 }
 
 // Toggle user availability for a specific appointment
-async function toggleAppointmentAvailability(appointmentId, date, isChecked) {
+async function toggleAppointmentAvailability(appointmentId, date) {
   try {
     const user = await getCurrentUser()
     if (!user) {
@@ -417,48 +439,69 @@ async function toggleAppointmentAvailability(appointmentId, date, isChecked) {
       return
     }
 
-    // Check if current month is submitted (locked)
+    // Check if current month is submitted (locked) - but allow admins to edit
     if (isCurrentMonthSubmitted()) {
-      showNotification('🔒 Availability is submitted and locked. Contact admin for changes.', 'warning', 5000)
-      return
+      const userIsAdmin = await isAdmin(user.uid)
+      if (!userIsAdmin) {
+        showNotification('🔒 Availability is submitted and locked. Contact admin for changes.', 'warning', 5000)
+        return
+      } else {
+        showNotification('🔧 Admin override: editing locked availability', 'info', 3000)
+      }
     }
     
     const key = `${appointmentId}_${date}`
+    const docId = `${user.uid}_${appointmentId}_${date}`
+    const isCurrentlyNotAvailable = userAvailabilities[key] === false
+    const hasSubmittedAvailability = userAvailabilities[key] !== undefined
     
-    if (isChecked) {
-      // User is marking themselves as available
-      const docId = `${user.uid}_${appointmentId}_${date}`
-      
-      // Get user's display information
-      const userName = user.displayName || user.email || 'Anonymous User'
-      const userEmail = user.email || 'No email'
-      
-      // Find appointment title for better reference
-      const appointmentTitle = appointments.find(apt => apt.id === appointmentId)?.title || 'Event'
-      
+    if (!hasSubmittedAvailability) {
+      // User hasn't submitted anything yet, first click marks as NOT available
       await setDoc(doc(db, 'availabilities', docId), {
         userId: user.uid,
-        userName: userName,
-        userEmail: userEmail,
+        userName: user.displayName || user.email || 'Anonymous User',
+        userEmail: user.email || 'No email',
         appointmentId: appointmentId,
-        appointmentTitle: appointmentTitle,
         date: date,
-        isAvailable: true,
-        timestamp: new Date()
+        available: false,
+        updatedAt: new Date()
+      })
+      
+      // Update local state
+      userAvailabilities[key] = false
+      showNotification('Marked as NOT available', 'warning')
+      
+    } else if (isCurrentlyNotAvailable) {
+      // User is currently NOT available, clicking will make them available
+      await setDoc(doc(db, 'availabilities', docId), {
+        userId: user.uid,
+        userName: user.displayName || user.email || 'Anonymous User',
+        userEmail: user.email || 'No email',
+        appointmentId: appointmentId,
+        date: date,
+        available: true,
+        updatedAt: new Date()
       })
       
       // Update local state
       userAvailabilities[key] = true
-      showNotification('Marked as available!', 'success')
+      showNotification('Marked as available', 'success')
       
     } else {
-      // User is removing their availability (back to default "not available")
-      const docId = `${user.uid}_${appointmentId}_${date}`
-      await deleteDoc(doc(db, 'availabilities', docId))
+      // User is currently available, clicking will make them NOT available
+      await setDoc(doc(db, 'availabilities', docId), {
+        userId: user.uid,
+        userName: user.displayName || user.email || 'Anonymous User',
+        userEmail: user.email || 'No email',
+        appointmentId: appointmentId,
+        date: date,
+        available: false,
+        updatedAt: new Date()
+      })
       
-      // Update local state  
-      delete userAvailabilities[key]
-      showNotification('Availability removed', 'info')
+      // Update local state
+      userAvailabilities[key] = false
+      showNotification('Marked as NOT available', 'warning')
     }
     
     // Re-render calendar
@@ -501,6 +544,8 @@ async function loadMonthSubmissionStatus() {
       monthSubmissionStatus[data.monthKey] = {
         submitted: true,
         timestamp: data.submittedAt,
+        userName: data.userName || data.userEmail || 'Unknown User',
+        userEmail: data.userEmail || 'No email',
         docId: doc.id
       }
     })
@@ -526,6 +571,7 @@ function updateSubmissionUI() {
 
   if (isSubmitted) {
     const submittedAt = new Date(monthSubmissionStatus[currentMonthKey].timestamp)
+    const userName = monthSubmissionStatus[currentMonthKey].userName || 'Unknown User'
     statusContainer.innerHTML = `
       <div class="submission-status submitted">
         <div class="status-header">
@@ -533,7 +579,7 @@ function updateSubmissionUI() {
           <span class="status-title">Availability Submitted for ${monthName}</span>
         </div>
         <div class="status-details">
-          Submitted on ${submittedAt.toLocaleDateString()} at ${submittedAt.toLocaleTimeString()}
+          Submitted by ${userName} on ${submittedAt.toLocaleDateString()} at ${submittedAt.toLocaleTimeString()}
         </div>
         <div class="status-message">
           ℹ️ Your availability is locked. Contact admin if changes are needed.
@@ -578,9 +624,23 @@ async function submitMonthAvailability() {
     showLoading('Submitting availability...')
     
     const currentUser = await getCurrentUser()
+    
+    // Get proper user name from users collection
+    let userName = currentUser.displayName || 'Anonymous User'
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        userName = userData.name || userName
+      }
+    } catch (error) {
+      console.log('Could not fetch user name from users collection, using displayName')
+    }
+    
     const submissionData = {
       userId: currentUser.uid,
-      userEmail: currentUser.email,
+      userName: userName,
+      userEmail: currentUser.email || 'No email',
       monthKey: currentMonthKey,
       submittedAt: new Date().toISOString(),
       month: currentDate.getMonth() + 1,
@@ -594,6 +654,8 @@ async function submitMonthAvailability() {
     monthSubmissionStatus[currentMonthKey] = {
       submitted: true,
       timestamp: submissionData.submittedAt,
+      userName: submissionData.userName,
+      userEmail: submissionData.userEmail,
       docId: `${currentUser.uid}_${currentMonthKey}`
     }
 
@@ -615,5 +677,55 @@ function isCurrentMonthSubmitted() {
   return monthSubmissionStatus[currentMonthKey]?.submitted || false
 }
 
-// Make function globally available
+// Utility function to clean up orphaned availability records
+export async function cleanupOrphanedAvailabilities() {
+  try {
+    console.log('🧹 Starting cleanup of orphaned availability records...')
+    
+    // Get all availability records
+    const availabilitySnapshot = await getDocs(collection(db, 'availabilities'))
+    
+    // Get all current appointment IDs
+    const appointmentSnapshot = await getDocs(collection(db, 'appointments'))
+    const validAppointmentIds = new Set()
+    appointmentSnapshot.forEach(doc => {
+      validAppointmentIds.add(doc.id)
+    })
+    
+    // Find orphaned records
+    const orphanedRecords = []
+    availabilitySnapshot.forEach(doc => {
+      const data = doc.data()
+      if (!validAppointmentIds.has(data.appointmentId)) {
+        orphanedRecords.push({
+          id: doc.id,
+          appointmentId: data.appointmentId
+        })
+      }
+    })
+    
+    if (orphanedRecords.length === 0) {
+      console.log('✅ No orphaned availability records found')
+      return 0
+    }
+    
+    // Delete orphaned records
+    console.log(`🗑️ Deleting ${orphanedRecords.length} orphaned availability records`)
+    const deletePromises = orphanedRecords.map(record => 
+      deleteDoc(doc(db, 'availabilities', record.id))
+    )
+    
+    await Promise.all(deletePromises)
+    console.log('✅ Cleanup completed successfully')
+    
+    return orphanedRecords.length
+    
+  } catch (error) {
+    console.error('❌ Error during cleanup:', error)
+    throw error
+  }
+}
+
+// Make functions globally available
 window.toggleAppointmentAvailability = toggleAppointmentAvailability
+window.cleanupOrphanedAvailabilities = cleanupOrphanedAvailabilities

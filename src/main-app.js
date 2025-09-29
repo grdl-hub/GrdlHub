@@ -322,12 +322,6 @@ class MainApp {
                   <div id="calendar-grid" class="calendar-grid">
                     <!-- Calendar will be built by JavaScript -->
                   </div>
-                  <div class="calendar-legend">
-                    <span class="legend-item"><span class="legend-color meeting"></span> Meetings</span>
-                    <span class="legend-item"><span class="legend-color task"></span> Tasks</span>
-                    <span class="legend-item"><span class="legend-color event"></span> Events</span>
-                    <span class="legend-item"><span class="legend-color reminder"></span> Reminders</span>
-                  </div>
                 </div>
 
                 <!-- Floating Action Button -->
@@ -364,25 +358,6 @@ class MainApp {
                 
                 <div id="availability-calendar-grid" class="availability-calendar-grid">
                   <!-- Calendar will be built by JavaScript -->
-                </div>
-                
-                <div class="availability-legend">
-                  <div class="legend-group">
-                    <strong>How to use:</strong>
-                    <span class="legend-item">📱 Tap any appointment to mark yourself as available</span>
-                  </div>
-                  <div class="legend-group">
-                    <strong>Your Status:</strong>
-                    <span class="legend-item"><span class="availability-demo available"></span> Available ✓ (Green with checkmark)</span>
-                    <span class="legend-item"><span class="availability-demo not-available"></span> Not Available (Gray - Default)</span>
-                  </div>
-                  <div class="legend-group">
-                    <strong>Appointment Types:</strong>
-                    <span class="legend-item"><span class="legend-color meeting"></span> Meetings</span>
-                    <span class="legend-item"><span class="legend-color task"></span> Tasks</span>
-                    <span class="legend-item"><span class="legend-color event"></span> Events</span>
-                    <span class="legend-item"><span class="legend-color reminder"></span> Reminders</span>
-                  </div>
                 </div>
               </div>
             </div>

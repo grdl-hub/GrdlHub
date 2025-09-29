@@ -549,34 +549,70 @@ async function openEditAppointmentModal(appointment, occurrenceDate = null) {
     }
   })
   
+  // Also disable designation checkboxes initially
+  const disableDesignations = () => {
+    const designationCheckboxes = modal.querySelectorAll('input[name="designations"]')
+    designationCheckboxes.forEach(checkbox => {
+      checkbox.disabled = true
+      const label = checkbox.closest('.designation-checkbox-label')
+      if (label) {
+        label.style.opacity = '0.6'
+        label.style.pointerEvents = 'none'
+      }
+    })
+  }
+  
+  // Call initially and after designations load
+  disableDesignations()
+  
   // Edit button functionality
   const editBtn = modal.querySelector('#edit-appointment-btn')
   const formActions = modal.querySelector('#form-actions')
   const deleteBtn = modal.querySelector('#delete-appointment-btn')
   
-  editBtn.addEventListener('click', () => {
-    // Enable form editing
-    formElements.forEach(el => el.disabled = false)
-    
-    // Show form actions, hide delete button
-    formActions.style.display = 'flex'
-    deleteBtn.style.display = 'none'
-    editBtn.style.display = 'none'
-    
-    // Change title to edit mode
-    const title = modal.querySelector('h3')
-    title.textContent = `✏️ Edit ${appointment.repeatPattern ? 'Recurring ' : ''}Appointment`
-    
-    // Set the form as in editing mode
-    const appointmentForm = modal.querySelector('#appointment-form')
-    if (appointmentForm) {
-      appointmentForm.dataset.editingId = appointment.id
-    }
-    
-    // Focus on first input
-    const firstInput = modal.querySelector('select, input')
-    if (firstInput) firstInput.focus()
-  })
+  if (editBtn) {
+    editBtn.addEventListener('click', () => {
+      // Re-query form elements to ensure we have the latest state
+      const currentFormElements = modal.querySelectorAll('input, select, textarea, button[type="submit"]')
+      
+      // Enable form editing
+      currentFormElements.forEach(el => {
+        if (el.type !== 'button') {
+          el.disabled = false
+        }
+      })
+      
+      // Enable designation checkboxes
+      const designationCheckboxes = modal.querySelectorAll('input[name="designations"]')
+      designationCheckboxes.forEach(checkbox => {
+        checkbox.disabled = false
+        const label = checkbox.closest('.designation-checkbox-label')
+        if (label) {
+          label.style.opacity = '1'
+          label.style.pointerEvents = 'auto'
+        }
+      })
+      
+      // Show form actions, hide delete button
+      if (formActions) formActions.style.display = 'flex'
+      if (deleteBtn) deleteBtn.style.display = 'none'
+      if (editBtn) editBtn.style.display = 'none'
+      
+      // Change title to edit mode
+      const title = modal.querySelector('h3')
+      if (title) title.textContent = `✏️ Edit ${appointment.repeatPattern ? 'Recurring ' : ''}Appointment`
+      
+      // Set the form as in editing mode
+      const appointmentForm = modal.querySelector('#appointment-form')
+      if (appointmentForm) {
+        appointmentForm.dataset.editingId = appointment.id
+      }
+      
+      // Focus on first input
+      const firstInput = modal.querySelector('select:not([disabled]), input:not([disabled])')
+      if (firstInput) firstInput.focus()
+    })
+  }
   
   // Delete button functionality  
   deleteBtn.addEventListener('click', () => {
@@ -609,6 +645,9 @@ async function openEditAppointmentModal(appointment, occurrenceDate = null) {
           }
         })
       }
+      
+      // Disable designations after loading (since we're in read-only mode initially)
+      disableDesignations()
     })
   }, 500)
   
@@ -1611,7 +1650,28 @@ window.editAppointment = async function(appointmentId) {
 
 window.deleteAppointment = async function(appointmentId) {
   try {
+    // Delete the appointment
     await deleteDoc(doc(db, 'appointments', appointmentId))
+    
+    // Clean up related availability records
+    console.log('🧹 Cleaning up availability records for appointment:', appointmentId)
+    const availabilityQuery = query(
+      collection(db, 'availabilities'),
+      where('appointmentId', '==', appointmentId)
+    )
+    
+    const availabilitySnapshot = await getDocs(availabilityQuery)
+    const deletePromises = []
+    
+    availabilitySnapshot.forEach(docSnapshot => {
+      deletePromises.push(deleteDoc(docSnapshot.ref))
+    })
+    
+    if (deletePromises.length > 0) {
+      await Promise.all(deletePromises)
+      console.log('✅ Deleted', deletePromises.length, 'availability records')
+    }
+    
     showNotification('Appointment deleted successfully', 'success')
     
     await loadAppointments()
@@ -1832,12 +1892,11 @@ async function loadAvailableUsersForDesignation(appointmentId = null) {
     let availabilitiesQuery
     
     if (appointmentId) {
-      // For edit modal: Query users who marked availability for this specific appointment
+      // For edit modal: Get all users who have submitted availability for this appointment/date
       availabilitiesQuery = query(
         collection(db, 'availabilities'),
         where('appointmentId', '==', appointmentId),
-        where('date', '==', selectedDate),
-        where('isAvailable', '==', true)
+        where('date', '==', selectedDate)
       )
     } else {
       // For create modal: Users can't mark availability until the appointment exists
@@ -1850,15 +1909,46 @@ async function loadAvailableUsersForDesignation(appointmentId = null) {
     const snapshot = await getDocs(availabilitiesQuery)
     const availableUsers = []
     
-    // Simple: Get user details directly from availability documents (no lookups needed!)
+    // Get month key from selected date to fetch submission records
+    const selectedDateObj = new Date(selectedDate)
+    const monthKey = `${selectedDateObj.getFullYear()}-${String(selectedDateObj.getMonth() + 1).padStart(2, '0')}`
+    
+    // Fetch user names from monthSubmissions for this month
+    const submissionsQuery = query(
+      collection(db, 'monthSubmissions'),
+      where('monthKey', '==', monthKey)
+    )
+    const submissionsSnapshot = await getDocs(submissionsQuery)
+    const userNamesMap = new Map()
+    
+    submissionsSnapshot.forEach(submissionDoc => {
+      const submission = submissionDoc.data()
+      userNamesMap.set(submission.userId, {
+        name: submission.userName || submission.userEmail || 'Unknown User',
+        email: submission.userEmail || 'No email'
+      })
+    })
+    
+    // Process users who have submitted availability
     snapshot.forEach(availabilityDoc => {
       const availability = availabilityDoc.data()
       
-      availableUsers.push({
-        userId: availability.userId,
-        userName: availability.userName || availability.userEmail || `User ${availability.userId.substring(0, 6)}`,
-        email: availability.userEmail || 'No email available'
-      })
+      // Handle both old format (isAvailable) and new format (available)
+      const isAvailable = availability.available !== undefined ? availability.available : availability.isAvailable
+      
+      // Only include users who are marked as available (true)
+      if (isAvailable === true) {
+        // Get user details from monthSubmissions or fallback to availability record
+        const userDetails = userNamesMap.get(availability.userId)
+        const userName = userDetails?.name || availability.userName || availability.userEmail?.split('@')[0] || `User ${availability.userId.substring(0, 6)}`
+        const userEmail = userDetails?.email || availability.userEmail || 'No email available'
+        
+        availableUsers.push({
+          userId: availability.userId,
+          userName: userName,
+          email: userEmail
+        })
+      }
     })
     
     loadingDiv.style.display = 'none'
@@ -1898,8 +1988,6 @@ function renderDesignationOptions(availableUsers) {
         >
         <span class="designation-user-info">
           <span class="designation-user-name">👤 ${user.userName}</span>
-          <span class="designation-availability-note">✅ Available for this appointment</span>
-          ${user.email && user.email !== 'No email available' ? `<small class="designation-user-email">${user.email}</small>` : ''}
         </span>
       </label>
     </div>
