@@ -3172,6 +3172,12 @@ body.authenticated #auth-nav-link {
   font-weight: 500;
 }
 
+.designation-user-email {
+  font-size: 0.7em;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 .designations-info {
   padding: var(--spacing-sm);
   background: var(--bg-secondary);
@@ -3222,6 +3228,8 @@ body.authenticated #auth-nav-link {
   display: flex;
   align-items: center;
   gap: 2px;
+  flex-wrap: wrap;
+  line-height: 1.2;
 }
 
 .appointment-item .apt-designations {
@@ -3243,4 +3251,225 @@ body.authenticated #auth-nav-link {
 
 .appointment-item .apt-time {
   margin-bottom: 2px;
+}
+
+/* ===========================
+   MY AVAILABILITY CALENDAR STYLES
+   =========================== */
+
+.availability-calendar-section {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.availability-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.availability-calendar-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+}
+
+.availability-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.availability-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background-color: var(--gray-200);
+  padding: 1px;
+}
+
+/* Availability calendar now uses standard calendar classes for consistent styling */
+/* Specific availability calendar container styles remain */
+
+.availability-appointment-item {
+  background: var(--gray-100);
+  border-radius: 8px;
+  padding: var(--spacing-sm);
+  margin-bottom: 3px;
+  font-size: 0.7rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  position: relative;
+  cursor: pointer;
+  min-height: 36px;
+  border: 2px solid transparent;
+}
+
+.availability-appointment-item:hover {
+  background: var(--gray-200);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.availability-appointment-item:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.availability-appointment-item.meeting {
+  border-left: 4px solid #2196f3;
+}
+
+.availability-appointment-item.task {
+  border-left: 4px solid #4caf50;
+}
+
+.availability-appointment-item.event {
+  border-left: 4px solid #ff9800;
+}
+
+.availability-appointment-item.reminder {
+  border-left: 4px solid #9c27b0;
+}
+
+.availability-appointment-item.available {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.1) 100%);
+  border: 2px solid rgba(76, 175, 80, 0.3);
+  color: #2e7d32;
+}
+
+.availability-appointment-item.available:hover {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.3) 0%, rgba(76, 175, 80, 0.15) 100%);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+.availability-appointment-item.not-available {
+  background: var(--gray-100);
+  color: var(--text-secondary);
+}
+
+.availability-appointment-item.not-available:hover {
+  background: var(--gray-200);
+  color: var(--text-primary);
+}
+
+.availability-appointment-item .apt-time {
+  font-weight: 600;
+  font-size: 0.65rem;
+  color: inherit;
+  min-width: 35px;
+}
+
+.availability-appointment-item .apt-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  color: inherit;
+  font-weight: 500;
+  flex: 1;
+}
+
+.availability-indicator {
+  color: #4caf50;
+  font-weight: bold;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+/* Availability Status Demo for Legend */
+.availability-demo {
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+  border-radius: 4px;
+  margin-right: 4px;
+}
+
+.availability-demo.available {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.4) 0%, rgba(76, 175, 80, 0.2) 100%);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+}
+
+.availability-demo.not-available {
+  background: var(--gray-200);
+  border: 1px solid var(--gray-300);
+}
+
+.availability-legend {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.availability-legend .legend-group {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.availability-legend .legend-group strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  min-width: 100px;
+}
+
+.availability-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* Mobile styles for availability calendar now inherit from standard calendar classes */
+@media (max-width: 768px) {
+  
+  .availability-appointment-item {
+    font-size: 0.65rem;
+    padding: var(--spacing-xs);
+    margin-bottom: 2px;
+    min-height: 32px;
+  }
+  
+  .availability-appointment-item .apt-time {
+    font-size: 0.6rem;
+    min-width: 30px;
+  }
+  
+  .availability-appointment-item .apt-title {
+    font-size: 0.6rem;
+  }
+  
+  .availability-indicator {
+    font-size: 0.75rem;
+  }
+  
+  .availability-calendar-header {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    text-align: center;
+  }
+  
+  .availability-legend .legend-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+  
+  .availability-legend .legend-group strong {
+    min-width: auto;
+  }
 }

@@ -2,6 +2,7 @@ import { db } from '../auth.js'
 import { 
   collection, 
   getDocs, 
+  getDoc,
   doc, 
   setDoc, 
   deleteDoc, 
@@ -551,33 +552,45 @@ async function handleEditUserSubmit(e) {
 }
 
 // Edit user
-window.editUser = function(userId) {
-  const user = usersData.find(u => u.id === userId)
-  if (!user) return
-  
+window.editUser = async function(userId) {
   // Set editing state
   currentEditingUserId = userId
   
   // Show modal first
   showModal('edit-user-modal')
   
-  // Setup permissions and populate form after modal is visible
-  setTimeout(() => {
-    setupPermissionsCheckboxes('edit-user-permissions')
-    loadPrivilegeOptions('edit-user-privileges')
+  try {
+    // Fetch fresh user data directly from Firebase to avoid cache issues
+    const userDoc = await getDoc(doc(db, 'users', userId))
+    if (!userDoc.exists()) {
+      showNotification('User not found', 'error')
+      hideModal('edit-user-modal')
+      return
+    }
     
-    // Fill form with user data
-    document.getElementById('edit-user-name').value = user.name || ''
-    document.getElementById('edit-user-congregation').value = user.congregation || ''
-    document.getElementById('edit-user-email').value = user.email
-    document.getElementById('edit-user-role').value = user.role || 'user'
+    const user = { id: userDoc.id, ...userDoc.data() }
     
-    // Setup permissions and select current ones (with slight delay to ensure DOM is ready)
-    setTimeout(() => {
+    // Setup permissions and populate form after modal is visible
+    setTimeout(async () => {
+      // Fill basic form data immediately
+      document.getElementById('edit-user-name').value = user.name || ''
+      document.getElementById('edit-user-congregation').value = user.congregation || ''
+      document.getElementById('edit-user-email').value = user.email
+      document.getElementById('edit-user-role').value = user.role || 'user'
+      
+      // Setup both permissions and privileges sections
+      setupPermissionsCheckboxes('edit-user-permissions')
+      await loadPrivilegeOptions('edit-user-privileges') // Wait for privilege checkboxes to be created
+      
+      // Now update both sections simultaneously so they appear together
       updatePermissionsCheckboxes('edit-user-permissions', user.permissions || [])
       updatePrivilegeCheckboxes('edit-user-privileges', user.privileges || (user.privilege ? [user.privilege] : []))
-    }, 50)
-  }, 100)
+    }, 100)
+  } catch (error) {
+    console.error('Error loading user for edit:', error)
+    showNotification('Error loading user data', 'error')
+    hideModal('edit-user-modal')
+  }
 }
 
 // Delete user

@@ -10,7 +10,7 @@ import { initializePagesPage } from './pages/pages.js'
 import { initializeContentPage } from './pages/content.js'
 import { initializeSettingsPage } from './pages/settings.js'
 import { initializeAppointmentsPage } from './pages/appointments.js'
-import { initializeAvailability } from './pages/availability.js'
+import { initializeAvailability, cleanupAvailability } from './pages/availability.js'
 import { showNotification } from './utils/notifications.js'
 
 class MainApp {
@@ -338,39 +338,46 @@ class MainApp {
             </div>
           </section>
 
-          <!-- Availability Management -->
+          <!-- My Availability Calendar -->
           <section id="availability" class="section">
             <div class="container">
               <div class="section-header">
-                <h2>📋 Availability Management</h2>
-                <p>Mark your availability for upcoming appointments</p>
+                <h2>📋 My Availability Calendar</h2>
+                <p>View appointments and mark your availability by clicking on them</p>
               </div>
 
-              <!-- Date Range Selector -->
-              <div class="availability-controls">
-                <div class="date-range-selector">
-                  <label for="availability-start-date">From:</label>
-                  <input type="date" id="availability-start-date" class="form-input">
-                  <label for="availability-end-date">To:</label>
-                  <input type="date" id="availability-end-date" class="form-input">
-                  <button id="load-availability" class="btn btn-primary">Load Appointments</button>
-                </div>
-              </div>
-
-              <!-- Available Appointments List -->
-              <div id="availability-content">
-                <div class="loading-state" style="display: none;">
-                  <div class="loading-spinner"></div>
-                  <p>Loading appointments...</p>
+              <!-- Monthly Calendar View -->
+              <div class="availability-calendar-section">
+                <div class="availability-calendar-header">
+                  <h3>📆 Monthly Availability View</h3>
+                  <div class="availability-calendar-nav">
+                    <button id="availability-prev-month" class="btn btn-secondary btn-small">‹ Prev</button>
+                    <span id="availability-current-month-year" class="month-display">Loading...</span>
+                    <button id="availability-next-month" class="btn btn-secondary btn-small">Next ›</button>
+                  </div>
                 </div>
                 
-                <div class="empty-state" id="no-appointments-message" style="display: none;">
-                  <h3>📅 No Appointments Found</h3>
-                  <p>No appointments available for the selected date range.</p>
+                <div id="availability-calendar-grid" class="availability-calendar-grid">
+                  <!-- Calendar will be built by JavaScript -->
                 </div>
-
-                <div id="appointments-list" class="appointments-availability-list">
-                  <!-- Appointments will be loaded here -->
+                
+                <div class="availability-legend">
+                  <div class="legend-group">
+                    <strong>How to use:</strong>
+                    <span class="legend-item">📱 Tap any appointment to mark yourself as available</span>
+                  </div>
+                  <div class="legend-group">
+                    <strong>Your Status:</strong>
+                    <span class="legend-item"><span class="availability-demo available"></span> Available ✓ (Green with checkmark)</span>
+                    <span class="legend-item"><span class="availability-demo not-available"></span> Not Available (Gray - Default)</span>
+                  </div>
+                  <div class="legend-group">
+                    <strong>Appointment Types:</strong>
+                    <span class="legend-item"><span class="legend-color meeting"></span> Meetings</span>
+                    <span class="legend-item"><span class="legend-color task"></span> Tasks</span>
+                    <span class="legend-item"><span class="legend-color event"></span> Events</span>
+                    <span class="legend-item"><span class="legend-color reminder"></span> Reminders</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -759,6 +766,9 @@ class MainApp {
     console.log('🎯 Navigating to section:', sectionId)
     this.updateDebugPanel('navigation', { sectionId: sectionId })
     
+    // Cleanup previous page listeners before switching
+    cleanupAvailability()
+    
     const sections = document.querySelectorAll('.section')
     const navLinks = document.querySelectorAll('.nav-link')
     
@@ -787,8 +797,11 @@ class MainApp {
       }, 100)
     }
     if (sectionId === 'availability') {
-      // Initialize availability page when it becomes active
-      console.log('🎯 Availability section activated')
+      // Initialize availability page with real-time listeners
+      console.log('🎯 Availability section activated - setting up real-time updates')
+      setTimeout(() => {
+        initializeAvailability()
+      }, 100)
     }
   }
 

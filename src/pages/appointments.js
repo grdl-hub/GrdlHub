@@ -5,13 +5,15 @@ import {
   collection, 
   addDoc, 
   getDocs, 
+  getDoc,
   doc, 
   deleteDoc, 
   updateDoc,
   query,
   where,
   orderBy,
-  Timestamp 
+  Timestamp,
+  setDoc 
 } from 'firebase/firestore'
 import { showNotification } from '../utils/notifications.js'
 import { 
@@ -22,6 +24,8 @@ import {
 
 let currentDate = new Date()
 let appointments = []
+let userAvailabilities = {} // Store user availability data: { 'YYYY-MM-DD': boolean }
+let currentUserId = null
 
 // Global function for title selection handling
 window.handleTitleSelection = function(selectElement) {
@@ -563,6 +567,12 @@ async function openEditAppointmentModal(appointment, occurrenceDate = null) {
     const title = modal.querySelector('h3')
     title.textContent = `✏️ Edit ${appointment.repeatPattern ? 'Recurring ' : ''}Appointment`
     
+    // Set the form as in editing mode
+    const appointmentForm = modal.querySelector('#appointment-form')
+    if (appointmentForm) {
+      appointmentForm.dataset.editingId = appointment.id
+    }
+    
     // Focus on first input
     const firstInput = modal.querySelector('select, input')
     if (firstInput) firstInput.focus()
@@ -583,11 +593,11 @@ async function openEditAppointmentModal(appointment, occurrenceDate = null) {
   setupModalEventListeners(modal)
   
   // Setup designations loading for edit modal
-  setupDesignationsLoader()
+  setupDesignationsLoader(appointment.id)
   
   // Load existing designations after a short delay
   setTimeout(() => {
-    loadAvailableUsersForDesignation().then(() => {
+    loadAvailableUsersForDesignation(appointment.id).then(() => {
       // Pre-select existing designations
       if (appointment.designatedUsers && appointment.designatedUsers.length > 0) {
         appointment.designatedUsers.forEach(userId => {
@@ -1031,13 +1041,21 @@ function renderCalendar() {
         }
       }
       
+      // Add designations to title tooltip
+      let designationsText = ''
+      if (apt.designatedNames && apt.designatedNames.length > 0) {
+        designationsText = `\nAssigned to: ${apt.designatedNames.join(', ')}`
+      }
+
       appointmentsHTML += `
         <div class="${itemClass}" 
-             title="${titleText} at ${timeText}"
+             title="${titleText} at ${timeText}${designationsText}"
              data-appointment-id="${apt.id}"
              data-occurrence-date="${apt.occurrenceDate || apt.date}">
           <span class="appointment-time">${timeText}</span>
           <span class="appointment-title">${titleText}</span>
+          ${apt.designatedNames && apt.designatedNames.length > 0 ? 
+            `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
         </div>
       `
     })
@@ -1099,7 +1117,7 @@ function renderCalendar() {
           <div class="apt-time">${timeText}</div>
           <div class="apt-title ${apt.exception?.action === 'cancelled' ? 'strikethrough' : ''}">${titleText}</div>
           ${apt.designatedNames && apt.designatedNames.length > 0 ? 
-            `<div class="apt-designations">👥 ${apt.designatedNames.length}</div>` : ''}
+            `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
         </div>
       `
     })
@@ -1148,13 +1166,21 @@ function renderCalendar() {
         }
       }
       
+      // Add designations to title tooltip
+      let designationsText = ''
+      if (apt.designatedNames && apt.designatedNames.length > 0) {
+        designationsText = `\nAssigned to: ${apt.designatedNames.join(', ')}`
+      }
+
       appointmentsHTML += `
         <div class="${itemClass}" 
-             title="${titleText} at ${timeText}"
+             title="${titleText} at ${timeText}${designationsText}"
              data-appointment-id="${apt.id}"
              data-occurrence-date="${apt.occurrenceDate || apt.date}">
           <span class="appointment-time">${timeText}</span>
           <span class="appointment-title">${titleText}</span>
+          ${apt.designatedNames && apt.designatedNames.length > 0 ? 
+            `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
         </div>
       `
     })
@@ -1760,21 +1786,22 @@ async function updateSingleOccurrence(appointmentId, dateString, modifiedData) {
 }
 
 // Designations management functions
-function setupDesignationsLoader() {
+function setupDesignationsLoader(appointmentId = null) {
   const dateInput = document.getElementById('apt-date')
   const timeInput = document.getElementById('apt-time')
   
   if (dateInput && timeInput) {
     // Load designations when date or time changes
-    dateInput.addEventListener('change', loadAvailableUsersForDesignation)
-    timeInput.addEventListener('change', loadAvailableUsersForDesignation)
+    const loadHandler = () => loadAvailableUsersForDesignation(appointmentId)
+    dateInput.addEventListener('change', loadHandler)
+    timeInput.addEventListener('change', loadHandler)
     
     // Initial load
-    setTimeout(loadAvailableUsersForDesignation, 500)
+    setTimeout(() => loadAvailableUsersForDesignation(appointmentId), 500)
   }
 }
 
-async function loadAvailableUsersForDesignation() {
+async function loadAvailableUsersForDesignation(appointmentId = null) {
   const dateInput = document.getElementById('apt-date')
   const timeInput = document.getElementById('apt-time')
   const loadingDiv = document.getElementById('designations-loading')
@@ -1802,47 +1829,48 @@ async function loadAvailableUsersForDesignation() {
     emptyDiv.style.display = 'none'
     listDiv.innerHTML = ''
     
-    // Create a temporary appointment ID for querying
-    const tempAppointmentKey = `${selectedDate}_${selectedTime}`
+    let availabilitiesQuery
     
-    // Query availabilities for this date/time combination
-    const availabilitiesQuery = query(
-      collection(db, 'availabilities'),
-      where('isAvailable', '==', true)
-    )
+    if (appointmentId) {
+      // For edit modal: Query users who marked availability for this specific appointment
+      availabilitiesQuery = query(
+        collection(db, 'availabilities'),
+        where('appointmentId', '==', appointmentId),
+        where('date', '==', selectedDate),
+        where('isAvailable', '==', true)
+      )
+    } else {
+      // For create modal: Users can't mark availability until the appointment exists
+      loadingDiv.style.display = 'none'
+      emptyDiv.style.display = 'block'
+      emptyDiv.querySelector('span').textContent = '📝 Create the appointment first, then users can mark their availability. After that, you can edit the appointment to assign up to 3 designations.'
+      return
+    }
     
     const snapshot = await getDocs(availabilitiesQuery)
     const availableUsers = []
     
-    // Filter users who are available for appointments around this date/time
-    snapshot.forEach(doc => {
-      const availability = doc.data()
-      // For now, show all available users - in production you might want to be more specific
+    // Simple: Get user details directly from availability documents (no lookups needed!)
+    snapshot.forEach(availabilityDoc => {
+      const availability = availabilityDoc.data()
+      
       availableUsers.push({
         userId: availability.userId,
-        userName: availability.userName,
-        appointmentId: availability.appointmentId
+        userName: availability.userName || availability.userEmail || `User ${availability.userId.substring(0, 6)}`,
+        email: availability.userEmail || 'No email available'
       })
     })
     
-    // Remove duplicates by userId
-    const uniqueUsers = availableUsers.reduce((unique, user) => {
-      if (!unique.find(u => u.userId === user.userId)) {
-        unique.push(user)
-      }
-      return unique
-    }, [])
-    
     loadingDiv.style.display = 'none'
     
-    if (uniqueUsers.length === 0) {
+    if (availableUsers.length === 0) {
       emptyDiv.style.display = 'block'
-      emptyDiv.querySelector('span').textContent = 'No users have marked themselves as available yet. Users can mark their availability in the Availability page.'
+      emptyDiv.querySelector('span').textContent = 'No users have marked themselves as available for this appointment yet. Users can mark their availability in the Availability page.'
       return
     }
     
     // Render available users as checkboxes (max 3 selections)
-    renderDesignationOptions(uniqueUsers)
+    renderDesignationOptions(availableUsers)
     
   } catch (error) {
     console.error('Error loading available users:', error)
@@ -1864,12 +1892,14 @@ function renderDesignationOptions(availableUsers) {
           name="designations" 
           value="${user.userId}" 
           data-user-name="${user.userName}"
+          data-user-email="${user.email}"
           class="designation-checkbox"
           onchange="handleDesignationChange()"
         >
         <span class="designation-user-info">
           <span class="designation-user-name">👤 ${user.userName}</span>
-          <span class="designation-availability-note">Available</span>
+          <span class="designation-availability-note">✅ Available for this appointment</span>
+          ${user.email && user.email !== 'No email available' ? `<small class="designation-user-email">${user.email}</small>` : ''}
         </span>
       </label>
     </div>
