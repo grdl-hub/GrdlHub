@@ -346,6 +346,11 @@ class MainApp {
                 <p>View appointments and mark your availability by clicking on them</p>
               </div>
 
+              <!-- Monthly Submission Status -->
+              <div id="availability-submission-status" class="submission-status-container">
+                <!-- Submission status will be populated by JavaScript -->
+              </div>
+
               <!-- Monthly Calendar View -->
               <div class="availability-calendar-section">
                 <div class="availability-calendar-header">

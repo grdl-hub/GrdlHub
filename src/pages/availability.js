@@ -19,6 +19,7 @@ let currentUserData = null
 let appointments = []
 let userAvailabilities = {} // Store user availability: { appointmentId_date: boolean }
 let currentDate = new Date()
+let monthSubmissionStatus = {} // Track submission status per month: { "2025-10": { submitted: true, timestamp: "..." } }
 
 // Initialize availability page with monthly calendar
 export function initializeAvailability() {
@@ -27,6 +28,7 @@ export function initializeAvailability() {
     setupEventListeners()
     loadUserAvailability()
     loadAppointments()
+    loadMonthSubmissionStatus()
     
     // Render calendar immediately after setup
     renderAvailabilityCalendar()
@@ -278,20 +280,32 @@ function renderAvailabilityCalendar() {
     if (dayAppointments.length > 0) dayClass += ' has-appointments'
     
     let appointmentsHTML = ''
+    const isMonthSubmitted = isCurrentMonthSubmitted()
+    
     dayAppointments.forEach(apt => {
       const availabilityKey = `${apt.id}_${dateString}`
       const isAvailable = userAvailabilities[availabilityKey] === true
       const availabilityClass = isAvailable ? 'available' : 'not-available'
+      const lockedClass = isMonthSubmitted ? 'locked' : ''
+      
+      const clickHandler = isMonthSubmitted 
+        ? `showNotification('🔒 Availability is locked for this month', 'warning')` 
+        : `toggleAppointmentAvailability('${apt.id}', '${dateString}', ${!isAvailable})`
+      
+      const titleText = isMonthSubmitted 
+        ? 'Availability is locked - contact admin for changes'
+        : `Tap to ${isAvailable ? 'remove availability' : 'mark as available'}`
       
       appointmentsHTML += `
-        <div class="availability-appointment-item ${apt.type} ${availabilityClass}" 
+        <div class="availability-appointment-item ${apt.type} ${availabilityClass} ${lockedClass}" 
              data-appointment-id="${apt.id}"
              data-occurrence-date="${dateString}"
-             onclick="toggleAppointmentAvailability('${apt.id}', '${dateString}', ${!isAvailable})"
-             title="Tap to ${isAvailable ? 'remove availability' : 'mark as available'}">
+             onclick="${clickHandler}"
+             title="${titleText}">
           <div class="apt-time">${apt.time}</div>
           <div class="apt-title">${apt.title}</div>
           ${isAvailable ? '<div class="availability-indicator">✓</div>' : ''}
+          ${isMonthSubmitted ? '<div class="lock-indicator">🔒</div>' : ''}
         </div>
       `
     })
@@ -320,6 +334,9 @@ function renderAvailabilityCalendar() {
   }
   
   calendarGrid.innerHTML = calendarHTML
+  
+  // Update submission UI for current month
+  updateSubmissionUI()
 }
 
 // Get appointments for a specific date (including recurring ones)
@@ -399,6 +416,12 @@ async function toggleAppointmentAvailability(appointmentId, date, isChecked) {
       showNotification('Please sign in to mark availability', 'error')
       return
     }
+
+    // Check if current month is submitted (locked)
+    if (isCurrentMonthSubmitted()) {
+      showNotification('🔒 Availability is submitted and locked. Contact admin for changes.', 'warning', 5000)
+      return
+    }
     
     const key = `${appointmentId}_${date}`
     
@@ -454,6 +477,142 @@ export function cleanupAvailability() {
     appointmentsUnsubscribe()
     appointmentsUnsubscribe = null
   }
+}
+
+// Load month submission status from Firebase
+async function loadMonthSubmissionStatus() {
+  try {
+    const currentUser = await getCurrentUser()
+    if (!currentUser) return
+
+    console.log('📋 Loading month submission status...')
+    
+    // Get all submission records for this user
+    const submissionQuery = query(
+      collection(db, 'monthSubmissions'),
+      where('userId', '==', currentUser.uid)
+    )
+    
+    const submissionDocs = await getDocs(submissionQuery)
+    monthSubmissionStatus = {}
+    
+    submissionDocs.forEach(doc => {
+      const data = doc.data()
+      monthSubmissionStatus[data.monthKey] = {
+        submitted: true,
+        timestamp: data.submittedAt,
+        docId: doc.id
+      }
+    })
+    
+    console.log('📋 Loaded submission status:', monthSubmissionStatus)
+    updateSubmissionUI()
+    
+  } catch (error) {
+    console.error('❌ Error loading submission status:', error)
+  }
+}
+
+// Update the submission UI based on current month status
+function updateSubmissionUI() {
+  const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+  const isSubmitted = monthSubmissionStatus[currentMonthKey]?.submitted || false
+  
+  const statusContainer = document.getElementById('availability-submission-status')
+  if (!statusContainer) return
+
+  const monthName = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  if (isSubmitted) {
+    const submittedAt = new Date(monthSubmissionStatus[currentMonthKey].timestamp)
+    statusContainer.innerHTML = `
+      <div class="submission-status submitted">
+        <div class="status-header">
+          <span class="status-icon">🔒</span>
+          <span class="status-title">Availability Submitted for ${monthName}</span>
+        </div>
+        <div class="status-details">
+          Submitted on ${submittedAt.toLocaleDateString()} at ${submittedAt.toLocaleTimeString()}
+        </div>
+        <div class="status-message">
+          ℹ️ Your availability is locked. Contact admin if changes are needed.
+        </div>
+      </div>
+    `
+  } else {
+    statusContainer.innerHTML = `
+      <div class="submission-status draft">
+        <div class="status-header">
+          <span class="status-icon">📝</span>
+          <span class="status-title">Draft Mode - ${monthName} Availability</span>
+        </div>
+        <div class="status-details">
+          You can freely edit your availability. Remember to submit when ready!
+        </div>
+        <button id="submit-month-availability" class="btn-submit-availability">
+          📤 Submit ${monthName} Availability
+        </button>
+      </div>
+    `
+    
+    // Add event listener for submit button
+    const submitBtn = document.getElementById('submit-month-availability')
+    if (submitBtn) {
+      submitBtn.addEventListener('click', submitMonthAvailability)
+    }
+  }
+}
+
+// Submit availability for current month
+async function submitMonthAvailability() {
+  const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+  const monthName = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  if (!confirm(`Submit your availability for ${monthName}?\n\nOnce submitted, you cannot make changes without admin approval.`)) {
+    return
+  }
+
+  try {
+    showLoading('Submitting availability...')
+    
+    const currentUser = await getCurrentUser()
+    const submissionData = {
+      userId: currentUser.uid,
+      userEmail: currentUser.email,
+      monthKey: currentMonthKey,
+      submittedAt: new Date().toISOString(),
+      month: currentDate.getMonth() + 1,
+      year: currentDate.getFullYear()
+    }
+
+    // Save submission record to Firebase
+    const docRef = await setDoc(doc(db, 'monthSubmissions', `${currentUser.uid}_${currentMonthKey}`), submissionData)
+    
+    // Update local status
+    monthSubmissionStatus[currentMonthKey] = {
+      submitted: true,
+      timestamp: submissionData.submittedAt,
+      docId: `${currentUser.uid}_${currentMonthKey}`
+    }
+
+    showNotification(`✅ ${monthName} availability submitted successfully!`, 'success')
+    updateSubmissionUI()
+    renderAvailabilityCalendar() // Re-render to show locked state
+    hideLoading()
+
+  } catch (error) {
+    console.error('❌ Error submitting availability:', error)
+    showNotification('Error submitting availability', 'error')
+    hideLoading()
+  }
+}
+
+// Check if current month is submitted (prevents editing)
+function isCurrentMonthSubmitted() {
+  const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+  return monthSubmissionStatus[currentMonthKey]?.submitted || false
 }
 
 // Make function globally available
