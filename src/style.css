@@ -3588,3 +3588,560 @@ body.authenticated #auth-nav-link {
     min-width: auto;
   }
 }
+
+/* ========================================
+   REPORTS SECTION STYLES
+   ======================================== */
+
+/* Reports Navigation and Tabs */
+.reports-navigation {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.report-tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.report-tab {
+  background: var(--bg-secondary);
+  border: 2px solid var(--gray-300);
+  color: var(--text-secondary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.report-tab:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-400);
+}
+
+.report-tab.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: var(--text-inverse);
+}
+
+/* Report Content Areas */
+.report-content {
+  display: none;
+}
+
+.report-content.active {
+  display: block;
+}
+
+/* Report Controls */
+.report-controls {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  align-items: end;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.control-group label {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.form-select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-width: 120px;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+/* Loading State */
+.loading-state {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--gray-200);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto var(--spacing-md);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Report Results */
+.report-results {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.report-header {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: var(--text-inverse);
+  padding: var(--spacing-lg);
+}
+
+.report-header h3 {
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-md);
+  font-weight: 600;
+}
+
+.report-summary {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.summary-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.summary-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Weekly Breakdown */
+.weekly-breakdown {
+  padding: var(--spacing-lg);
+}
+
+.week-section {
+  margin-bottom: var(--spacing-xl);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.week-section:last-child {
+  margin-bottom: 0;
+}
+
+.week-header {
+  background: var(--bg-secondary);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.week-header h4 {
+  color: var(--primary-color);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.week-range {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.week-count {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* Week Appointments */
+.week-appointments {
+  padding: var(--spacing-md);
+}
+
+.week-appointments .appointment-item {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--gray-100);
+  transition: background-color 0.2s ease;
+}
+
+.week-appointments .appointment-item:hover {
+  background: var(--bg-secondary);
+}
+
+.week-appointments .appointment-item:last-child {
+  border-bottom: none;
+}
+
+.week-appointments .appointment-datetime {
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.week-appointments .appointment-date {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.week-appointments .appointment-time {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.week-appointments .appointment-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.week-appointments .appointment-title {
+  font-weight: 600;
+  color: var(--primary-color);
+  font-size: 1rem;
+}
+
+.week-appointments .appointment-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.week-appointments .appointment-designations {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.week-appointments .designation-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.week-appointments .designation-list {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 4px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--text-secondary);
+}
+
+.empty-state h3 {
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Feature Placeholder (for future report types) */
+.feature-placeholder {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  margin: var(--spacing-lg) 0;
+}
+
+.feature-placeholder h3 {
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.feature-placeholder p {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.feature-placeholder em {
+  color: var(--info-color);
+  font-weight: 500;
+}
+
+/* Responsive Design for Reports */
+@media (max-width: 768px) {
+  .report-tabs {
+    flex-direction: column;
+  }
+  
+  .report-tab {
+    text-align: center;
+  }
+  
+  .report-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .control-group {
+    width: 100%;
+  }
+  
+  .form-select {
+    width: 100%;
+  }
+  
+  .report-summary {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .week-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .week-count {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+  
+  .week-appointments .appointment-item {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .week-appointments .appointment-datetime {
+    min-width: auto;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .week-appointments .appointment-designations {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .week-appointments .appointment-datetime {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Monthly View Styles */
+.monthly-controls {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.monthly-results {
+  margin-top: var(--spacing-xl);
+}
+
+.monthly-header {
+  margin-bottom: var(--spacing-xl);
+  text-align: center;
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
+}
+
+.monthly-header h3 {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.monthly-count {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.monthly-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.monthly-appointment {
+  display: flex;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.monthly-appointment:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.1);
+  transform: translateY(-1px);
+}
+
+.appointment-date {
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.date-day {
+  display: block;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.date-time {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.appointment-details {
+  flex: 1;
+}
+
+.appointment-details h4 {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.appointment-description {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+  line-height: 1.5;
+}
+
+.appointment-location {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.monthly-empty {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--text-secondary);
+}
+
+.monthly-empty .empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-lg);
+}
+
+.monthly-empty h3 {
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.monthly-error {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--error-color);
+}
+
+.monthly-error .error-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-lg);
+}
+
+.monthly-error h3 {
+  color: var(--error-color);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Mobile responsiveness for monthly view */
+@media (max-width: 768px) {
+  .monthly-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .monthly-appointment {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .appointment-date {
+    min-width: auto;
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--gray-200);
+  }
+  
+  .date-day, .date-time {
+    display: inline;
+    margin-right: var(--spacing-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .monthly-header {
+    padding: var(--spacing-md);
+  }
+  
+  .monthly-header h3 {
+    font-size: 1.3rem;
+  }
+  
+  .monthly-appointment {
+    padding: var(--spacing-md);
+  }
+}

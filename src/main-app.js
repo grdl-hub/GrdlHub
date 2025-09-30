@@ -17,6 +17,7 @@ class MainApp {
   constructor() {
     this.currentUser = null
     this.initialized = false
+    this.reportsManager = null
     this.setupErrorTracking()
   }
 
@@ -203,6 +204,8 @@ class MainApp {
               <a href="#home" class="nav-link active">🏠 Home</a>
               <a href="#appointments" class="nav-link auth-required">📅 Appointments</a>
               <a href="#availability" class="nav-link auth-required">📋 Availability</a>
+              <a href="#monthly" class="nav-link auth-required">📅 Monthly View</a>
+              <a href="#reports" class="nav-link auth-required">📊 Reports</a>
               <a href="#users" class="nav-link auth-required">👥 Users</a>
               <a href="#pages" class="nav-link auth-required">📄 Pages</a>
               <a href="#content" class="nav-link auth-required">📝 Content</a>
@@ -358,6 +361,137 @@ class MainApp {
                 
                 <div id="availability-calendar-grid" class="availability-calendar-grid">
                   <!-- Calendar will be built by JavaScript -->
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Monthly View -->
+          <section id="monthly" class="section">
+            <div class="container">
+              <div class="section-header">
+                <h2>📅 Monthly View</h2>
+                <p>Simple monthly view of Testemunho Público appointments</p>
+              </div>
+
+              <div class="monthly-controls">
+                <div class="control-group">
+                  <label for="monthly-month-select">📅 Month</label>
+                  <select id="monthly-month-select" class="form-select">
+                    <option value="0">January</option>
+                    <option value="1">February</option>
+                    <option value="2">March</option>
+                    <option value="3">April</option>
+                    <option value="4">May</option>
+                    <option value="5">June</option>
+                    <option value="6">July</option>
+                    <option value="7">August</option>
+                    <option value="8">September</option>
+                    <option value="9">October</option>
+                    <option value="10">November</option>
+                    <option value="11">December</option>
+                  </select>
+                </div>
+                <div class="control-group">
+                  <label for="monthly-year-select">📅 Year</label>
+                  <select id="monthly-year-select" class="form-select">
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                  </select>
+                </div>
+                <div class="control-group">
+                  <button id="generate-monthly-btn" class="btn btn-primary">📅 View Month</button>
+                </div>
+              </div>
+
+              <div id="monthly-loading" class="loading-state" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Loading appointments...</p>
+              </div>
+
+              <div id="monthly-results" class="monthly-results" style="display: none;">
+                <!-- Monthly content will be populated by JavaScript -->
+              </div>
+            </div>
+          </section>
+
+          <!-- Reports -->
+          <section id="reports" class="section">
+            <div class="container">
+              <div class="section-header">
+                <h2>📊 Reports</h2>
+                <p>Generate and view detailed reports for appointments and volunteer assignments</p>
+              </div>
+
+              <!-- Report Type Selection -->
+              <div class="reports-navigation">
+                <div class="report-tabs">
+                  <button id="testemunho-report-tab" class="report-tab active" data-report="testemunho">
+                    📅 Testemunho Público
+                  </button>
+                  <button id="volunteer-report-tab" class="report-tab" data-report="volunteer">
+                    👥 Volunteer Summary
+                  </button>
+                  <button id="activity-report-tab" class="report-tab" data-report="activity">
+                    📈 Activity Report
+                  </button>
+                </div>
+              </div>
+
+              <!-- Testemunho Público Report -->
+              <div id="testemunho-report" class="report-content active">
+                <div class="report-controls">
+                  <div class="control-group">
+                    <label for="report-month">📅 Month</label>
+                    <select id="report-month" class="form-select">
+                      <!-- Options will be populated by JavaScript -->
+                    </select>
+                  </div>
+                  <div class="control-group">
+                    <label for="report-year">📅 Year</label>
+                    <select id="report-year" class="form-select">
+                      <!-- Options will be populated by JavaScript -->
+                    </select>
+                  </div>
+                  <div class="control-group">
+                    <button id="generate-report-btn" class="btn btn-primary">📊 Generate Report</button>
+                    <button id="export-pdf-btn" class="btn btn-secondary" style="display: none;">📄 Export PDF</button>
+                    <button id="export-excel-btn" class="btn btn-secondary" style="display: none;">📊 Export Excel</button>
+                  </div>
+                </div>
+
+                <div id="report-loading" class="loading-state" style="display: none;">
+                  <div class="loading-spinner"></div>
+                  <p>Generating report...</p>
+                </div>
+
+                <div id="report-results" class="report-results" style="display: none;">
+                  <!-- Report content will be populated by JavaScript -->
+                </div>
+
+                <div id="report-empty" class="empty-state" style="display: none;">
+                  <h3>📭 No Data Found</h3>
+                  <p>No "Testemunho Público" appointments found for the selected period.</p>
+                </div>
+              </div>
+
+              <!-- Volunteer Summary Report (Future) -->
+              <div id="volunteer-report" class="report-content">
+                <div class="feature-placeholder">
+                  <h3>👥 Volunteer Summary Report</h3>
+                  <p>This report will show volunteer assignment statistics and workload distribution.</p>
+                  <p><em>Coming soon...</em></p>
+                </div>
+              </div>
+
+              <!-- Activity Report (Future) -->
+              <div id="activity-report" class="report-content">
+                <div class="feature-placeholder">
+                  <h3>📈 Activity Report</h3>
+                  <p>This report will show overall appointment and attendance trends.</p>
+                  <p><em>Coming soon...</em></p>
                 </div>
               </div>
             </div>
@@ -782,6 +916,57 @@ class MainApp {
       setTimeout(() => {
         initializeAvailability()
       }, 100)
+    }
+    if (sectionId === 'reports') {
+      // Initialize reports page with dynamic import and error handling
+      console.log('📊 Reports section activated - setting up reports functionality')
+      setTimeout(async () => {
+        try {
+          if (!this.reportsManager) {
+            console.log('📊 Loading ReportsManager module...')
+            const reportsModule = await import('./pages/reports.js')
+            console.log('📊 ReportsManager module loaded successfully')
+            this.reportsManager = new reportsModule.ReportsManager()
+            console.log('📊 ReportsManager instance created')
+          }
+          console.log('📊 Initializing ReportsManager...')
+          this.reportsManager.init()
+          console.log('✅ ReportsManager initialized successfully')
+        } catch (error) {
+          console.error('❌ Error loading reports module:', error)
+          // Use try-catch for showNotification in case it's not available
+          try {
+            showNotification('Error loading reports functionality', 'error')
+          } catch (notifError) {
+            console.error('❌ Also failed to show notification:', notifError)
+          }
+        }
+      }, 200) // Increased timeout to 200ms for more stability
+    }
+    if (sectionId === 'monthly') {
+      // Initialize monthly view page with dynamic import
+      console.log('📅 Monthly View section activated - setting up monthly view functionality')
+      setTimeout(async () => {
+        try {
+          if (!this.monthlyViewManager) {
+            console.log('📅 Loading MonthlyViewManager module...')
+            const monthlyModule = await import('./pages/monthly.js')
+            console.log('📅 MonthlyViewManager module loaded successfully')
+            this.monthlyViewManager = new monthlyModule.MonthlyViewManager()
+            console.log('📅 MonthlyViewManager instance created')
+          }
+          console.log('📅 Initializing MonthlyViewManager...')
+          await this.monthlyViewManager.initialize()
+          console.log('✅ MonthlyViewManager initialized successfully')
+        } catch (error) {
+          console.error('❌ Error loading monthly view module:', error)
+          try {
+            showNotification('Error loading monthly view functionality', 'error')
+          } catch (notifError) {
+            console.error('❌ Also failed to show notification:', notifError)
+          }
+        }
+      }, 200)
     }
   }
 
