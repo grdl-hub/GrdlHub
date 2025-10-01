@@ -7,6 +7,15 @@ import {
   reorderAppointmentTitles
 } from '../utils/appointmentTitles.js'
 import {
+  loadHomeSections,
+  addHomeSection,
+  updateHomeSection,
+  deleteHomeSection,
+  reorderHomeSections,
+  getAvailablePages,
+  initializeDefaultSections
+} from '../utils/homeSections.js'
+import {
   loadActivePrivileges,
   createPrivilege,
   updatePrivilege,
@@ -27,6 +36,7 @@ import {
 import { showNotification } from '../utils/notifications.js'
 
 let appointmentTitles = []
+let homeSections = []
 let privileges = []
 
 export function initializeSettingsPage() {
@@ -34,12 +44,15 @@ export function initializeSettingsPage() {
   
   // Debug: Check if the containers exist
   const appointmentContainer = document.getElementById('appointment-titles-management')
+  const homeSectionsContainer = document.getElementById('home-sections-management')
   const privilegesContainer = document.getElementById('privileges-management')
   console.log('📋 Appointment titles container found:', !!appointmentContainer)
+  console.log('🏠 Home sections container found:', !!homeSectionsContainer)
   console.log('👥 Privileges container found:', !!privilegesContainer)
   
   setupSettingsEventListeners()
   loadAppointmentTitlesForSettings()
+  loadHomeSectionsForSettings()
   loadPrivilegesForSettings()
   
   console.log('✅ Settings page initialized')
@@ -599,6 +612,259 @@ async function handleEditTitle(e) {
   } catch (error) {
     console.error('Error updating title:', error)
     showNotification('Failed to update title', 'error')
+  }
+}
+
+// === HOME SECTIONS MANAGEMENT FUNCTIONS ===
+
+async function loadHomeSectionsForSettings(forceRefresh = false) {
+  try {
+    console.log('🏠 Loading home sections for settings...')
+    
+    const isAdmin = await checkAdminAccess()
+    console.log('👤 Admin access check result:', isAdmin)
+    
+    if (!isAdmin) {
+      const container = document.getElementById('home-sections-management')
+      if (container) {
+        container.innerHTML = `
+          <div class="admin-required">
+            <p class="text-muted">👤 Admin access required to manage home sections</p>
+          </div>
+        `
+      }
+      return
+    }
+    
+    console.log('🏠 Loading home sections from Firestore...')
+    
+    homeSections = await loadHomeSections()
+    console.log('🏠 Loaded home sections:', homeSections.length)
+    
+    renderHomeSectionsInSettings()
+    
+  } catch (error) {
+    console.error('❌ Error loading home sections for settings:', error)
+    showNotification('Failed to load home sections', 'error')
+  }
+}
+
+function renderHomeSectionsInSettings() {
+  const container = document.getElementById('home-sections-management')
+  console.log('🎨 Rendering home sections in settings, container found:', !!container)
+  console.log('🏠 Sections to render:', homeSections.length)
+  
+  if (!container) return
+  
+  const availablePages = getAvailablePages()
+  
+  const html = `
+    <div class="sections-management-header">
+      <div class="sections-actions">
+        <button id="add-section-btn" class="btn btn-primary btn-small">
+          ➕ Add Section
+        </button>
+        <button id="refresh-sections-btn" class="btn btn-secondary btn-small">
+          🔄 Refresh
+        </button>
+        <button id="init-default-sections-btn" class="btn btn-secondary btn-small">
+          🔧 Reset to Defaults
+        </button>
+      </div>
+      <p class="drag-instruction">💡 Drag and drop sections to reorder them</p>
+    </div>
+    
+    <div class="sections-list" id="sections-list">
+      ${homeSections.length > 0 ? 
+        homeSections.map(section => renderHomeSectionItem(section, availablePages)).join('') :
+        '<p class="text-muted">No home sections found. <button class="btn btn-link" onclick="initializeDefaultSections().then(() => loadHomeSectionsForSettings(true))">Initialize defaults</button></p>'
+      }
+    </div>
+  `
+  
+  container.innerHTML = html
+  console.log('✅ Home sections HTML set in container')
+  
+  // Re-attach event listeners
+  setupHomeSectionsEventListeners()
+  setupHomeSectionsDragAndDrop()
+  console.log('✅ Home sections event listeners attached')
+}
+
+function renderHomeSectionItem(section, availablePages) {
+  const enabledText = section.enabled ? '✅ Enabled' : '❌ Disabled'
+  const pagesText = section.pages && section.pages.length > 0 
+    ? section.pages.map(pageId => {
+        const page = availablePages.find(p => p.id === pageId)
+        return page ? `${page.icon} ${page.name}` : pageId
+      }).join(', ')
+    : 'No pages assigned'
+  
+  return `
+    <div class="section-item" data-section-id="${section.firestoreId}" data-order="${section.order}">
+      <div class="section-drag-handle">⋮⋮</div>
+      <div class="section-info">
+        <div class="section-header">
+          <span class="section-title">${section.title}</span>
+          <span class="section-order">#${section.order}</span>
+          <span class="section-status ${section.enabled ? 'enabled' : 'disabled'}">${enabledText}</span>
+        </div>
+        <div class="section-details">
+          <span class="section-id">ID: ${section.sectionId}</span>
+          ${section.icon ? `<span class="section-icon">Icon: ${section.icon}</span>` : ''}
+        </div>
+        <div class="section-pages">
+          <strong>Pages:</strong> ${pagesText}
+        </div>
+      </div>
+      <div class="section-actions">
+        <button class="btn btn-secondary btn-small edit-section-btn" data-section-id="${section.firestoreId}">
+          ✏️ Edit
+        </button>
+        <button class="btn btn-danger btn-small delete-section-btn" data-section-id="${section.firestoreId}">
+          🗑️ Delete
+        </button>
+      </div>
+    </div>
+  `
+}
+
+function setupHomeSectionsEventListeners() {
+  // Add section button
+  const addSectionBtn = document.getElementById('add-section-btn')
+  if (addSectionBtn) {
+    addSectionBtn.addEventListener('click', openAddSectionModal)
+  }
+  
+  // Refresh sections button
+  const refreshSectionsBtn = document.getElementById('refresh-sections-btn')
+  if (refreshSectionsBtn) {
+    refreshSectionsBtn.addEventListener('click', () => loadHomeSectionsForSettings(true))
+  }
+  
+  // Initialize defaults button
+  const initDefaultBtn = document.getElementById('init-default-sections-btn')
+  if (initDefaultBtn) {
+    initDefaultBtn.addEventListener('click', async () => {
+      if (confirm('Reset to default sections? This will replace all current sections.')) {
+        try {
+          await initializeDefaultSections()
+          loadHomeSectionsForSettings(true)
+        } catch (error) {
+          console.error('Error initializing defaults:', error)
+        }
+      }
+    })
+  }
+  
+  // Edit and delete buttons
+  document.querySelectorAll('.edit-section-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const sectionId = e.target.dataset.sectionId
+      openEditSectionModal(sectionId)
+    })
+  })
+  
+  document.querySelectorAll('.delete-section-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const sectionId = e.target.dataset.sectionId
+      deleteSectionWithConfirm(sectionId)
+    })
+  })
+}
+
+function setupHomeSectionsDragAndDrop() {
+  const sectionsList = document.getElementById('sections-list')
+  if (!sectionsList) return
+  
+  let draggedElement = null
+  
+  sectionsList.addEventListener('dragstart', (e) => {
+    if (e.target.classList.contains('section-item')) {
+      draggedElement = e.target
+      e.target.style.opacity = '0.5'
+    }
+  })
+  
+  sectionsList.addEventListener('dragend', (e) => {
+    if (e.target.classList.contains('section-item')) {
+      e.target.style.opacity = '1'
+      draggedElement = null
+    }
+  })
+  
+  sectionsList.addEventListener('dragover', (e) => {
+    e.preventDefault()
+  })
+  
+  sectionsList.addEventListener('drop', async (e) => {
+    e.preventDefault()
+    
+    if (!draggedElement) return
+    
+    const targetElement = e.target.closest('.section-item')
+    if (!targetElement || targetElement === draggedElement) return
+    
+    // Reorder logic similar to appointment titles
+    const allItems = Array.from(sectionsList.querySelectorAll('.section-item'))
+    const draggedIndex = allItems.indexOf(draggedElement)
+    const targetIndex = allItems.indexOf(targetElement)
+    
+    if (draggedIndex < targetIndex) {
+      targetElement.insertAdjacentElement('afterend', draggedElement)
+    } else {
+      targetElement.insertAdjacentElement('beforebegin', draggedElement)
+    }
+    
+    // Update order in database
+    await updateHomeSectionsOrder()
+  })
+  
+  // Make items draggable
+  document.querySelectorAll('.section-item').forEach(item => {
+    item.draggable = true
+  })
+}
+
+async function updateHomeSectionsOrder() {
+  try {
+    const sectionItems = document.querySelectorAll('.section-item')
+    const sectionsWithNewOrder = Array.from(sectionItems).map((item, index) => ({
+      firestoreId: item.dataset.sectionId,
+      order: index + 1
+    }))
+    
+    await reorderHomeSections(sectionsWithNewOrder)
+    loadHomeSectionsForSettings(true)
+  } catch (error) {
+    console.error('Error updating sections order:', error)
+    showNotification('Failed to update sections order', 'error')
+  }
+}
+
+function openAddSectionModal() {
+  // This will be implemented next - placeholder for now
+  console.log('🏠 Add section modal - to be implemented')
+  showNotification('Add section feature coming soon', 'info')
+}
+
+function openEditSectionModal(sectionId) {
+  // This will be implemented next - placeholder for now
+  console.log('🏠 Edit section modal - to be implemented:', sectionId)
+  showNotification('Edit section feature coming soon', 'info')
+}
+
+async function deleteSectionWithConfirm(sectionId) {
+  const section = homeSections.find(s => s.firestoreId === sectionId)
+  if (!section) return
+  
+  if (confirm(`Delete section "${section.title}"? This action cannot be undone.`)) {
+    try {
+      await deleteHomeSection(sectionId)
+      loadHomeSectionsForSettings(true)
+    } catch (error) {
+      console.error('Error deleting section:', error)
+    }
   }
 }
 

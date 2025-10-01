@@ -233,61 +233,18 @@ class MainApp {
           <!-- Home Page -->
           <section id="home" class="section active">
             <div class="container">
-              <div class="dashboard">
+              <div class="home-dashboard">
+                <!-- Welcome Section -->
                 <div class="welcome-section">
                   <h2>Welcome back, <span id="welcome-user-name">${this.currentUser?.displayName || 'User'}</span>! 👋</h2>
                   <p class="welcome-date">Today is <span id="current-date">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span></p>
-                  <p>Manage your hub content and users from this central dashboard.</p>
-                  <div class="welcome-notifications" id="welcome-notifications">
-                    <!-- Notifications will be populated by JavaScript -->
-                  </div>
                 </div>
-                
-                <div class="dashboard-grid">
-                  <div class="dashboard-card" data-page="appointments">
-                    <div class="card-icon">📅</div>
-                    <h3>Appointments</h3>
-                    <p>Schedule and manage recurring appointments</p>
-                    <div class="card-stats">
-                      <span id="appointments-count">0</span> upcoming
-                      <div class="next-appointment" id="next-appointment">⏰ Next: Loading...</div>
-                    </div>
-                  </div>
-                  
-                  <div class="dashboard-card" data-page="users">
-                    <div class="card-icon">👥</div>
-                    <h3>Users Management</h3>
-                    <p>Manage user accounts, permissions, and access levels</p>
-                    <div class="card-stats">
-                      <span id="users-count">0</span> users
-                    </div>
-                  </div>
-                  
-                  <div class="dashboard-card" data-page="pages">
-                    <div class="card-icon">📄</div>
-                    <h3>Pages Management</h3>
-                    <p>Create and manage static content pages</p>
-                    <div class="card-stats">
-                      <span id="pages-count">0</span> pages
-                    </div>
-                  </div>
-                  
-                  <div class="dashboard-card" data-page="content">
-                    <div class="card-icon">📝</div>
-                    <h3>Content Hub</h3>
-                    <p>Manage dynamic content and resources</p>
-                    <div class="card-stats">
-                      <span id="content-count">0</span> items
-                    </div>
-                  </div>
-                  
-                  <div class="dashboard-card" data-page="settings">
-                    <div class="card-icon">⚙️</div>
-                    <h3>Settings</h3>
-                    <p>Configure app settings and preferences</p>
-                  </div>
+
+                <!-- Dynamic Sections Container -->
+                <div id="home-sections-container">
+                  <!-- Sections will be dynamically populated based on user permissions -->
                 </div>
-                
+
                 <!-- Recent Activity Section -->
                 <div class="recent-activity-section">
                   <h3>📋 Recent Activity</h3>
@@ -580,6 +537,14 @@ class MainApp {
                   <p>Manage dropdown options for appointment creation</p>
                   <div id="appointment-titles-management">
                     <!-- Appointment titles management will be populated here -->
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <h3>🏠 Home Sections</h3>
+                  <p>Customize home page sections and their organization</p>
+                  <div id="home-sections-management">
+                    <!-- Home sections management will be populated here -->
                   </div>
                 </div>
                 
@@ -904,6 +869,31 @@ class MainApp {
     }
     
     // Initialize specific page functionality when it becomes active
+    if (sectionId === 'home') {
+      // Initialize home page with dynamic sections
+      console.log('🏠 Home section activated - setting up carousel sections')
+      setTimeout(async () => {
+        try {
+          if (!this.homePageManager) {
+            console.log('🏠 Loading HomePageManager module...')
+            const homeModule = await import('./pages/home.js')
+            console.log('🏠 HomePageManager module loaded successfully')
+            this.homePageManager = new homeModule.HomePageManager()
+            console.log('🏠 HomePageManager instance created')
+          }
+          console.log('🏠 Initializing HomePageManager...')
+          await this.homePageManager.initialize()
+          console.log('✅ HomePageManager initialized successfully')
+        } catch (error) {
+          console.error('❌ Error loading home page module:', error)
+          try {
+            showNotification('Error loading home page functionality', 'error')
+          } catch (notifError) {
+            console.error('❌ Also failed to show notification:', notifError)
+          }
+        }
+      }, 200)
+    }
     if (sectionId === 'settings') {
       // Wait a bit for the DOM to be ready, then initialize settings
       setTimeout(() => {
