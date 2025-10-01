@@ -168,6 +168,7 @@ class MainApp {
       this.setupNavigation()
       this.setupTabs()
       this.setupLogout()
+      this.setupBackButton()
       this.setupPWAFeatures()
       console.log('✅ App functionality set up')
       
@@ -199,18 +200,11 @@ class MainApp {
       <div id="app">
         <header class="header">
           <div class="container">
+            <button class="back-to-home" id="backToHome" style="display: none;">
+              <svg class="icon__body--flip-rtl icon__body" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="14" width="14"><g><path d="M15.191,23.588l-8-11c-0.255-0.351-0.255-0.825,0-1.176l8-11l1.617,1.176L9.236,12l7.572,10.412 L15.191,23.588z"></path></g></svg>
+              <span>Início</span>
+            </button>
             <h1 class="logo">GrdlHub</h1>
-            <nav class="nav">
-              <a href="#home" class="nav-link active">🏠 Home</a>
-              <a href="#appointments" class="nav-link auth-required">📅 Appointments</a>
-              <a href="#availability" class="nav-link auth-required">📋 Availability</a>
-              <a href="#monthly" class="nav-link auth-required">📅 Monthly View</a>
-              <a href="#reports" class="nav-link auth-required">📊 Reports</a>
-              <a href="#users" class="nav-link auth-required">👥 Users</a>
-              <a href="#pages" class="nav-link auth-required">📄 Pages</a>
-              <a href="#content" class="nav-link auth-required">📝 Content</a>
-              <a href="#settings" class="nav-link auth-required">⚙️ Settings</a>
-            </nav>
             <div class="user-menu">
               <span id="user-name">${this.currentUser?.displayName || this.currentUser?.email || 'Loading...'}</span>
               <button id="logout-btn" class="btn btn-secondary btn-small">[Logout]</button>
@@ -957,6 +951,30 @@ class MainApp {
           }
         }
       }, 200)
+    }
+    
+    // Handle back button visibility
+    this.updateBackButton(sectionId)
+  }
+
+  updateBackButton(sectionId) {
+    const backButton = document.getElementById('backToHome')
+    if (backButton) {
+      // Show back button on all pages except home
+      if (sectionId === 'home') {
+        backButton.style.display = 'none'
+      } else {
+        backButton.style.display = 'flex'
+      }
+    }
+  }
+
+  setupBackButton() {
+    const backButton = document.getElementById('backToHome')
+    if (backButton) {
+      backButton.addEventListener('click', () => {
+        window.location.hash = '#home'
+      })
     }
   }
 

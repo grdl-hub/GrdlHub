@@ -667,9 +667,6 @@ function renderHomeSectionsInSettings() {
         <button id="refresh-sections-btn" class="btn btn-secondary btn-small">
           🔄 Refresh
         </button>
-        <button id="init-default-sections-btn" class="btn btn-secondary btn-small">
-          🔧 Reset to Defaults
-        </button>
       </div>
       <p class="drag-instruction">💡 Drag and drop sections to reorder them</p>
     </div>
@@ -692,29 +689,12 @@ function renderHomeSectionsInSettings() {
 }
 
 function renderHomeSectionItem(section, availablePages) {
-  const enabledText = section.enabled ? '✅ Enabled' : '❌ Disabled'
-  const pagesText = section.pages && section.pages.length > 0 
-    ? section.pages.map(pageId => {
-        const page = availablePages.find(p => p.id === pageId)
-        return page ? `${page.icon} ${page.name}` : pageId
-      }).join(', ')
-    : 'No pages assigned'
-  
   return `
     <div class="section-item" data-section-id="${section.firestoreId}" data-order="${section.order}">
       <div class="section-drag-handle">⋮⋮</div>
       <div class="section-info">
         <div class="section-header">
           <span class="section-title">${section.title}</span>
-          <span class="section-order">#${section.order}</span>
-          <span class="section-status ${section.enabled ? 'enabled' : 'disabled'}">${enabledText}</span>
-        </div>
-        <div class="section-details">
-          <span class="section-id">ID: ${section.sectionId}</span>
-          ${section.icon ? `<span class="section-icon">Icon: ${section.icon}</span>` : ''}
-        </div>
-        <div class="section-pages">
-          <strong>Pages:</strong> ${pagesText}
         </div>
       </div>
       <div class="section-actions">
@@ -842,16 +822,436 @@ async function updateHomeSectionsOrder() {
   }
 }
 
-function openAddSectionModal() {
-  // This will be implemented next - placeholder for now
-  console.log('🏠 Add section modal - to be implemented')
-  showNotification('Add section feature coming soon', 'info')
+function getPageCheckboxes(selectedPages = []) {
+  // Organize pages in logical groups with better ordering
+  const availablePages = [
+    // Main Content & Activity
+    { id: 'monthly', label: '📅 Monthly View', category: 'main' },
+    { id: 'appointments', label: '📋 Appointments', category: 'main' },
+    { id: 'reports', label: '📊 Reports', category: 'main' },
+    
+    // People Management
+    { id: 'availability', label: '🗓️ Availability', category: 'people' },
+    { id: 'users', label: '👥 Users', category: 'people' },
+    
+    // Content & System
+    { id: 'content', label: '📝 Content', category: 'system' },
+    { id: 'pages', label: '📄 Pages', category: 'system' },
+    { id: 'settings', label: '⚙️ Settings', category: 'system' },
+    { id: 'admin', label: '🔧 Admin', category: 'system' }
+  ]
+  
+  // Group pages by category for better organization
+  const categories = {
+    main: 'Main Features',
+    people: 'People Management', 
+    system: 'System & Admin'
+  }
+  
+  let html = ''
+  
+  // Add selected pages section first (for reordering)
+  if (selectedPages.length > 0) {
+    html += `
+      <div class="selected-pages-section">
+        <div class="selected-pages-list" id="selected-pages-sortable">
+    `
+    
+    // Show selected pages in their current order
+    selectedPages.forEach((pageId, index) => {
+      const page = availablePages.find(p => p.id === pageId)
+      if (page) {
+        html += `
+          <div class="selected-page-item" data-page-id="${pageId}">
+            <div class="drag-handle">⋮⋮</div>
+            <span class="page-icon">${page.label}</span>
+            <button type="button" class="remove-page-btn" onclick="removePageFromSelection('${pageId}')">×</button>
+          </div>
+        `
+      }
+    })
+    
+    html += `
+        </div>
+      </div>
+    `
+  }
+  
+  // Add available pages section
+  html += `
+    <div class="available-pages-section">
+      <div class="available-pages-header">
+        <span>Available Pages</span>
+      </div>
+      <div class="available-pages-list">
+  `
+  
+  // List all pages in a simple flat list
+  availablePages.forEach(page => {
+    const isSelected = selectedPages.includes(page.id)
+    html += `
+      <label class="checkbox-item ${isSelected ? 'already-selected' : ''}">
+        <input 
+          type="checkbox" 
+          name="available-pages" 
+          value="${page.id}" 
+          ${isSelected ? 'checked disabled' : ''}
+          onchange="handlePageSelection('${page.id}', this.checked)"
+        >
+        ${page.label}
+        ${isSelected ? '<span class="already-selected-badge">Added</span>' : ''}
+      </label>
+    `
+  })
+  
+  html += `
+      </div>
+    </div>
+    <input type="hidden" name="pages" id="pages-order" value="${selectedPages.join(',')}">
+  `
+  
+  return html
 }
 
-function openEditSectionModal(sectionId) {
-  // This will be implemented next - placeholder for now
-  console.log('🏠 Edit section modal - to be implemented:', sectionId)
-  showNotification('Edit section feature coming soon', 'info')
+// Global functions for page order management
+window.handlePageSelection = function(pageId, isChecked) {
+  const orderInput = document.getElementById('pages-order')
+  let currentOrder = orderInput.value ? orderInput.value.split(',') : []
+  
+  if (isChecked) {
+    // Add page to the end of the order
+    if (!currentOrder.includes(pageId)) {
+      currentOrder.push(pageId)
+    }
+  } else {
+    // Remove page from order
+    currentOrder = currentOrder.filter(id => id !== pageId)
+  }
+  
+  // Update hidden input
+  orderInput.value = currentOrder.join(',')
+  
+  // Refresh the display
+  refreshPageOrderDisplay()
+}
+
+window.removePageFromSelection = function(pageId) {
+  const orderInput = document.getElementById('pages-order')
+  let currentOrder = orderInput.value ? orderInput.value.split(',') : []
+  currentOrder = currentOrder.filter(id => id !== pageId)
+  orderInput.value = currentOrder.join(',')
+  
+  // Uncheck the corresponding checkbox
+  const checkbox = document.querySelector(`input[value="${pageId}"]`)
+  if (checkbox) {
+    checkbox.checked = false
+    checkbox.disabled = false
+    checkbox.closest('.checkbox-item').classList.remove('already-selected')
+    const badge = checkbox.closest('.checkbox-item').querySelector('.already-selected-badge')
+    if (badge) badge.remove()
+  }
+  
+  refreshPageOrderDisplay()
+}
+
+function refreshPageOrderDisplay() {
+  const modal = document.querySelector('.appointment-modal-overlay')
+  if (!modal) return
+  
+  const orderInput = document.getElementById('pages-order')
+  const currentOrder = orderInput.value ? orderInput.value.split(',') : []
+  
+  // Regenerate the checkbox area with new order
+  const checkboxGroup = modal.querySelector('.checkbox-group')
+  if (checkboxGroup) {
+    checkboxGroup.innerHTML = getPageCheckboxes(currentOrder)
+    setupPageOrderingSortable()
+  }
+}
+
+function setupPageOrderingSortable() {
+  const sortableList = document.getElementById('selected-pages-sortable')
+  if (!sortableList) return
+  
+  // Simple drag and drop implementation
+  let draggedElement = null
+  
+  sortableList.addEventListener('dragstart', (e) => {
+    if (e.target.classList.contains('selected-page-item')) {
+      draggedElement = e.target
+      e.target.style.opacity = '0.5'
+    }
+  })
+  
+  sortableList.addEventListener('dragend', (e) => {
+    if (e.target.classList.contains('selected-page-item')) {
+      e.target.style.opacity = '1'
+      draggedElement = null
+    }
+  })
+  
+  sortableList.addEventListener('dragover', (e) => {
+    e.preventDefault()
+  })
+  
+  sortableList.addEventListener('drop', (e) => {
+    e.preventDefault()
+    if (draggedElement && e.target.classList.contains('selected-page-item') && e.target !== draggedElement) {
+      const rect = e.target.getBoundingClientRect()
+      const middle = rect.top + rect.height / 2
+      
+      if (e.clientY < middle) {
+        sortableList.insertBefore(draggedElement, e.target)
+      } else {
+        sortableList.insertBefore(draggedElement, e.target.nextSibling)
+      }
+      
+      updatePageOrderFromDOM()
+    }
+  })
+  
+  // Make items draggable
+  sortableList.querySelectorAll('.selected-page-item').forEach(item => {
+    item.draggable = true
+  })
+}
+
+function updatePageOrderFromDOM() {
+  const sortableList = document.getElementById('selected-pages-sortable')
+  if (!sortableList) return
+  
+  const pageIds = Array.from(sortableList.querySelectorAll('.selected-page-item'))
+    .map(item => item.dataset.pageId)
+  
+  const orderInput = document.getElementById('pages-order')
+  orderInput.value = pageIds.join(',')
+}
+
+function openAddSectionModal() {
+  try {
+    console.log('🏠 Opening add section modal')
+    
+    // Create the modal
+    const modal = document.createElement('div')
+    modal.className = 'appointment-modal-overlay'
+    modal.innerHTML = `
+      <div class="appointment-modal">
+        <div class="appointment-modal-header">
+          <h3>🏠 Add New Section</h3>
+          <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
+        </div>
+        <div class="appointment-modal-content">
+          <form id="add-section-form" class="appointment-form">
+            <div class="form-group">
+              <label for="add-section-title" class="form-label">Section Title *</label>
+              <input 
+                type="text" 
+                id="add-section-title" 
+                name="title" 
+                class="form-input"
+                required 
+                maxlength="50"
+                placeholder="Enter section title"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Available Pages</label>
+              <div class="checkbox-group" id="add-section-pages">
+                ${getPageCheckboxes([])}
+              </div>
+            </div>
+            
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" onclick="this.closest('.appointment-modal-overlay').remove()">Cancel</button>
+              <button type="submit" class="btn btn-primary">Add Section</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `
+    
+    // Add modal to page
+    document.body.appendChild(modal)
+    
+    // Focus on title input
+    setTimeout(() => {
+      document.getElementById('add-section-title').focus()
+    }, 100)
+    
+    // Handle form submission
+    const form = document.getElementById('add-section-form')
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      
+      const formData = new FormData(form)
+      const pagesOrder = document.getElementById('pages-order').value
+      const selectedPages = pagesOrder ? pagesOrder.split(',').filter(id => id.trim()) : []
+      
+      const newSection = {
+        id: formData.get('title').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+        title: formData.get('title').trim(),
+        icon: '',
+        enabled: true,
+        pages: selectedPages
+      }
+      
+      // Validate
+      if (!newSection.title) {
+        showNotification('Section title is required', 'error')
+        return
+      }
+      
+      if (selectedPages.length === 0) {
+        showNotification('At least one page must be selected', 'error')
+        return
+      }
+      
+      try {
+        // Add section to Firestore
+        await addHomeSection(newSection)
+        
+        // Close modal
+        modal.remove()
+        
+        // Refresh the sections list
+        await loadHomeSectionsForSettings(true)
+        
+        showNotification('Section added successfully! 🎉', 'success')
+        
+      } catch (error) {
+        console.error('Error adding section:', error)
+        showNotification('Failed to add section', 'error')
+      }
+    })
+    
+    // Setup sortable after modal is added
+    setTimeout(() => {
+      setupPageOrderingSortable()
+    }, 100)
+    
+  } catch (error) {
+    console.error('Error opening add section modal:', error)
+    showNotification('Failed to open add modal', 'error')
+  }
+}
+
+async function openEditSectionModal(sectionId) {
+  try {
+    console.log('🏠 Opening edit section modal for:', sectionId)
+    
+    // Load the current sections to find the one to edit
+    const sections = await loadHomeSections()
+    const sectionToEdit = sections.find(s => s.firestoreId === sectionId)
+    
+    if (!sectionToEdit) {
+      showNotification('Section not found', 'error')
+      return
+    }
+    
+    // Create the modal
+    const modal = document.createElement('div')
+    modal.className = 'appointment-modal-overlay'
+    modal.innerHTML = `
+      <div class="appointment-modal">
+        <div class="appointment-modal-header">
+          <h3>🏠 Edit Section</h3>
+          <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
+        </div>
+        <div class="appointment-modal-content">
+          <form id="edit-section-form" class="appointment-form">
+            <div class="form-group">
+              <label for="edit-section-title" class="form-label">Section Title *</label>
+              <input 
+                type="text" 
+                id="edit-section-title" 
+                name="title" 
+                class="form-input"
+                value="${sectionToEdit.title}" 
+                required 
+                maxlength="50"
+                placeholder="Enter section title"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Available Pages</label>
+              <div class="checkbox-group" id="edit-section-pages">
+                ${getPageCheckboxes(sectionToEdit.pages)}
+              </div>
+            </div>
+            
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" onclick="this.closest('.appointment-modal-overlay').remove()">Cancel</button>
+              <button type="submit" class="btn btn-primary">Update Section</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `
+    
+    // Add modal to page
+    document.body.appendChild(modal)
+    
+    // Focus on title input
+    setTimeout(() => {
+      document.getElementById('edit-section-title').focus()
+    }, 100)
+    
+    // Handle form submission
+    const form = document.getElementById('edit-section-form')
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      
+      const formData = new FormData(form)
+      const pagesOrder = document.getElementById('pages-order').value
+      const selectedPages = pagesOrder ? pagesOrder.split(',').filter(id => id.trim()) : []
+      
+      const updatedSection = {
+        title: formData.get('title').trim(),
+        icon: sectionToEdit.icon || '',
+        enabled: true,
+        pages: selectedPages
+      }
+      
+      // Validate
+      if (!updatedSection.title) {
+        showNotification('Section title is required', 'error')
+        return
+      }
+      
+      if (selectedPages.length === 0) {
+        showNotification('At least one page must be selected', 'error')
+        return
+      }
+      
+      try {
+        // Update section in Firestore
+        await updateHomeSection(sectionId, updatedSection)
+        
+        // Close modal
+        modal.remove()
+        
+        // Refresh the sections list
+        await loadHomeSectionsForSettings(true)
+        
+        showNotification('Section updated successfully! 🎉', 'success')
+        
+      } catch (error) {
+        console.error('Error updating section:', error)
+        showNotification('Failed to update section', 'error')
+      }
+    })
+    
+    // Setup sortable after modal is added
+    setTimeout(() => {
+      setupPageOrderingSortable()
+    }, 100)
+    
+  } catch (error) {
+    console.error('Error opening edit section modal:', error)
+    showNotification('Failed to open edit modal', 'error')
+  }
 }
 
 async function deleteSectionWithConfirm(sectionId) {
