@@ -54,6 +54,7 @@ export function initializeSettingsPage() {
   loadAppointmentTitlesForSettings()
   loadHomeSectionsForSettings()
   loadPrivilegesForSettings()
+  setupHeroImageManagement()
   
   console.log('✅ Settings page initialized')
 }
@@ -1504,4 +1505,235 @@ function closePrivilegeModals() {
   document.getElementById('add-privilege-modal').classList.add('hidden')
   document.getElementById('edit-privilege-modal').classList.add('hidden')
   window.currentEditingPrivilegeId = null
+}
+
+// Hero Image Management Functions
+function setupHeroImageManagement() {
+  console.log('🖼️ Setting up hero image management...')
+  
+  const uploadBtn = document.getElementById('uploadHeroImageBtn')
+  const removeBtn = document.getElementById('removeHeroImageBtn')
+  const fileInput = document.getElementById('heroImageUpload')
+  
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', handleHeroImageUpload)
+  }
+  
+  if (removeBtn) {
+    removeBtn.addEventListener('click', handleHeroImageRemove)
+  }
+  
+  if (fileInput) {
+    fileInput.addEventListener('change', handleFileSelection)
+  }
+  
+  // Load current hero image
+  loadCurrentHeroImage()
+}
+
+function handleFileSelection(event) {
+  const file = event.target.files[0]
+  if (file) {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showNotification('Please select a valid image file', 'error')
+      return
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('Image size must be less than 5MB', 'error')
+      return
+    }
+    
+    // Preview the image using blob URL (CSP-friendly)
+    const preview = document.getElementById('heroImagePreview')
+    const placeholder = preview.querySelector('.preview-placeholder')
+    
+    // Create blob URL for preview
+    const blobUrl = URL.createObjectURL(file)
+    preview.style.backgroundImage = `url(${blobUrl})`
+    preview.classList.add('has-image')
+    placeholder.textContent = `Ready to upload: ${file.name}`
+    
+    // Store file reference for upload
+    window.selectedHeroFile = file
+  }
+}
+
+async function handleHeroImageUpload() {
+  const file = window.selectedHeroFile
+  
+  if (!file) {
+    showNotification('Please select an image first', 'error')
+    return
+  }
+  
+  const uploadBtn = document.getElementById('uploadHeroImageBtn')
+  uploadBtn.disabled = true
+  uploadBtn.textContent = 'Uploading...'
+  
+  try {
+    // Convert file to base64 for Firestore storage
+    const base64 = await fileToBase64(file)
+    
+    // Save to Firestore with proper error handling
+    await saveHeroImageToFirestore(base64, file.name)
+    
+    showNotification('Hero image uploaded successfully!', 'success')
+    
+    // Update the home page hero if it's currently loaded
+    updateHomePageHero(base64)
+    
+    // Clear the selected file
+    window.selectedHeroFile = null
+    
+  } catch (error) {
+    console.error('Error uploading hero image:', error)
+    if (error.message.includes('permission')) {
+      showNotification('Permission denied. Please check Firestore security rules.', 'error')
+    } else {
+      showNotification('Failed to upload hero image: ' + error.message, 'error')
+    }
+  } finally {
+    uploadBtn.disabled = false
+    uploadBtn.textContent = 'Upload Image'
+  }
+}
+
+async function handleHeroImageRemove() {
+  if (!confirm('Are you sure you want to remove the hero image?')) {
+    return
+  }
+  
+  try {
+    await removeHeroImageFromFirestore()
+    
+    // Reset preview
+    const preview = document.getElementById('heroImagePreview')
+    const placeholder = preview.querySelector('.preview-placeholder')
+    
+    preview.style.backgroundImage = ''
+    preview.classList.remove('has-image')
+    placeholder.textContent = 'No image selected'
+    
+    // Clear file input
+    document.getElementById('heroImageUpload').value = ''
+    
+    showNotification('Hero image removed successfully!', 'success')
+    
+    // Update the home page hero to use default
+    updateHomePageHero(null)
+    
+  } catch (error) {
+    console.error('Error removing hero image:', error)
+    showNotification('Failed to remove hero image', 'error')
+  }
+}
+
+async function loadCurrentHeroImage() {
+  try {
+    const heroImageData = await getHeroImageFromFirestore()
+    
+    if (heroImageData && heroImageData.imageUrl) {
+      const preview = document.getElementById('heroImagePreview')
+      const placeholder = preview.querySelector('.preview-placeholder')
+      
+      preview.style.backgroundImage = `url(${heroImageData.imageUrl})`
+      preview.classList.add('has-image')
+      placeholder.textContent = `Current: ${heroImageData.fileName || 'hero-image'}`
+    }
+  } catch (error) {
+    console.error('Error loading current hero image:', error)
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = error => reject(error)
+  })
+}
+
+async function saveHeroImageToFirestore(base64, fileName) {
+  const { doc, setDoc } = await import('firebase/firestore')
+  
+  const heroImageRef = doc(db, 'settings', 'heroImage')
+  await setDoc(heroImageRef, {
+    imageUrl: base64,
+    fileName: fileName,
+    uploadedAt: new Date().toISOString(),
+    uploadedBy: getCurrentUser()?.email || 'unknown'
+  })
+}
+
+async function removeHeroImageFromFirestore() {
+  const { doc, deleteDoc } = await import('firebase/firestore')
+  
+  const heroImageRef = doc(db, 'settings', 'heroImage')
+  await deleteDoc(heroImageRef)
+}
+
+async function getHeroImageFromFirestore() {
+  try {
+    const { doc, getDoc } = await import('firebase/firestore')
+    
+    const heroImageRef = doc(db, 'settings', 'heroImage')
+    const docSnap = await getDoc(heroImageRef)
+    
+    if (docSnap.exists()) {
+      return docSnap.data()
+    } else {
+      return null
+    }
+  } catch (error) {
+    console.error('Error getting hero image from Firestore:', error)
+    return null
+  }
+}
+
+function updateHomePageHero(imageUrl) {
+  // Update the home page hero if it's currently visible
+  const heroBackground = document.getElementById('heroBackground')
+  if (heroBackground) {
+    if (imageUrl) {
+      // For base64 images, we need to handle CSP restrictions
+      // Create a blob URL for the image
+      if (imageUrl.startsWith('data:')) {
+        try {
+          // Convert base64 to blob
+          const byteCharacters = atob(imageUrl.split(',')[1]);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'image/jpeg' });
+          const blobUrl = URL.createObjectURL(blob);
+          
+          heroBackground.classList.add('has-image');
+          heroBackground.style.backgroundImage = `url(${blobUrl})`;
+          heroBackground.style.backgroundSize = 'cover';
+          heroBackground.style.backgroundPosition = 'center';
+        } catch (error) {
+          console.error('Error processing image:', error)
+          // Fallback to gradient
+          heroBackground.classList.remove('has-image');
+          heroBackground.style.backgroundImage = 'none';
+        }
+      } else {
+        // Regular URL
+        heroBackground.classList.add('has-image');
+        heroBackground.style.backgroundImage = `url(${imageUrl})`;
+        heroBackground.style.backgroundSize = 'cover';
+        heroBackground.style.backgroundPosition = 'center';
+      }
+    } else {
+      // Fallback to gradient
+      heroBackground.classList.remove('has-image');
+      heroBackground.style.backgroundImage = 'none';
+    }
+  }
 }

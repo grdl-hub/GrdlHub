@@ -228,10 +228,9 @@ class MainApp {
           <section id="home" class="section active">
             <div class="container">
               <div class="home-dashboard">
-                <!-- Welcome Section -->
-                <div class="welcome-section">
-                  <h2>Welcome back, <span id="welcome-user-name">${this.currentUser?.displayName || 'User'}</span>! 👋</h2>
-                  <p class="welcome-date">Today is <span id="current-date">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span></p>
+                <!-- Hero Section -->
+                <div class="hero-section">
+                  <div class="hero-background" id="heroBackground"></div>
                 </div>
 
                 <!-- Dynamic Sections Container -->
@@ -561,6 +560,25 @@ class MainApp {
                     <textarea id="app-description" class="form-textarea" rows="3">A centralized PWA hub with multiple features</textarea>
                   </div>
                   <button class="btn btn-primary">Save Changes</button>
+                </div>
+                
+                <div class="settings-card">
+                  <h3>🖼️ Hero Image</h3>
+                  <p>Customize the home page hero background image</p>
+                  <div id="hero-image-management">
+                    <div class="hero-image-preview" id="heroImagePreview">
+                      <div class="preview-placeholder">No image selected</div>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Upload Hero Image</label>
+                      <input type="file" id="heroImageUpload" class="form-input" accept="image/*">
+                      <small class="form-hint">Recommended: 1920x400px, JPG or PNG format</small>
+                    </div>
+                    <div class="hero-image-actions">
+                      <button class="btn btn-primary" id="uploadHeroImageBtn">Upload Image</button>
+                      <button class="btn btn-secondary" id="removeHeroImageBtn">Remove Image</button>
+                    </div>
+                  </div>
                 </div>
                 
                 <div class="settings-card">

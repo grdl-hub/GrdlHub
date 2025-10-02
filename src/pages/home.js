@@ -12,6 +12,7 @@ class HomePageManager {
         await this.loadSections();
         await this.renderSections();
         this.setupEventListeners();
+        this.setupHeroImage();
         console.log('✅ Home Page Manager initialized');
     }
 
@@ -164,6 +165,111 @@ class HomePageManager {
         console.log('🔄 Refreshing home sections...');
         await this.renderSections();
         this.setupEventListeners();
+    }
+
+    setupHeroImage() {
+        // Set up hero image with admin upload or fallback to default images
+        const heroBackground = document.getElementById('heroBackground');
+        if (heroBackground) {
+            console.log('🖼️ Hero background element found, loading image...');
+            this.loadHeroImage(heroBackground);
+        } else {
+            console.error('❌ Hero background element not found!');
+        }
+    }
+
+    async loadHeroImage(heroBackground) {
+        try {
+            // Try to load admin-uploaded hero image first
+            const heroImageData = await this.getHeroImageFromFirestore();
+            
+            if (heroImageData && heroImageData.imageUrl) {
+                console.log('🖼️ Loading admin hero image:', heroImageData.fileName);
+                
+                // Handle base64 images with CSP restrictions
+                if (heroImageData.imageUrl.startsWith('data:')) {
+                    try {
+                        // Convert base64 to blob URL for CSP compliance
+                        const byteCharacters = atob(heroImageData.imageUrl.split(',')[1]);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: 'image/jpeg' });
+                        const blobUrl = URL.createObjectURL(blob);
+                        
+                        heroBackground.classList.add('has-image');
+                        heroBackground.style.backgroundImage = `url(${blobUrl})`;
+                        heroBackground.style.backgroundSize = 'cover';
+                        heroBackground.style.backgroundPosition = 'center';
+                        console.log('✅ Admin hero image loaded successfully');
+                        return;
+                    } catch (error) {
+                        console.error('Error converting base64 to blob:', error);
+                    }
+                } else {
+                    // Regular URL
+                    heroBackground.classList.add('has-image');
+                    heroBackground.style.backgroundImage = `url(${heroImageData.imageUrl})`;
+                    heroBackground.style.backgroundSize = 'cover';
+                    heroBackground.style.backgroundPosition = 'center';
+                    console.log('✅ Admin hero image loaded successfully');
+                    return;
+                }
+            } else {
+                console.log('🖼️ No admin hero image found, using defaults');
+            }
+        } catch (error) {
+            console.error('Error loading admin hero image:', error);
+        }
+        
+        // Fallback to default images if no admin image
+        console.log('🖼️ Loading default hero image');
+        const defaultImages = [
+            'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Mountain landscape
+            'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Forest path
+            'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'  // Nature scene
+        ];
+        
+        // Use a random image for now
+        const randomImage = defaultImages[Math.floor(Math.random() * defaultImages.length)];
+        
+        // Load image with fallback
+        const img = new Image();
+        img.onload = () => {
+            heroBackground.classList.add('has-image');
+            heroBackground.style.backgroundImage = `url(${randomImage})`;
+            heroBackground.style.backgroundSize = 'cover';
+            heroBackground.style.backgroundPosition = 'center';
+            console.log('✅ Default hero image loaded successfully');
+        };
+        img.onerror = () => {
+            // Fallback to gradient if image fails to load
+            console.log('🖼️ Hero image failed to load, using gradient fallback');
+            heroBackground.classList.remove('has-image');
+            heroBackground.style.backgroundImage = 'none';
+        };
+        img.src = randomImage;
+    }
+
+    async getHeroImageFromFirestore() {
+        try {
+            const { doc, getDoc } = await import('firebase/firestore');
+            const { db } = await import('../auth.js');
+            
+            const heroImageRef = doc(db, 'settings', 'heroImage');
+            const docSnap = await getDoc(heroImageRef);
+            
+            if (docSnap.exists()) {
+                return docSnap.data();
+            } else {
+                return null;
+            }
+        } catch (error) {
+            console.error('Error getting hero image from Firestore:', error);
+            return null;
+        }
     }
 }
 
