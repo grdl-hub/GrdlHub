@@ -4,6 +4,7 @@
 import { getCurrentUser } from '../auth.js';
 import { showNotification } from '../utils/notifications.js';
 import { hasPageAccess } from '../accessControl.js';
+import TextExtractor from '../utils/textExtractor.js';
 import { 
     getTranslationEntries,
     saveTranslationEntry,
@@ -22,6 +23,7 @@ class TranslationManager {
         this.currentLanguages = ['en', 'pt']; // English and Portuguese
         this.initialized = false;
         this.unsubscribe = null; // For real-time updates
+        this.textExtractor = new TextExtractor(); // Text extraction tool
     }
 
     async initialize() {
@@ -130,6 +132,9 @@ class TranslationManager {
                     <div class="toolbar-left">
                         <button id="add-translation-btn" class="btn btn-primary">
                             ➕ Add Translation
+                        </button>
+                        <button id="extract-text-btn" class="btn btn-success">
+                            🔍 Extract App Text
                         </button>
                         <button id="import-translations-btn" class="btn btn-secondary">
                             📥 Import
@@ -266,6 +271,12 @@ class TranslationManager {
         const exportBtn = document.getElementById('export-translations-btn');
         if (exportBtn) {
             exportBtn.addEventListener('click', () => this.exportTranslations());
+        }
+
+        // Extract text button
+        const extractBtn = document.getElementById('extract-text-btn');
+        if (extractBtn) {
+            extractBtn.addEventListener('click', () => this.showTextExtractionModal());
         }
     }
 
@@ -498,9 +509,60 @@ class TranslationManager {
         }).format(new Date(date));
     }
 
+    async showTextExtractionModal() {
+        console.log('🔍 Opening text extraction modal...');
+        
+        // Show loading notification
+        showNotification('🔍 Extracting text from application...', 'info');
+        
+        try {
+            // Extract all text
+            await this.textExtractor.extractAllText();
+            
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay extraction-modal';
+            modal.innerHTML = `
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3>🔍 App Text Extraction</h3>
+                        <button class="modal-close" onclick="closeExtractionModal()">&times;</button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div class="extraction-intro">
+                            <p><strong>Perfect! Here's all the English text I found in your app.</strong></p>
+                            <p>Simply fill in the Portuguese translations and click "Save Selected" to add them to your translation system.</p>
+                        </div>
+                        
+                        ${this.textExtractor.renderExtractionTable()}
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Setup event listeners
+            this.textExtractor.setupExtractionEventListeners();
+            
+            // Close on background click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeExtractionModal();
+                }
+            });
+            
+            showNotification(`✅ Found ${this.textExtractor.translationData.length} texts ready for translation!`, 'success');
+            
+        } catch (error) {
+            console.error('❌ Error extracting text:', error);
+            showNotification('Error extracting text from application', 'error');
+        }
+    }
+
     getCompletionPercentage() {
         const translated = this.translations.filter(t => t.pt && t.pt.trim() !== '').length;
-        return Math.round((translated / this.translations.length) * 100);
+        return this.translations.length > 0 ? Math.round((translated / this.translations.length) * 100) : 0;
     }
 }
 
@@ -510,6 +572,13 @@ const translationManager = new TranslationManager();
 // Global functions for modal interactions
 window.closeTranslationModal = function() {
     const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
+};
+
+window.closeExtractionModal = function() {
+    const modal = document.querySelector('.extraction-modal');
     if (modal) {
         modal.remove();
     }

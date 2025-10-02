@@ -164,19 +164,6 @@ service cloud.firestore {
       allow write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      
-      // Allow system initialization (for creating default translations)
-      allow create: if request.auth != null && 
-        (request.resource.data.updatedBy == 'system' || 
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
-          request.resource.data.updatedBy == request.auth.uid));
-      
-      // Ensure updatedBy field is set correctly on updates
-      allow update: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
-        request.resource.data.updatedBy == request.auth.uid;
     }
   }
 }
