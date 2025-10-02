@@ -11,6 +11,7 @@ import { initializeContentPage } from './pages/content.js'
 import { initializeSettingsPage } from './pages/settings.js'
 import { initializeAppointmentsPage } from './pages/appointments.js'
 import { initializeAvailability, cleanupAvailability } from './pages/availability.js'
+import { initializeTranslationsPage } from './pages/translations.js'
 import { showNotification } from './utils/notifications.js'
 
 class MainApp {
@@ -590,6 +591,15 @@ class MainApp {
               </div>
             </div>
           </section>
+
+          <!-- Translation Management -->
+          <section id="translations" class="section">
+            <div class="container">
+              <div id="translations-content">
+                <!-- Translation management content will be populated here -->
+              </div>
+            </div>
+          </section>
         </main>
 
         <footer class="footer">
@@ -910,6 +920,13 @@ class MainApp {
       // Wait a bit for the DOM to be ready, then initialize settings
       setTimeout(() => {
         initializeSettingsPage()
+      }, 100)
+    }
+    if (sectionId === 'translations') {
+      // Initialize translations page
+      console.log('🌍 Translations section activated - setting up translation management')
+      setTimeout(() => {
+        initializeTranslationsPage()
       }, 100)
     }
     if (sectionId === 'availability') {

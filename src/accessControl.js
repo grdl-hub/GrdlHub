@@ -12,12 +12,13 @@ const AVAILABLE_PAGES = {
   users: { name: 'Users', icon: '👥', description: 'User management' },
   pages: { name: 'Pages', icon: '📄', description: 'Static page management' },
   content: { name: 'Content', icon: '📝', description: 'Dynamic content management' },
-  settings: { name: 'Settings', icon: '⚙️', description: 'App configuration' }
+  settings: { name: 'Settings', icon: '⚙️', description: 'App configuration' },
+  translations: { name: 'Translations', icon: '🌍', description: 'Interface translation management (Admin only)' }
 }
 
 // Default permissions for roles
 const ROLE_PERMISSIONS = {
-  admin: ['home', 'appointments', 'availability', 'monthly', 'reports', 'users', 'pages', 'content', 'settings'],
+  admin: ['home', 'appointments', 'availability', 'monthly', 'reports', 'users', 'pages', 'content', 'settings', 'translations'],
   user: ['home', 'appointments', 'availability', 'monthly', 'content']
 }
 
