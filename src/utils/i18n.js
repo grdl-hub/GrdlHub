@@ -5,7 +5,7 @@ import { getTranslationEntries } from './translationManagement.js';
 
 class I18nManager {
     constructor() {
-        this.currentLanguage = 'en'; // Default to English
+        this.currentLanguage = 'pt'; // Default to Portuguese
         this.translations = new Map();
         this.fallbackLanguage = 'en';
         this.initialized = false;
@@ -21,7 +21,7 @@ class I18nManager {
             console.log('🌍 Initializing i18n system...');
             
             // Load current language preference from localStorage
-            this.currentLanguage = localStorage.getItem('grdlhub-language') || 'en';
+            this.currentLanguage = localStorage.getItem('grdlhub-language') || 'pt';
             console.log('🌍 Current language:', this.currentLanguage);
 
             // Load all translations from Firestore

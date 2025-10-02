@@ -39,65 +39,9 @@ class MainApp {
     })
   }
 
-  // Debug navigation elements
-  debugNavigationElements(when = '') {
-    setTimeout(() => {
-      console.log(`🔍 Navigation debug (${when}):`)
-      const userMenu = document.querySelector('.user-menu')
-      const userNameSpan = document.getElementById('user-name')
-      const availabilityLink = document.querySelector('a[href="#availability"]')
-      const authRequiredLinks = document.querySelectorAll('.auth-required')
-      const bodyHasAuthClass = document.body.classList.contains('authenticated')
-      
-      console.log('  - Body has authenticated class:', bodyHasAuthClass)
-      console.log('  - Body classes:', Array.from(document.body.classList))
-      console.log('  - User menu exists:', !!userMenu)
-      console.log('  - User name span exists:', !!userNameSpan)
-      console.log('  - User name content:', userNameSpan?.textContent)
-      console.log('  - Availability link exists:', !!availabilityLink)
-      console.log('  - Availability link visible:', availabilityLink ? window.getComputedStyle(availabilityLink).display !== 'none' : false)
-      console.log('  - Auth required links count:', authRequiredLinks.length)
-      console.log('  - Auth required links visible:', Array.from(authRequiredLinks).map(link => ({
-        href: link.getAttribute('href'),
-        text: link.textContent,
-        visible: window.getComputedStyle(link).display !== 'none'
-      })))
-      
-      // Update debug panel
-      const debugNavElements = document.getElementById('debug-nav-elements')
-      if (debugNavElements) {
-        debugNavElements.textContent = `Nav: Menu=${!!userMenu} Name=${!!userNameSpan} Links=${authRequiredLinks.length}`
-      }
-      
-      const debugAvailLink = document.getElementById('debug-availability-link')
-      if (debugAvailLink) {
-        const linkVisible = availabilityLink ? window.getComputedStyle(availabilityLink).display !== 'none' : false
-        debugAvailLink.textContent = `Avail Link: ${!!availabilityLink ? (linkVisible ? 'VISIBLE' : 'HIDDEN') : 'NOT FOUND'}`
-      }
-    }, 100)
-  }
 
-  // Debug helper functions
-  updateDebugPanel(section, data) {
-    const debugPanel = document.getElementById('debug-panel')
-    if (!debugPanel) return
-    
-    const timestamp = document.getElementById('debug-timestamp')
-    if (timestamp) timestamp.textContent = `Time: ${new Date().toLocaleTimeString()}`
-    
-    if (section === 'auth') {
-      const authStatus = document.getElementById('debug-auth-status')
-      if (authStatus) authStatus.textContent = `Auth: ${data.status}`
-      
-      const userInfo = document.getElementById('debug-user-info')
-      if (userInfo) userInfo.textContent = `User: ${data.user ? data.user.email || 'Unknown' : 'None'}`
-    }
-    
-    if (section === 'navigation') {
-      const currentSection = document.getElementById('debug-current-section')
-      if (currentSection) currentSection.textContent = `Section: ${data.sectionId || 'None'}`
-    }
-  }
+
+
 
   async initialize() {
     if (this.initialized) return
@@ -117,28 +61,15 @@ class MainApp {
       
       if (!user) {
         console.error('❌ No authenticated user found - redirecting to auth')
-        this.updateDebugPanel('auth', { status: 'No user found', user: null })
         throw new Error('No authenticated user found')
       }
       
-      this.updateDebugPanel('auth', { status: 'User found', user: user })
-
-      // For Firebase sign-in links, email is automatically verified
-      // But let's be more flexible with the verification check
-      if (!user.emailVerified && user.providerData?.[0]?.providerId !== 'password') {
-        console.warn('⚠️ Email not verified, but continuing for sign-in link users')
-      }
-
       this.currentUser = user
       console.log('✅ User verified, building UI...')
 
       // Build the main app UI
       this.buildMainUI()
       console.log('✅ UI built, initializing services...')
-      this.updateDebugPanel('auth', { status: 'UI built', user: user })
-      
-      // Debug navigation elements before auth
-      this.debugNavigationElements('before-auth')
       
       // Initialize core services (without auth - already handled)
       await initializeAccessControl()
@@ -147,9 +78,6 @@ class MainApp {
       // Filter navigation to show auth-required elements
       await filterNavigation()
       console.log('✅ Navigation filtered for authenticated user')
-      
-      // Debug navigation elements after auth
-      this.debugNavigationElements('after-auth')
       
       initializeUI()
       console.log('✅ UI initialized')
@@ -169,6 +97,8 @@ class MainApp {
       this.setupNavigation()
       this.setupTabs()
       this.setupLogout()
+      this.setupUserSettingsMenu()
+      await this.updateUserDropdownInfo()
       this.setupBackButton()
       this.setupPWAFeatures()
       console.log('✅ App functionality set up')
@@ -185,13 +115,11 @@ class MainApp {
       
       this.initialized = true
       console.log('🎉 Main app initialized successfully!')
-      this.updateDebugPanel('auth', { status: 'SUCCESS: App initialized', user: this.currentUser })
       showNotification('Welcome to GrdlHub!', 'success')
       
     } catch (error) {
       console.error('❌ Failed to initialize main app:', error)
       console.error('Stack trace:', error.stack)
-      this.updateDebugPanel('auth', { status: `FAILED: ${error.message}`, user: null })
       this.redirectToAuth('Authentication error. Please sign in again.')
     }
   }
@@ -206,23 +134,54 @@ class MainApp {
               <span>Início</span>
             </button>
             <h1 class="logo">GrdlHub</h1>
-            <div class="user-menu">
-              <span id="user-name">${this.currentUser?.displayName || this.currentUser?.email || 'Loading...'}</span>
-              <button id="logout-btn" class="btn btn-secondary btn-small">[Logout]</button>
+            
+            <!-- Settings Wheel Dropdown -->
+            <div class="user-settings-menu">
+              <button class="settings-wheel" id="settings-wheel" title="User Settings">
+                <svg class="settings-icon" viewBox="0 0 24 24" width="20" height="20">
+                  <path d="M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M10,22C9.75,22 9.54,21.82 9.5,21.58L9.13,18.93C8.5,18.68 7.96,18.34 7.44,17.94L4.95,18.95C4.73,19.03 4.46,18.95 4.34,18.73L2.34,15.27C2.21,15.05 2.27,14.78 2.46,14.63L4.57,12.97L4.5,12L4.57,11.03L2.46,9.37C2.27,9.22 2.21,8.95 2.34,8.73L4.34,5.27C4.46,5.05 4.73,4.96 4.95,5.05L7.44,6.05C7.96,5.66 8.5,5.32 9.13,5.07L9.5,2.42C9.54,2.18 9.75,2 10,2H14C14.25,2 14.46,2.18 14.5,2.42L14.87,5.07C15.5,5.32 16.04,5.66 16.56,6.05L19.05,5.05C19.27,4.96 19.54,5.05 19.66,5.27L21.66,8.73C21.79,8.95 21.73,9.22 21.54,9.37L19.43,11.03L19.5,12L19.43,12.97L21.54,14.63C21.73,14.78 21.79,15.05 21.66,15.27L19.66,18.73C19.54,18.95 19.27,19.04 19.05,18.95L16.56,17.95C16.04,18.34 15.5,18.68 14.87,18.93L14.5,21.58C14.46,21.82 14.25,22 14,22H10M11.25,4L10.88,6.61C9.68,6.86 8.62,7.5 7.85,8.39L5.44,7.35L4.69,8.65L6.8,10.2C6.4,11.37 6.4,12.64 6.8,13.8L4.68,15.36L5.43,16.66L7.86,15.62C8.63,16.5 9.68,17.14 10.87,17.38L11.24,20H12.76L13.13,17.39C14.32,17.14 15.37,16.5 16.14,15.62L18.57,16.66L19.32,15.36L17.2,13.81C17.6,12.64 17.6,11.37 17.2,10.2L19.31,8.65L18.56,7.35L16.15,8.39C15.38,7.5 14.32,6.86 13.12,6.62L12.75,4H11.25Z" fill="currentColor"/>
+                </svg>
+              </button>
+              
+              <div class="user-dropdown" id="user-dropdown">
+                <div class="user-info">
+                  <div class="user-avatar">
+                    <span class="avatar-text">U</span>
+                  </div>
+                  <div class="user-details">
+                    <div class="user-name">Loading...</div>
+                    <div class="user-email">${this.currentUser?.email || ''}</div>
+                  </div>
+                </div>
+                
+                <div class="dropdown-divider"></div>
+                
+                <div class="language-section">
+                  <div class="section-label">Language / Idioma</div>
+                  <div class="language-options">
+                    <button class="language-option" data-lang="pt">
+                      <span class="name">Português</span>
+                    </button>
+                    <button class="language-option" data-lang="en">
+                      <span class="name">English</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="dropdown-divider"></div>
+                
+                <div class="dropdown-actions">
+                  <button class="dropdown-action" id="logout-action">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M16,17V14H9V10H16V7L21,12L16,17M14,2A2,2 0 0,1 16,4V6H14V4H5V20H14V18H16V20A2,2 0 0,1 14,22H5A2,2 0 0,1 3,20V4A2,2 0 0,1 5,2H14Z" />
+                    </svg>
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </header>
-
-        <!-- Debug Panel (remove in production) -->
-        <div id="debug-panel" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; z-index: 9999; max-width: 300px;">
-          <div><strong>🐛 DEBUG PANEL</strong></div>
-          <div id="debug-auth-status">Auth: Loading...</div>
-          <div id="debug-user-info">User: Not loaded</div>
-          <div id="debug-current-section">Section: None</div>
-          <div id="debug-nav-elements">Nav: Checking...</div>
-          <div id="debug-availability-link">Avail Link: Checking...</div>
-          <div id="debug-timestamp">Time: ${new Date().toLocaleTimeString()}</div>
-        </div>
 
         <main class="main">
           <!-- Home Page -->
@@ -865,7 +824,6 @@ class MainApp {
 
   showSection(sectionId) {
     console.log('🎯 Navigating to section:', sectionId)
-    this.updateDebugPanel('navigation', { sectionId: sectionId })
     
     // Cleanup previous page listeners before switching
     cleanupAvailability()
@@ -1022,17 +980,162 @@ class MainApp {
   }
 
   setupLogout() {
+    // Handle the new dropdown logout action
+    const logoutAction = document.getElementById('logout-action')
+    if (logoutAction) {
+      logoutAction.addEventListener('click', async () => {
+        try {
+          await AuthAPI.signOutUser()
+          showNotification('Signed out successfully', 'success')
+          this.redirectToAuth()
+        } catch (error) {
+          console.error('Logout error:', error)
+          showNotification('Error signing out', 'error')
+        }
+      })
+    }
+    
+    // Also handle legacy logout button if it exists
     const logoutBtn = document.getElementById('logout-btn')
-    logoutBtn.addEventListener('click', async () => {
-      try {
-        await AuthAPI.signOutUser()
-        showNotification('Signed out successfully', 'success')
-        this.redirectToAuth()
-      } catch (error) {
-        console.error('Logout error:', error)
-        showNotification('Error signing out', 'error')
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          await AuthAPI.signOutUser()
+          showNotification('Signed out successfully', 'success')
+          this.redirectToAuth()
+        } catch (error) {
+          console.error('Logout error:', error)
+          showNotification('Error signing out', 'error')
+        }
+      })
+    }
+  }
+
+  setupUserSettingsMenu() {
+    const settingsWheel = document.getElementById('settings-wheel')
+    const userDropdown = document.getElementById('user-dropdown')
+    const languageOptions = document.querySelectorAll('.language-option')
+    
+    if (!settingsWheel || !userDropdown) return
+    
+    // Toggle dropdown on settings wheel click
+    settingsWheel.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const isOpen = userDropdown.classList.contains('show')
+      
+      if (isOpen) {
+        this.closeUserDropdown()
+      } else {
+        this.openUserDropdown()
       }
     })
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!settingsWheel.contains(e.target) && !userDropdown.contains(e.target)) {
+        this.closeUserDropdown()
+      }
+    })
+    
+    // Handle language switching
+    languageOptions.forEach(option => {
+      option.addEventListener('click', async (e) => {
+        const selectedLang = e.currentTarget.dataset.lang
+        console.log('🌍 Language changed to:', selectedLang)
+        
+        // Update active state
+        languageOptions.forEach(opt => opt.classList.remove('active'))
+        e.currentTarget.classList.add('active')
+        
+        // Store preference
+        localStorage.setItem('selectedLanguage', selectedLang)
+        
+        // Apply language changes (if i18n system is available)
+        if (window.i18n && typeof window.i18n.setLanguage === 'function') {
+          await window.i18n.setLanguage(selectedLang)
+        }
+        
+        // Show notification
+        const langName = selectedLang === 'pt' ? 'Português' : 'English'
+        showNotification(`Language changed to ${langName}`, 'success')
+        
+        // Close dropdown
+        this.closeUserDropdown()
+      })
+    })
+    
+    // Set initial active language
+    const currentLang = localStorage.getItem('selectedLanguage') || 'pt'
+    languageOptions.forEach(option => {
+      if (option.dataset.lang === currentLang) {
+        option.classList.add('active')
+      }
+    })
+  }
+  
+  openUserDropdown() {
+    const settingsWheel = document.getElementById('settings-wheel')
+    const userDropdown = document.getElementById('user-dropdown')
+    
+    settingsWheel?.classList.add('active')
+    userDropdown?.classList.add('show')
+  }
+  
+  closeUserDropdown() {
+    const settingsWheel = document.getElementById('settings-wheel')
+    const userDropdown = document.getElementById('user-dropdown')
+    
+    settingsWheel?.classList.remove('active')
+    userDropdown?.classList.remove('show')
+  }
+
+  async fetchUserData() {
+    try {
+      if (!this.currentUser?.uid) return null
+      
+      const { doc, getDoc } = await import('firebase/firestore')
+      const { db } = await import('./auth.js')
+      
+      const userDocRef = doc(db, 'users', this.currentUser.uid)
+      const userDocSnap = await getDoc(userDocRef)
+      
+      if (userDocSnap.exists()) {
+        return userDocSnap.data()
+      } else {
+        console.log('No user document found in Firestore')
+        return null
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error)
+      return null
+    }
+  }
+
+  async updateUserDropdownInfo() {
+    const userData = await this.fetchUserData()
+    const userNameElement = document.querySelector('.user-dropdown .user-name')
+    const avatarElement = document.querySelector('.user-dropdown .avatar-text')
+    
+    if (userData && userData.name) {
+      // Update user name from Firestore
+      if (userNameElement) {
+        userNameElement.textContent = userData.name
+      }
+      
+      // Update avatar with first letter of name
+      if (avatarElement) {
+        avatarElement.textContent = userData.name.charAt(0).toUpperCase()
+      }
+    } else {
+      // Fallback to Firebase Auth displayName or email
+      const fallbackName = this.currentUser?.displayName || this.currentUser?.email?.split('@')[0] || 'User'
+      if (userNameElement) {
+        userNameElement.textContent = fallbackName
+      }
+      if (avatarElement) {
+        avatarElement.textContent = fallbackName.charAt(0).toUpperCase()
+      }
+    }
   }
 
   setupPWAFeatures() {

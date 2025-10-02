@@ -58,16 +58,6 @@ service cloud.firestore {
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
           request.resource.data.updatedBy == request.auth.uid));
     }
-
-    // Home sections collection - authenticated users can read, only admins can write
-    match /homeSections/{sectionId} {
-      // All authenticated users can read home sections (needed for home page rendering)
-      allow read: if request.auth != null;
-      
-      // Temporarily allow all authenticated users to write (for testing)
-      // TODO: Restrict to admins only after testing
-      allow write: if request.auth != null;
-    }
     
     // Privileges collection - authenticated users can read, only admins can write
     match /privileges/{privilegeId} {
@@ -123,47 +113,47 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Month Submissions collection - users can manage their own month submissions
-    match /monthSubmissions/{submissionId} {
-      // Users can read/write their own month submissions
-      allow read, write: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
+    // Translations collection - public read access, admin write access
+    match /translations/{translationId} {
+      // Allow all users (including unauthenticated) to read translations
+      // This enables the auth portal and other public pages to show translated text
+      allow read: if true;
       
-      // Allow create if the userId matches the authenticated user
-      allow create: if request.auth != null && 
-        request.resource.data.userId == request.auth.uid;
-      
-      // Admins can read all month submissions (to see who has/hasn't submitted)
-      allow read: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      
-      // Admins can write (to unlock submissions if needed)
+      // Only authenticated admins can create/update/delete translations
       allow write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Allow system initialization of default translations
+      allow create: if request.auth != null;
     }
     
-    // Settings collection - only admins can read/write settings
+    // Home sections collection - authenticated users can read, admins can write
+    match /homeSections/{sectionId} {
+      // All authenticated users can read home sections for dashboard display
+      allow read: if request.auth != null;
+      
+      // Only admins can create/update/delete home sections
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Allow system initialization of default sections
+      allow create: if request.auth != null;
+    }
+    
+    // Settings collection - authenticated users can read, admins can write
     match /settings/{settingId} {
       // All authenticated users can read settings
       allow read: if request.auth != null;
       
-      // Only admins can write settings
+      // Only admins can create/update/delete settings
       allow write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    // Translations collection - authenticated users can read, only admins can write
-    match /translations/{translationId} {
-      // All authenticated users can read translations (needed for UI rendering)
-      allow read: if request.auth != null;
       
-      // Only admins can create/update/delete translations
-      allow write: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Allow system initialization of default settings
+      allow create: if request.auth != null;
     }
   }
 }

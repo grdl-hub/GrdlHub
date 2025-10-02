@@ -90,6 +90,16 @@ class TranslationManager {
         try {
             console.log('📥 Loading translations from Firestore...');
             this.translations = await getTranslationEntries();
+            
+            // If no translations found, initialize defaults
+            if (this.translations.length === 0) {
+                console.log('🔄 No translations found, initializing defaults...');
+                const { initializeDefaultTranslations } = await import('../utils/translationManagement.js');
+                await initializeDefaultTranslations();
+                // Reload after initialization
+                this.translations = await getTranslationEntries();
+            }
+            
             this.filteredTranslations = [...this.translations];
             console.log(`✅ Loaded ${this.translations.length} translations`);
         } catch (error) {
@@ -133,6 +143,9 @@ class TranslationManager {
                         <button id="add-translation-btn" class="btn btn-primary">
                             ➕ Add Translation
                         </button>
+                        <button id="init-auth-translations-btn" class="btn btn-secondary">
+                            🔐 Initialize Auth Portal
+                        </button>
                         <button id="extract-text-btn" class="btn btn-success">
                             🔍 Extract App Text
                         </button>
@@ -151,12 +164,28 @@ class TranslationManager {
                             placeholder="🔍 Search translations..."
                             class="search-input"
                         >
+                        <select id="page-filter" class="page-filter">
+                            <option value="">All Pages</option>
+                            <option value="auth">🔐 Auth Portal</option>
+                            <option value="home">🏠 Home Page</option>
+                            <option value="users">👥 Users Page</option>
+                            <option value="appointments">📅 Appointments</option>
+                            <option value="availability">📋 Availability</option>
+                            <option value="reports">📊 Reports</option>
+                            <option value="settings">⚙️ Settings</option>
+                            <option value="translations">🌍 Translations</option>
+                            <option value="navigation">🧭 Navigation</option>
+                            <option value="common">🔗 Common</option>
+                        </select>
                         <select id="category-filter" class="category-filter">
                             <option value="">All Categories</option>
                             <option value="navigation">Navigation</option>
                             <option value="actions">Actions</option>
                             <option value="forms">Forms</option>
                             <option value="messages">Messages</option>
+                            <option value="auth">Auth</option>
+                            <option value="buttons">Buttons</option>
+                            <option value="common">Common</option>
                         </select>
                     </div>
                 </div>
@@ -218,7 +247,7 @@ class TranslationManager {
                 </td>
                 <td class="updated-cell">
                     <span class="updated-date">${this.formatDate(translation.updatedAt)}</span>
-                    <span class="updated-by">by ${translation.updatedBy}</span>
+                    <span class="updated-by">by ${translation.updatedBy || 'Unknown'}</span>
                 </td>
                 <td class="actions-cell">
                     <button class="btn-icon" onclick="editTranslation('${translation.id}')" title="Edit">
@@ -255,6 +284,12 @@ class TranslationManager {
             addBtn.addEventListener('click', () => this.openTranslationModal());
         }
 
+        // Initialize Auth Portal translations button
+        const initAuthBtn = document.getElementById('init-auth-translations-btn');
+        if (initAuthBtn) {
+            initAuthBtn.addEventListener('click', () => this.initializeAuthPortalTranslations());
+        }
+
         // Search functionality
         const searchInput = document.getElementById('search-translations');
         if (searchInput) {
@@ -265,6 +300,12 @@ class TranslationManager {
         const categoryFilter = document.getElementById('category-filter');
         if (categoryFilter) {
             categoryFilter.addEventListener('change', (e) => this.handleCategoryFilter(e.target.value));
+        }
+
+        // Page filter
+        const pageFilter = document.getElementById('page-filter');
+        if (pageFilter) {
+            pageFilter.addEventListener('change', (e) => this.handlePageFilter(e.target.value));
         }
 
         // Export button
@@ -303,6 +344,44 @@ class TranslationManager {
             this.filteredTranslations = this.translations.filter(translation =>
                 translation.category === category
             );
+        }
+        
+        this.updateTranslationTable();
+    }
+
+    handlePageFilter(page) {
+        if (page === '') {
+            this.filteredTranslations = [...this.translations];
+        } else {
+            this.filteredTranslations = this.translations.filter(translation => {
+                // Filter by translation key prefix that corresponds to the page
+                const key = translation.key.toLowerCase();
+                
+                switch (page) {
+                    case 'auth':
+                        return key.startsWith('auth.');
+                    case 'home':
+                        return key.startsWith('home.') || key.startsWith('sections.');
+                    case 'users':
+                        return key.startsWith('users.') || key.startsWith('user.');
+                    case 'appointments':
+                        return key.startsWith('appointments.') || key.startsWith('appointment.');
+                    case 'availability':
+                        return key.startsWith('availability.') || key.startsWith('available.');
+                    case 'reports':
+                        return key.startsWith('reports.') || key.startsWith('report.');
+                    case 'settings':
+                        return key.startsWith('settings.') || key.startsWith('setting.');
+                    case 'translations':
+                        return key.startsWith('translations.') || key.startsWith('translation.');
+                    case 'navigation':
+                        return key.startsWith('nav.') || key.startsWith('navigation.') || key.startsWith('menu.');
+                    case 'common':
+                        return key.startsWith('common.') || key.startsWith('buttons.') || key.startsWith('forms.') || key.startsWith('messages.');
+                    default:
+                        return true;
+                }
+            });
         }
         
         this.updateTranslationTable();
@@ -400,6 +479,39 @@ class TranslationManager {
                             placeholder="Portuguese translation (optional)"
                         >
                         <small class="form-hint">Leave empty if translation is not available yet</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="translation-page">📄 Page:</label>
+                        <select id="translation-page">
+                            <option value="">Select Page</option>
+                            <option value="auth" ${translation?.key?.startsWith('auth.') ? 'selected' : ''}>🔐 Auth Portal</option>
+                            <option value="home" ${translation?.key?.startsWith('home.') || translation?.key?.startsWith('sections.') ? 'selected' : ''}>🏠 Home Page</option>
+                            <option value="users" ${translation?.key?.startsWith('users.') || translation?.key?.startsWith('user.') ? 'selected' : ''}>👥 Users Page</option>
+                            <option value="appointments" ${translation?.key?.startsWith('appointments.') || translation?.key?.startsWith('appointment.') ? 'selected' : ''}>📅 Appointments</option>
+                            <option value="availability" ${translation?.key?.startsWith('availability.') ? 'selected' : ''}>📋 Availability</option>
+                            <option value="reports" ${translation?.key?.startsWith('reports.') ? 'selected' : ''}>📊 Reports</option>
+                            <option value="settings" ${translation?.key?.startsWith('settings.') ? 'selected' : ''}>⚙️ Settings</option>
+                            <option value="translations" ${translation?.key?.startsWith('translations.') ? 'selected' : ''}>🌍 Translations</option>
+                            <option value="navigation" ${translation?.key?.startsWith('nav.') || translation?.key?.startsWith('navigation.') || translation?.key?.startsWith('menu.') ? 'selected' : ''}>🧭 Navigation</option>
+                            <option value="common" ${translation?.key?.startsWith('common.') || translation?.key?.startsWith('buttons.') || translation?.key?.startsWith('forms.') || translation?.key?.startsWith('messages.') ? 'selected' : ''}>🔗 Common</option>
+                        </select>
+                        <small class="form-hint">Select which page this translation belongs to</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="translation-category">🏷️ Category:</label>
+                        <select id="translation-category">
+                            <option value="">Select Category</option>
+                            <option value="navigation" ${translation?.category === 'navigation' ? 'selected' : ''}>Navigation</option>
+                            <option value="actions" ${translation?.category === 'actions' ? 'selected' : ''}>Actions</option>
+                            <option value="forms" ${translation?.category === 'forms' ? 'selected' : ''}>Forms</option>
+                            <option value="messages" ${translation?.category === 'messages' ? 'selected' : ''}>Messages</option>
+                            <option value="auth" ${translation?.category === 'auth' ? 'selected' : ''}>Auth</option>
+                            <option value="buttons" ${translation?.category === 'buttons' ? 'selected' : ''}>Buttons</option>
+                            <option value="common" ${translation?.category === 'common' ? 'selected' : ''}>Common</option>
+                        </select>
+                        <small class="form-hint">Select the type/category of this translation</small>
                     </div>
                     
                     <div class="form-actions">
@@ -502,11 +614,31 @@ class TranslationManager {
     }
 
     formatDate(date) {
+        if (!date) return 'Never';
+        
+        let dateObj;
+        
+        // Handle Firestore timestamp objects
+        if (date && typeof date.toDate === 'function') {
+            dateObj = date.toDate();
+        } else if (date && typeof date.seconds === 'number') {
+            // Handle Firestore timestamp as plain object
+            dateObj = new Date(date.seconds * 1000);
+        } else {
+            // Handle regular date strings/objects
+            dateObj = new Date(date);
+        }
+        
+        // Check if the date is valid
+        if (isNaN(dateObj.getTime())) {
+            return 'Invalid Date';
+        }
+        
         return new Intl.DateTimeFormat('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric'
-        }).format(new Date(date));
+        }).format(dateObj);
     }
 
     async showTextExtractionModal() {
@@ -563,6 +695,58 @@ class TranslationManager {
     getCompletionPercentage() {
         const translated = this.translations.filter(t => t.pt && t.pt.trim() !== '').length;
         return this.translations.length > 0 ? Math.round((translated / this.translations.length) * 100) : 0;
+    }
+
+    async initializeAuthPortalTranslations() {
+        try {
+            console.log('🔐 Initializing Auth Portal translations...');
+            showNotification('🔐 Initializing Auth Portal translations...', 'info');
+
+            const { saveTranslationEntry } = await import('../utils/translationManagement.js');
+
+            // Define the auth portal translations we need
+            const authTranslations = [
+                { key: 'auth.title', en: 'GrdlHub', pt: 'GrdlHub', category: 'auth' },
+                { key: 'auth.subtitle', en: 'Secure Access Portal', pt: 'Portal de Acesso Seguro', category: 'auth' },
+                { key: 'auth.signin', en: 'Sign In', pt: 'Entrar', category: 'auth' },
+                { key: 'auth.email_prompt', en: 'Enter your email address to access GrdlHub', pt: 'Digite seu endereço de email para acessar o GrdlHub', category: 'auth' },
+                { key: 'auth.email_label', en: 'Email Address', pt: 'Endereço de Email', category: 'auth' },
+                { key: 'auth.email_placeholder', en: 'your.email@example.com', pt: 'seu.email@exemplo.com', category: 'auth' },
+                { key: 'auth.signin_button', en: 'Sign In', pt: 'Entrar', category: 'auth' },
+                { key: 'auth.secure_note', en: '🔒 Secure email-based authentication', pt: '🔒 Autenticação segura baseada em email', category: 'auth' },
+                { key: 'auth.processing', en: 'Processing...', pt: 'Processando...', category: 'auth' },
+                { key: 'auth.check_email', en: 'Check your email for the sign-in link', pt: 'Verifique seu email pelo link de acesso', category: 'auth' },
+                { key: 'auth.link_sent', en: 'Sign-in Link Sent', pt: 'Link de Acesso Enviado', category: 'auth' },
+                { key: 'auth.sent_to', en: 'We\'ve sent a secure sign-in link to:', pt: 'Enviamos um link de acesso seguro para:', category: 'auth' },
+                { key: 'auth.next_steps', en: 'Next Steps:', pt: 'Próximos Passos:', category: 'auth' },
+                { key: 'auth.step1', en: 'Check your email inbox (and spam folder)', pt: 'Verifique sua caixa de entrada (e pasta de spam)', category: 'auth' },
+                { key: 'auth.step2', en: 'Click the sign-in link', pt: 'Clique no link de acesso', category: 'auth' },
+                { key: 'auth.step3', en: 'You\'ll be automatically signed in', pt: 'Você será conectado automaticamente', category: 'auth' },
+                { key: 'auth.try_different', en: 'Try Different Email', pt: 'Tentar Email Diferente', category: 'auth' }
+            ];
+
+            let successCount = 0;
+            
+            for (const translation of authTranslations) {
+                try {
+                    await saveTranslationEntry(translation.key, translation.en, translation.pt, translation.category);
+                    successCount++;
+                } catch (error) {
+                    console.error(`❌ Error saving translation ${translation.key}:`, error);
+                }
+            }
+
+            // Reload translations
+            await this.loadTranslations();
+            this.updateTranslationTable();
+            this.updateStats();
+
+            showNotification(`✅ Initialized ${successCount}/${authTranslations.length} Auth Portal translations!`, 'success');
+            
+        } catch (error) {
+            console.error('❌ Error initializing Auth Portal translations:', error);
+            showNotification('Error initializing Auth Portal translations', 'error');
+        }
     }
 }
 
