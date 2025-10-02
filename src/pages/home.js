@@ -52,7 +52,8 @@ class HomePageManager {
             'appointments': { id: 'appointments', title: 'Appointments', icon: '📅', page: 'appointments' },
             'content': { id: 'content', title: 'Content', icon: '📝', page: 'content' },
             'pages': { id: 'pages', title: 'Pages', icon: '📄', page: 'pages' },
-            'settings': { id: 'settings', title: 'Settings', icon: '⚙️', page: 'settings' }
+            'settings': { id: 'settings', title: 'Settings', icon: '⚙️', page: 'settings' },
+            'translations': { id: 'translations', title: 'Translations', icon: '🌍', page: 'translations' }
         };
 
         return section.pages

@@ -925,8 +925,16 @@ class MainApp {
     if (sectionId === 'translations') {
       // Initialize translations page
       console.log('🌍 Translations section activated - setting up translation management')
+      console.log('🔍 Current user:', this.currentUser)
+      console.log('🔍 Checking if user has access to translations page')
       setTimeout(() => {
-        initializeTranslationsPage()
+        try {
+          console.log('🚀 Attempting to initialize translations page...')
+          initializeTranslationsPage()
+          console.log('✅ Translations page initialized successfully')
+        } catch (error) {
+          console.error('❌ Error initializing translations page:', error)
+        }
       }, 100)
     }
     if (sectionId === 'availability') {

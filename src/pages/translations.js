@@ -3,6 +3,7 @@
 
 import { getCurrentUser } from '../auth.js';
 import { showNotification } from '../utils/notifications.js';
+import { hasPageAccess } from '../accessControl.js';
 import { 
     getTranslationEntries,
     saveTranslationEntry,
@@ -30,10 +31,16 @@ class TranslationManager {
         
         // Check admin permissions
         const user = getCurrentUser();
-        if (!user || !this.hasTranslationPermissions(user)) {
+        console.log('🔍 Current user for translations:', user?.email);
+        
+        const hasPermission = await this.hasTranslationPermissions(user);
+        if (!user || !hasPermission) {
+            console.log('❌ User does not have translation permissions');
             this.renderAccessDenied();
             return;
         }
+
+        console.log('✅ User has translation permissions, proceeding...');
 
         // Initialize default translations if needed
         await initializeDefaultTranslations();
@@ -64,13 +71,17 @@ class TranslationManager {
         });
     }
 
-    hasTranslationPermissions(user) {
-        // For now, only admin users can manage translations
-        // You can extend this based on your permission system
-        return user.email && (
-            user.email.includes('admin') || 
-            user.email === 'nuno@example.com' // Replace with your admin email
-        );
+    async hasTranslationPermissions(user) {
+        // Use the proper access control system
+        console.log('🔍 Checking translation permissions for user:', user?.email);
+        try {
+            const hasAccess = await hasPageAccess('translations');
+            console.log('🔍 Translation access result:', hasAccess);
+            return hasAccess;
+        } catch (error) {
+            console.error('❌ Error checking translation permissions:', error);
+            return false;
+        }
     }
 
     async loadTranslations() {
