@@ -839,6 +839,7 @@ function getPageCheckboxes(selectedPages = []) {
     { id: 'content', label: '📝 Content', category: 'system' },
     { id: 'pages', label: '📄 Pages', category: 'system' },
     { id: 'settings', label: '⚙️ Settings', category: 'system' },
+    { id: 'translations', label: '🌍 Translations', category: 'system' },
     { id: 'admin', label: '🔧 Admin', category: 'system' }
   ]
   

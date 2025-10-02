@@ -66,7 +66,8 @@ const AVAILABLE_PAGES = [
   { id: 'users', name: 'Users', icon: '👥' },
   { id: 'pages', name: 'Pages', icon: '📄' },
   { id: 'content', name: 'Content', icon: '📝' },
-  { id: 'settings', name: 'Settings', icon: '⚙️' }
+  { id: 'settings', name: 'Settings', icon: '⚙️' },
+  { id: 'translations', name: 'Translations', icon: '🌍' }
 ];
 
 /**
