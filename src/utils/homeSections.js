@@ -20,7 +20,7 @@ const DEFAULT_SECTIONS = [
     icon: '',
     order: 1,
     enabled: true,
-    pages: ['monthly', 'reports']
+    pages: ['monthly', 'templates', 'reports']
   },
   {
     id: 'people',
@@ -56,19 +56,8 @@ const DEFAULT_SECTIONS = [
   }
 ];
 
-// Available pages that can be assigned to sections
-const AVAILABLE_PAGES = [
-  { id: 'home', name: 'Home', icon: '🏠' },
-  { id: 'appointments', name: 'Appointments', icon: '📅' },
-  { id: 'availability', name: 'Availability', icon: '📋' },
-  { id: 'monthly', name: 'Monthly View', icon: '📅' },
-  { id: 'reports', name: 'Reports', icon: '📊' },
-  { id: 'users', name: 'Users', icon: '👥' },
-  { id: 'pages', name: 'Pages', icon: '📄' },
-  { id: 'content', name: 'Content', icon: '📝' },
-  { id: 'settings', name: 'Settings', icon: '⚙️' },
-  { id: 'translations', name: 'Translations', icon: '🌍' }
-];
+// Import centralized page registry
+import { getAvailablePagesArray } from './pageRegistry.js'
 
 /**
  * Load all home sections from Firestore
@@ -235,7 +224,7 @@ export async function reorderHomeSections(sectionsWithNewOrder) {
  * Get available pages for section assignment
  */
 export function getAvailablePages() {
-  return AVAILABLE_PAGES;
+  return getAvailablePagesArray();
 }
 
 /**

@@ -142,6 +142,25 @@ service cloud.firestore {
       allow create: if request.auth != null;
     }
     
+    // Templates collection - authenticated users can manage templates
+    match /templates/{templateId} {
+      // All authenticated users can read templates (for sharing and viewing)
+      allow read: if request.auth != null;
+      
+      // Users can create templates and set themselves as the creator
+      allow create: if request.auth != null && 
+        request.resource.data.createdBy == request.auth.uid;
+      
+      // Users can update/delete their own templates
+      allow update, delete: if request.auth != null && 
+        resource.data.createdBy == request.auth.uid;
+      
+      // Admins can create/update/delete all templates
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // Settings collection - authenticated users can read, admins can write
     match /settings/{settingId} {
       // All authenticated users can read settings

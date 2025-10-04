@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Updating Available Pages Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .demo-section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Fira Code', Monaco, monospace;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .info {
+            color: #007bff;
+        }
+        .warning {
+            color: #ffc107;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            min-height: 200px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Auto-Updating Available Pages System</h1>
+    
+    <div class="demo-section">
+        <h2>📋 How It Works</h2>
+        <p>This system automatically updates the <strong>Available Pages</strong> list in the settings page whenever you create a new page. No more manual updates needed!</p>
+        
+        <h3>✅ Benefits:</h3>
+        <ul>
+            <li><strong>Automatic Discovery:</strong> New pages appear instantly in all UI lists</li>
+            <li><strong>Centralized Registry:</strong> Single source of truth for all pages</li>
+            <li><strong>Category Organization:</strong> Pages are grouped by category for better UX</li>
+            <li><strong>Real-time Updates:</strong> UI refreshes automatically when pages are added/removed</li>
+        </ul>
+    </div>
+
+    <div class="demo-section">
+        <h2>🛠️ Quick Demo</h2>
+        <p>Click the buttons below to see how new pages are automatically registered:</p>
+        
+        <button onclick="createAnalyticsPage()">Create Analytics Page 📊</button>
+        <button onclick="createCalendarPage()">Create Calendar Page 📅</button>
+        <button onclick="createBackupPage()">Create Backup Page 💾</button>
+        <button onclick="showCurrentPages()">Show All Pages</button>
+        <button onclick="clearOutput()">Clear Output</button>
+        
+        <div id="output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>💻 Code Examples</h2>
+        
+        <h3>1. Create a new admin page:</h3>
+        <div class="code-block">
+import { createAdminPage } from './utils/pageCreator.js'
+
+// This automatically registers the page in the system
+createAdminPage('analytics', 'Analytics', '📊').then(result => {
+  console.log(result.message) // ✅ Page 'Analytics' created and registered!
+})
+        </div>
+
+        <h3>2. Create a user page:</h3>
+        <div class="code-block">
+import { createUserPage } from './utils/pageCreator.js'
+
+createUserPage('calendar', 'Calendar', '📅')
+        </div>
+
+        <h3>3. Manually register existing pages:</h3>
+        <div class="code-block">
+import { registerPage } from './utils/pageRegistry.js'
+
+registerPage('custom', {
+  name: 'Custom Feature',
+  icon: '⚡',
+  description: 'Custom functionality',
+  category: 'main'
+})
+        </div>
+
+        <h3>4. Page appears automatically in settings:</h3>
+        <div class="code-block">
+// Settings > Home Sections > Available Pages
+// The new page appears instantly in categorized lists:
+
+📋 Main Features
+  ✓ 📅 Monthly View
+  ✓ 📋 Appointments  
+  ✓ 📊 Analytics     ← NEW PAGE HERE!
+
+👥 People Management
+  ✓ 🗓️ Availability
+  ✓ 👥 Users
+
+⚙️ System & Admin
+  ✓ 📝 Content
+  ✓ 💾 Backup       ← NEW PAGE HERE!
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔧 Implementation Details</h2>
+        
+        <h3>Files updated:</h3>
+        <ul>
+            <li><code class="info">src/utils/pageRegistry.js</code> - Centralized page registry</li>
+            <li><code class="info">src/utils/pageCreator.js</code> - Page creation helpers</li>
+            <li><code class="info">src/utils/homeSections.js</code> - Updated to use registry</li>
+            <li><code class="info">src/pages/settings.js</code> - Imports from registry</li>
+            <li><code class="info">src/style.css</code> - Category styling</li>
+        </ul>
+
+        <h3>Key Features:</h3>
+        <ul>
+            <li><strong>Event-driven updates:</strong> UI refreshes when registry changes</li>
+            <li><strong>Category-based organization:</strong> main, people, system</li>
+            <li><strong>Template generation:</strong> Auto-creates page files with proper structure</li>
+            <li><strong>Permission integration:</strong> Works with existing access control</li>
+        </ul>
+    </div>
+
+    <script type="module">
+        import { createAdminPage, createUserPage, createSystemPage } from './src/utils/pageCreator.js'
+        import { getAvailablePages, registerPage } from './src/utils/pageRegistry.js'
+
+        let output = document.getElementById('output')
+        
+        function log(message) {
+            output.textContent += message + '\n'
+            output.scrollTop = output.scrollHeight
+        }
+
+        window.createAnalyticsPage = async () => {
+            log('🚀 Creating Analytics page...')
+            const result = await createAdminPage('analytics', 'Analytics', '📊')
+            if (result.success) {
+                log('✅ ' + result.message)
+                log('📄 Analytics page is now available in:')
+                log('   - Settings > Home Sections > Available Pages')
+                log('   - User permissions system')
+                log('   - Access control lists\n')
+            }
+        }
+
+        window.createCalendarPage = async () => {
+            log('🚀 Creating Calendar page...')
+            const result = await createUserPage('calendar', 'Calendar', '📅')
+            if (result.success) {
+                log('✅ ' + result.message)
+                log('📄 Calendar page auto-registered in Main Features category\n')
+            }
+        }
+
+        window.createBackupPage = async () => {
+            log('🚀 Creating Backup page...')
+            const result = await createSystemPage('backup', 'Backup', '💾')
+            if (result.success) {
+                log('✅ ' + result.message)
+                log('📄 Backup page auto-registered in System & Admin category\n')
+            }
+        }
+
+        window.showCurrentPages = () => {
+            log('📋 Current registered pages:')
+            const pages = getAvailablePages()
+            Object.entries(pages).forEach(([id, metadata]) => {
+                log(`   ${metadata.icon} ${metadata.name} (${metadata.category})`)
+            })
+            log('')
+        }
+
+        window.clearOutput = () => {
+            output.textContent = ''
+        }
+
+        // Show initial state
+        log('🏠 GrdlHub Auto-Updating Pages System Initialized\n')
+        log('Ready to demonstrate automatic page registration!\n')
+        showCurrentPages()
+    </script>
+</body>
+</html>

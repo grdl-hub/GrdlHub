@@ -1,5 +1,6 @@
 import { getUserPermissions } from '../accessControl.js';
 import { loadHomeSections } from '../utils/homeSections.js';
+import { getAvailablePages } from '../utils/pageRegistry.js';
 
 class HomePageManager {
     constructor() {
@@ -12,8 +13,12 @@ class HomePageManager {
         await this.loadSections();
         await this.renderSections();
         this.setupEventListeners();
-        this.setupHeroImage();
-        console.log('✅ Home Page Manager initialized');
+        
+        // Listen for page registry updates to refresh home sections
+        window.addEventListener('pageRegistryUpdated', () => {
+            console.log('🔄 Page registry updated, refreshing home sections...');
+            this.renderSections();
+        });
     }
 
     async loadSections() {
@@ -43,18 +48,19 @@ class HomePageManager {
             return [];
         }
 
-        // Map page IDs to card objects
-        const pageToCardMap = {
-            'monthly': { id: 'monthly', title: 'Monthly View', icon: '📅', page: 'monthly' },
-            'reports': { id: 'reports', title: 'Reports', icon: '📊', page: 'reports' },
-            'availability': { id: 'availability', title: 'Availability', icon: '📋', page: 'availability' },
-            'users': { id: 'users', title: 'Users', icon: '👥', page: 'users' },
-            'appointments': { id: 'appointments', title: 'Appointments', icon: '📅', page: 'appointments' },
-            'content': { id: 'content', title: 'Content', icon: '📝', page: 'content' },
-            'pages': { id: 'pages', title: 'Pages', icon: '📄', page: 'pages' },
-            'settings': { id: 'settings', title: 'Settings', icon: '⚙️', page: 'settings' },
-            'translations': { id: 'translations', title: 'Translations', icon: '🌍', page: 'translations' }
-        };
+        // Get available pages from centralized registry
+        const availablePages = getAvailablePages();
+        
+        // Convert page registry to card format  
+        const pageToCardMap = {};
+        Object.entries(availablePages).forEach(([pageId, pageInfo]) => {
+            pageToCardMap[pageId] = {
+                id: pageId,
+                title: pageInfo.name,
+                icon: pageInfo.icon,
+                page: pageId
+            };
+        });
 
         return section.pages
             .map(pageId => pageToCardMap[pageId])

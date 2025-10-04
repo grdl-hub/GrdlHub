@@ -8,6 +8,7 @@ import { initializeUI } from './ui.js'
 import { initializeUsersPage } from './pages/users.js'
 import { initializePagesPage } from './pages/pages.js'
 import { initializeContentPage } from './pages/content.js'
+import { initializeTemplatesPage } from './pages/templates.js'
 import { initializeSettingsPage } from './pages/settings.js'
 import { initializeAppointmentsPage } from './pages/appointments.js'
 import { initializeAvailability, cleanupAvailability } from './pages/availability.js'
@@ -87,6 +88,7 @@ class MainApp {
       initializeUsersPage()
       initializePagesPage()
       initializeContentPage()
+      initializeTemplatesPage()
       // Settings page will be initialized when it's shown
       initializeAppointmentsPage()
       initializeAvailability()
@@ -245,12 +247,18 @@ class MainApp {
             </div>
           </section>
 
-          <!-- My Availability Calendar -->
+          <!-- My Availability -->
           <section id="availability" class="section">
             <div class="container">
               <div class="section-header">
-                <h2>📋 My Availability Calendar</h2>
+                <h2>📋 My Availability</h2>
                 <p>View appointments and mark your availability by clicking on them</p>
+                
+                <!-- View Mode Toggle -->
+                <div class="view-mode-toggle">
+                  <button id="calendar-view-btn" class="btn btn-secondary active">📅 Calendar View</button>
+                  <button id="cards-view-btn" class="btn btn-secondary">📋 Cards View</button>
+                </div>
               </div>
 
               <!-- Monthly Submission Status -->
@@ -258,8 +266,8 @@ class MainApp {
                 <!-- Submission status will be populated by JavaScript -->
               </div>
 
-              <!-- Monthly Calendar View -->
-              <div class="availability-calendar-section">
+              <!-- Calendar View -->
+              <div id="calendar-view-section" class="availability-calendar-section">
                 <div class="availability-calendar-header">
                   <h3>📆 Monthly Availability View</h3>
                   <div class="availability-calendar-nav">
@@ -271,6 +279,14 @@ class MainApp {
                 
                 <div id="availability-calendar-grid" class="availability-calendar-grid">
                   <!-- Calendar will be built by JavaScript -->
+                </div>
+              </div>
+
+              <!-- Cards View -->
+              <div id="cards-view-section" class="availability-cards-section" style="display: none;">
+                <!-- Card List View -->
+                <div id="availability-cards-container" class="availability-cards-container">
+                  <!-- Cards will be built by JavaScript -->
                 </div>
               </div>
             </div>
@@ -323,6 +339,49 @@ class MainApp {
 
               <div id="monthly-results" class="monthly-results" style="display: none;">
                 <!-- Monthly content will be populated by JavaScript -->
+              </div>
+            </div>
+          </section>
+
+          <!-- Templates -->
+          <section id="templates" class="section">
+            <div class="container">
+              <div class="section-header">
+                <h2>📋 Templates</h2>
+                <p>Create and manage appointment templates for easy scheduling</p>
+              </div>
+
+              <div class="page-controls">
+                <div class="search-container">
+                  <input type="text" id="templates-search" class="search-input" placeholder="🔍 Search templates...">
+                </div>
+                <button id="add-template-btn" class="btn btn-primary">
+                  ➕ Create Template
+                </button>
+              </div>
+
+              <div class="templates-stats">
+                <div class="stat-card">
+                  <div class="stat-number" id="templates-count">0</div>
+                  <div class="stat-label">Templates</div>
+                </div>
+              </div>
+
+              <div class="table-container">
+                <table id="templates-table" class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Template Name</th>
+                      <th>Appointments</th>
+                      <th>Created</th>
+                      <th>Updated</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Templates will be populated by JavaScript -->
+                  </tbody>
+                </table>
               </div>
             </div>
           </section>
@@ -747,6 +806,62 @@ class MainApp {
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary">Cancel</button>
             <button type="submit" id="update-privilege-btn" class="btn btn-primary" form="edit-privilege-form">Update Privilege</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Template Modal -->
+      <div id="template-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="template-modal-title">Create New Template</h3>
+            <button class="close-btn">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="template-form">
+              <div class="form-group">
+                <label for="template-name" class="form-label">Template Name</label>
+                <input type="text" id="template-name" name="template-name" class="form-input" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="template-description" class="form-label">Description</label>
+                <textarea id="template-description" name="template-description" class="form-textarea" rows="2" placeholder="Optional description"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Appointments</label>
+                <div id="template-appointments" class="appointments-container">
+                  <!-- Appointment fields will be populated here -->
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addAppointment()">
+                  ➕ Add Appointment
+                </button>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary" form="template-form">Save Template</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Template Preview Modal -->
+      <div id="template-preview-modal" class="modal hidden">
+        <div class="modal-content modal-large">
+          <div class="modal-header">
+            <h3 id="template-preview-title">Template Preview</h3>
+            <button class="close-btn">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div id="template-preview-content">
+              <!-- Preview content will be populated here -->
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary">Close</button>
+            <button type="button" class="btn btn-primary" id="submit-template-btn">Submit Template</button>
           </div>
         </div>
       </div>

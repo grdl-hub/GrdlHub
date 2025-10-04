@@ -6,6 +6,7 @@ import { initializeUsersPage } from './pages/users.js'
 import { initializePagesPage } from './pages/pages.js'
 import { initializeContentPage } from './pages/content.js'
 import { initializeSettingsPage } from './pages/settings.js'
+import { initializeTemplatesPage } from './pages/templates.js'
 import { showNotification } from './utils/notifications.js'
 
 // Make auth functions available globally
@@ -240,6 +241,7 @@ async function initApp() {
     initializePagesPage()
     initializeContentPage()
     initializeSettingsPage()
+    initializeTemplatesPage()
     
     // Setup navigation and auth
     setupNavigation()

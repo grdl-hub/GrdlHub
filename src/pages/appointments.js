@@ -181,11 +181,42 @@ function setupEventListeners() {
 }
 
 async function openAppointmentModal(preselectedDate = null) {
-  await createAppointmentModal(preselectedDate)
+  await createAppointmentModal(preselectedDate, 'event')
 }
 
 // Make it globally available
 window.openAppointmentModal = openAppointmentModal
+window.createAppointmentModal = createAppointmentModal
+window.switchAppointmentType = switchAppointmentType
+
+// Function to switch between Event and Task types within the modal
+function switchAppointmentType(newType, buttonElement) {
+  const modal = buttonElement.closest('.appointment-modal')
+  const typeCategory = modal.querySelector('#appointment-type-category')
+  const titleLabel = modal.querySelector('#title-label')
+  const locationField = modal.querySelector('.location-field')
+  const timeField = modal.querySelector('.time-field')
+  const durationField = modal.querySelector('.duration-field')
+  const priorityField = modal.querySelector('.priority-field')
+  
+  // Update hidden field
+  typeCategory.value = newType
+  
+  // Update toggle button states
+  modal.querySelectorAll('.type-toggle-btn').forEach(btn => btn.classList.remove('active'))
+  buttonElement.classList.add('active')
+  
+  const isTask = newType === 'task'
+  
+  // Update labels
+  titleLabel.textContent = isTask ? 'Task Name' : 'Event Title'
+  
+  // Show/hide fields based on type
+  locationField.style.display = isTask ? 'none' : 'block'
+  timeField.style.display = isTask ? 'none' : 'block'
+  durationField.style.display = isTask ? 'none' : 'block'
+  priorityField.style.display = isTask ? 'block' : 'none'
+}
 
 // Debug function to manually initialize appointment titles (temporary)
 window.initAppointmentTitlesManually = async function() {
@@ -216,7 +247,7 @@ async function editAppointmentFromCalendar(appointmentId, occurrenceDate) {
   await openEditAppointmentModal(appointment, occurrenceDate)
 }
 
-async function createAppointmentModal(preselectedDate = null) {
+async function createAppointmentModal(preselectedDate = null, appointmentType = 'event') {
   // Remove any existing modal
   const existingModal = document.querySelector('.appointment-modal-overlay')
   if (existingModal) {
@@ -233,23 +264,44 @@ async function createAppointmentModal(preselectedDate = null) {
   // Get dynamic title dropdown HTML
   const titleDropdownHTML = await createTitleDropdownHTML()
 
+  // Determine modal title and form content based on type
+  const isTask = appointmentType === 'task'
+  const modalTitle = isTask ? '✅ Create New Task' : '📅 Create New Event'
+
   const modal = document.createElement('div')
   modal.className = 'appointment-modal-overlay'
   modal.innerHTML = `
     <div class="appointment-modal">
       <div class="appointment-modal-header">
-        <h3>➕ Create New Appointment</h3>
+        <h3>➕ Create New</h3>
         <button class="modal-close" onclick="this.closest('.appointment-modal-overlay').remove()">✕</button>
       </div>
+      
+      <!-- Type Toggle Buttons -->
+      <div class="appointment-type-toggle">
+        <button class="type-toggle-btn ${appointmentType === 'event' ? 'active' : ''}" 
+                onclick="switchAppointmentType('event', this)">
+          <span class="type-icon">📅</span>
+          <span class="type-label">Event</span>
+        </button>
+        <button class="type-toggle-btn ${appointmentType === 'task' ? 'active' : ''}" 
+                onclick="switchAppointmentType('task', this)">
+          <span class="type-icon">✅</span>
+          <span class="type-label">Task</span>
+        </button>
+      </div>
+      
       <div class="appointment-modal-content">
         <form id="appointment-form" class="appointment-form">
+          <input type="hidden" id="appointment-type-category" value="${appointmentType}">
+          
           <div class="form-row">
             <div class="form-group">
-              <label for="apt-title-select" class="form-label">Title</label>
+              <label for="apt-title-select" class="form-label" id="title-label">${isTask ? 'Task Name' : 'Event Title'}</label>
               ${titleDropdownHTML}
             </div>
             
-            <div class="form-group">
+            <div class="form-group location-field" style="${isTask ? 'display: none;' : ''}">
               <label for="apt-place" class="form-label">Location/Place</label>
               <input type="text" id="apt-place" class="form-input" placeholder="Meeting room, address, or online..." list="place-suggestions">
               <datalist id="place-suggestions">
@@ -263,26 +315,28 @@ async function createAppointmentModal(preselectedDate = null) {
           </div>
 
           <div class="form-row">
-            <div class="form-group">
-              <label for="apt-type" class="form-label">Type</label>
-              <select id="apt-type" class="form-select">
-                <option value="">Select type...</option>
-                <option value="meeting">📋 Meeting</option>
-                <option value="task">✅ Task</option>
-                <option value="event">🎉 Event</option>
-                <option value="reminder">⏰ Reminder</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
+            <div class="form-group duration-field" style="${isTask ? 'display: none;' : ''}">
               <label for="apt-duration" class="form-label">Duration (minutes)</label>
               <select id="apt-duration" class="form-select">
                 <option value="15">15 min</option>
-                <option value="30" selected>30 min</option>
+                <option value="30">30 min</option>
                 <option value="45">45 min</option>
                 <option value="60">1 hour</option>
                 <option value="90">1.5 hours</option>
                 <option value="120">2 hours</option>
+                <option value="180">3 hours</option>
+                <option value="240">4 hours</option>
+                <option value="480">8 hours (Full day)</option>
+              </select>
+            </div>
+            
+            <div class="form-group priority-field" style="${!isTask ? 'display: none;' : ''}">
+              <label for="apt-priority" class="form-label">Priority</label>
+              <select id="apt-priority" class="form-select">
+                <option value="medium">🔵 Normal</option>
+                <option value="high">🔴 High</option>
+                <option value="low">🟡 Low</option>
+                <option value="urgent">🚨 Urgent</option>
               </select>
             </div>
           </div>
@@ -293,7 +347,7 @@ async function createAppointmentModal(preselectedDate = null) {
               <input type="date" id="apt-date" class="form-input" value="${defaultDate}" required>
             </div>
             
-            <div class="form-group">
+            <div class="form-group time-field" style="${isTask ? 'display: none;' : ''}">
               <label for="apt-time" class="form-label">Time</label>
               <input type="time" id="apt-time" class="form-input" value="${defaultTime}" required>
             </div>
@@ -842,13 +896,19 @@ async function handleCreateAppointment(e) {
     // Get selected designations
     const selectedDesignations = getSelectedDesignations()
     
+    // Get the appointment type category (event or task)
+    const appointmentTypeCategory = document.getElementById('appointment-type-category')?.value || 'event'
+    const isTask = appointmentTypeCategory === 'task'
+    
     const appointmentData = {
       title: getCurrentTitleValue(),
       type: document.getElementById('apt-type').value,
+      category: appointmentTypeCategory, // Store the main category (event/task)
       date: document.getElementById('apt-date').value,
       time: document.getElementById('apt-time').value,
-      place: document.getElementById('apt-place').value,
-      duration: parseInt(document.getElementById('apt-duration').value),
+      place: document.getElementById('apt-place')?.value || '', // Tasks might not have location
+      duration: parseInt(document.getElementById('apt-duration')?.value || (isTask ? 30 : 60)), // Default duration
+      priority: document.getElementById('apt-priority')?.value || 'medium', // For tasks
       repeatPattern: isRecurring ? document.getElementById('apt-repeat').value : null,
       endDate: isRecurring ? (document.getElementById('apt-end-date').value || null) : null,
       description: document.getElementById('apt-description').value,

@@ -22,27 +22,37 @@ let appointments = []
 let userAvailabilities = {} // Store user availability: { appointmentId_date: boolean }
 let currentDate = new Date()
 let monthSubmissionStatus = {} // Track submission status per month: { "2025-10": { submitted: true, timestamp: "..." } }
+let currentViewMode = 'cards' // 'calendar' or 'cards'
 
-// Initialize availability page with monthly calendar
+// Initialize availability page with both calendar and cards views
 export function initializeAvailability() {
-  console.log('🔧 Initializing My Availability Calendar...')
+  console.log('🔧 Initializing My Availability...')
   try {
     setupEventListeners()
     loadUserAvailability()
     loadAppointments()
     loadMonthSubmissionStatus()
     
-    // Render calendar immediately after setup
-    renderAvailabilityCalendar()
+    // Start with cards view by default
+    switchToCardsView()
     
-    console.log('✅ My Availability Calendar initialized successfully')
+    console.log('✅ My Availability initialized successfully')
   } catch (error) {
-    console.error('❌ Error initializing availability calendar:', error)
+    console.error('❌ Error initializing availability:', error)
   }
 }
 
 function setupEventListeners() {
-  console.log('🔧 Setting up availability calendar event listeners...')
+  console.log('🔧 Setting up availability event listeners...')
+  
+  // View mode toggle buttons
+  const calendarViewBtn = document.getElementById('calendar-view-btn')
+  const cardsViewBtn = document.getElementById('cards-view-btn')
+  
+  if (calendarViewBtn && cardsViewBtn) {
+    calendarViewBtn.addEventListener('click', () => switchToCalendarView())
+    cardsViewBtn.addEventListener('click', () => switchToCardsView())
+  }
   
   // Calendar navigation buttons
   const prevMonthBtn = document.getElementById('availability-prev-month')
@@ -65,6 +75,64 @@ function setupEventListeners() {
       currentDate.setMonth(currentDate.getMonth() + 1)
       renderAvailabilityCalendar()
     })
+  }
+}
+
+// View switching functions
+function switchToCalendarView() {
+  currentViewMode = 'calendar'
+  
+  // Update button states
+  const calendarBtn = document.getElementById('calendar-view-btn')
+  const cardsBtn = document.getElementById('cards-view-btn')
+  
+  if (calendarBtn && cardsBtn) {
+    calendarBtn.classList.add('active')
+    cardsBtn.classList.remove('active')
+  }
+  
+  // Show/hide sections
+  const calendarSection = document.getElementById('calendar-view-section')
+  const cardsSection = document.getElementById('cards-view-section')
+  
+  if (calendarSection && cardsSection) {
+    calendarSection.style.display = 'block'
+    cardsSection.style.display = 'none'
+  }
+  
+  renderCurrentView()
+}
+
+function switchToCardsView() {
+  currentViewMode = 'cards'
+  
+  // Update button states
+  const calendarBtn = document.getElementById('calendar-view-btn')
+  const cardsBtn = document.getElementById('cards-view-btn')
+  
+  if (calendarBtn && cardsBtn) {
+    calendarBtn.classList.remove('active')
+    cardsBtn.classList.add('active')
+  }
+  
+  // Show/hide sections
+  const calendarSection = document.getElementById('calendar-view-section')
+  const cardsSection = document.getElementById('cards-view-section')
+  
+  if (calendarSection && cardsSection) {
+    calendarSection.style.display = 'none'
+    cardsSection.style.display = 'block'
+  }
+  
+  renderCurrentView()
+}
+
+// Render current view based on mode
+function renderCurrentView() {
+  if (currentViewMode === 'calendar') {
+    renderAvailabilityCalendar()
+  } else if (currentViewMode === 'cards') {
+    renderCardsView()
   }
 }
 
@@ -204,7 +272,7 @@ async function loadAppointments() {
       
       console.log('✅ Real-time update:', appointments.length, 'appointments visible for user', currentUser.uid)
       console.log('✅ Visible appointments:', appointments.map(apt => ({ id: apt.id, title: apt.title, date: apt.date })))
-      renderAvailabilityCalendar()
+      renderCurrentView()
     }, (error) => {
       console.error('❌ Error in appointments listener:', error)
       showNotification('Error loading appointments', 'error')
@@ -726,6 +794,184 @@ export async function cleanupOrphanedAvailabilities() {
   }
 }
 
+// Cards View Functions
+
+function renderCardsView() {
+  const cardsContainer = document.getElementById('availability-cards-container')
+  if (!cardsContainer) return
+
+  if (appointments.length === 0) {
+    cardsContainer.innerHTML = '<div class="no-appointments">No appointments found.</div>'
+    return
+  }
+
+  // Sort appointments by date
+  const sortedAppointments = appointments.sort((a, b) => new Date(a.date) - new Date(b.date))
+
+  // Group appointments by week
+  const weekGroups = groupAppointmentsByWeek(sortedAppointments)
+
+  let cardsHTML = ''
+
+  weekGroups.forEach(week => {
+    const weekStart = new Date(week.weekStart)
+    const weekEnd = new Date(week.weekEnd)
+    
+    const weekStartFormatted = weekStart.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    })
+    
+    const weekEndFormatted = weekEnd.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+
+    cardsHTML += `
+      <div class="week-group">
+        <div class="week-header">
+          <h3 class="week-title">Week of ${weekStartFormatted} - ${weekEndFormatted}</h3>
+        </div>
+        <div class="week-cards">
+    `
+
+    week.appointments.forEach(apt => {
+      const availabilityKey = `${apt.id}_${apt.date}`
+      const hasSubmitted = userAvailabilities[availabilityKey] !== undefined
+      const isAvailable = userAvailabilities[availabilityKey] === true
+      const isNotAvailable = userAvailabilities[availabilityKey] === false
+      
+      // Check if month is submitted
+      const aptDate = new Date(apt.date)
+      const monthKey = `${aptDate.getFullYear()}-${String(aptDate.getMonth() + 1).padStart(2, '0')}`
+      const isMonthSubmitted = monthSubmissionStatus[monthKey]?.submitted || false
+      
+      let statusClass
+      
+      if (!hasSubmitted) {
+        statusClass = 'status-pending'
+      } else if (isAvailable) {
+        statusClass = 'status-available'
+      } else {
+        statusClass = 'status-not-available'
+      }
+      
+      const isLocked = isMonthSubmitted && !isCurrentUserAdmin
+      const lockedClass = isLocked ? 'locked' : ''
+      
+      const dateObj = new Date(apt.date)
+      const formattedDate = dateObj.toLocaleDateString('en-US', {
+        weekday: 'long'
+      })
+      
+      cardsHTML += `
+        <div class="availability-card ${statusClass} ${lockedClass}" 
+             onclick="${isLocked ? '' : `toggleCardAvailability('${apt.id}', '${apt.date}', this)`}"
+             style="${isLocked ? 'cursor: not-allowed;' : 'cursor: pointer;'}">
+          <div class="card-content">
+            <div class="card-main-info">
+              <div class="appointment-date-primary">${formattedDate}</div>
+              <div class="appointment-details">
+                <span class="appointment-time-compact">${apt.time || 'Time not specified'}</span>
+                ${apt.place ? `<span class="appointment-location-compact">${apt.place}</span>` : ''}
+              </div>
+            </div>
+            <div class="card-availability-control">
+              <div class="availability-switch-item">
+                <label class="availability-switch-label">
+                  <span class="availability-switch-text">${isAvailable ? 'Not Available' : 'Available'}</span>
+                  <div class="availability-switch ${isLocked ? 'disabled' : ''}">
+                    <input type="checkbox" 
+                           ${isAvailable ? 'checked' : ''} 
+                           ${isLocked ? 'disabled' : ''}
+                           class="availability-switch-input">
+                    <span class="availability-switch-slider"></span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+          ${isLocked ? '<div class="lock-overlay"><span class="lock-text">🔒 Locked - Contact admin for changes</span></div>' : ''}
+        </div>
+      `
+    })
+
+    cardsHTML += `
+        </div>
+      </div>
+    `
+  })
+
+  cardsContainer.innerHTML = cardsHTML
+}
+
+// Helper function to group appointments by week
+function groupAppointmentsByWeek(appointments) {
+  const weeks = []
+  
+  appointments.forEach(apt => {
+    const aptDate = new Date(apt.date)
+    
+    // Get Monday of the week (start of week)
+    const dayOfWeek = aptDate.getDay()
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Handle Sunday (0) as last day of week
+    const weekStart = new Date(aptDate)
+    weekStart.setDate(aptDate.getDate() + diff)
+    weekStart.setHours(0, 0, 0, 0)
+    
+    // Get Sunday of the week (end of week)
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6)
+    weekEnd.setHours(23, 59, 59, 999)
+    
+    const weekKey = weekStart.toISOString().split('T')[0]
+    
+    // Find existing week group or create new one
+    let weekGroup = weeks.find(w => w.weekKey === weekKey)
+    if (!weekGroup) {
+      weekGroup = {
+        weekKey,
+        weekStart: weekStart.toISOString().split('T')[0],
+        weekEnd: weekEnd.toISOString().split('T')[0],
+        appointments: []
+      }
+      weeks.push(weekGroup)
+    }
+    
+    weekGroup.appointments.push(apt)
+  })
+  
+  return weeks.sort((a, b) => new Date(a.weekStart) - new Date(b.weekStart))
+}
+
 // Make functions globally available
 window.toggleAppointmentAvailability = toggleAppointmentAvailability
+window.toggleCardAvailability = toggleCardAvailability
 window.cleanupOrphanedAvailabilities = cleanupOrphanedAvailabilities
+
+// New function to handle card clicks and update the switch visually
+function toggleCardAvailability(appointmentId, date, cardElement) {
+  // Call the existing toggle function
+  toggleAppointmentAvailability(appointmentId, date)
+  
+  // Update the switch visual state immediately
+  const checkbox = cardElement.querySelector('.availability-switch-input')
+  const switchText = cardElement.querySelector('.availability-switch-text')
+  
+  if (checkbox && switchText) {
+    // Toggle the checkbox
+    checkbox.checked = !checkbox.checked
+    
+    // Update the text
+    switchText.textContent = checkbox.checked ? 'Not Available' : 'Available'
+    
+    // Update card status classes
+    cardElement.classList.remove('status-available', 'status-not-available', 'status-pending')
+    if (checkbox.checked) {
+      cardElement.classList.add('status-available')
+    } else {
+      cardElement.classList.add('status-not-available')
+    }
+  }
+}

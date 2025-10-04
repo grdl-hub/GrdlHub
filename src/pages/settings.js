@@ -15,6 +15,7 @@ import {
   getAvailablePages,
   initializeDefaultSections
 } from '../utils/homeSections.js'
+import { getPageCheckboxes } from '../utils/pageRegistry.js'
 import {
   loadActivePrivileges,
   createPrivilege,
@@ -823,97 +824,8 @@ async function updateHomeSectionsOrder() {
   }
 }
 
-function getPageCheckboxes(selectedPages = []) {
-  // Organize pages in logical groups with better ordering
-  const availablePages = [
-    // Main Content & Activity
-    { id: 'monthly', label: '📅 Monthly View', category: 'main' },
-    { id: 'appointments', label: '📋 Appointments', category: 'main' },
-    { id: 'reports', label: '📊 Reports', category: 'main' },
-    
-    // People Management
-    { id: 'availability', label: '🗓️ Availability', category: 'people' },
-    { id: 'users', label: '👥 Users', category: 'people' },
-    
-    // Content & System
-    { id: 'content', label: '📝 Content', category: 'system' },
-    { id: 'pages', label: '📄 Pages', category: 'system' },
-    { id: 'settings', label: '⚙️ Settings', category: 'system' },
-    { id: 'translations', label: '🌍 Translations', category: 'system' },
-    { id: 'admin', label: '🔧 Admin', category: 'system' }
-  ]
-  
-  // Group pages by category for better organization
-  const categories = {
-    main: 'Main Features',
-    people: 'People Management', 
-    system: 'System & Admin'
-  }
-  
-  let html = ''
-  
-  // Add selected pages section first (for reordering)
-  if (selectedPages.length > 0) {
-    html += `
-      <div class="selected-pages-section">
-        <div class="selected-pages-list" id="selected-pages-sortable">
-    `
-    
-    // Show selected pages in their current order
-    selectedPages.forEach((pageId, index) => {
-      const page = availablePages.find(p => p.id === pageId)
-      if (page) {
-        html += `
-          <div class="selected-page-item" data-page-id="${pageId}">
-            <div class="drag-handle">⋮⋮</div>
-            <span class="page-icon">${page.label}</span>
-            <button type="button" class="remove-page-btn" onclick="removePageFromSelection('${pageId}')">×</button>
-          </div>
-        `
-      }
-    })
-    
-    html += `
-        </div>
-      </div>
-    `
-  }
-  
-  // Add available pages section
-  html += `
-    <div class="available-pages-section">
-      <div class="available-pages-header">
-        <span>Available Pages</span>
-      </div>
-      <div class="available-pages-list">
-  `
-  
-  // List all pages in a simple flat list
-  availablePages.forEach(page => {
-    const isSelected = selectedPages.includes(page.id)
-    html += `
-      <label class="checkbox-item ${isSelected ? 'already-selected' : ''}">
-        <input 
-          type="checkbox" 
-          name="available-pages" 
-          value="${page.id}" 
-          ${isSelected ? 'checked disabled' : ''}
-          onchange="handlePageSelection('${page.id}', this.checked)"
-        >
-        ${page.label}
-        ${isSelected ? '<span class="already-selected-badge">Added</span>' : ''}
-      </label>
-    `
-  })
-  
-  html += `
-      </div>
-    </div>
-    <input type="hidden" name="pages" id="pages-order" value="${selectedPages.join(',')}">
-  `
-  
-  return html
-}
+// NOTE: getPageCheckboxes function is now imported from pageRegistry.js
+// This provides auto-updating Available Pages when new pages are added/removed
 
 // Global functions for page order management
 window.handlePageSelection = function(pageId, isChecked) {

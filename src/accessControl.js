@@ -1,25 +1,12 @@
 import { db } from './auth.js'
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { getCurrentUser } from './auth.js'
-
-// Available pages and their default permissions
-const AVAILABLE_PAGES = {
-  home: { name: 'Home', icon: '🏠', description: 'Dashboard and overview' },
-  appointments: { name: 'Appointments', icon: '📅', description: 'Recurring appointments and scheduling' },
-  availability: { name: 'Availability', icon: '📋', description: 'Mark availability for appointments' },
-  monthly: { name: 'Monthly View', icon: '📅', description: 'Simple monthly view of Testemunho Público appointments' },
-  reports: { name: 'Reports', icon: '📊', description: 'Generate detailed reports and analytics (Admin only)' },
-  users: { name: 'Users', icon: '👥', description: 'User management' },
-  pages: { name: 'Pages', icon: '📄', description: 'Static page management' },
-  content: { name: 'Content', icon: '📝', description: 'Dynamic content management' },
-  settings: { name: 'Settings', icon: '⚙️', description: 'App configuration' },
-  translations: { name: 'Translations', icon: '🌍', description: 'Interface translation management (Admin only)' }
-}
+import { getAvailablePages as getRegistryPages } from './utils/pageRegistry.js'
 
 // Default permissions for roles
 const ROLE_PERMISSIONS = {
-  admin: ['home', 'appointments', 'availability', 'monthly', 'reports', 'users', 'pages', 'content', 'settings', 'translations'],
-  user: ['home', 'appointments', 'availability', 'monthly', 'content']
+  admin: ['home', 'appointments', 'availability', 'monthly', 'templates', 'users', 'pages', 'content', 'settings', 'translations'],
+  user: ['home', 'appointments', 'availability', 'monthly', 'templates', 'content']
 }
 
 let userPermissions = null
@@ -55,7 +42,7 @@ export async function getUserPermissions(userId = null) {
       
       // If user has admin role, give all permissions
       if (userData.role === 'admin') {
-        const allPermissions = Object.keys(AVAILABLE_PAGES)
+        const allPermissions = Object.keys(getRegistryPages())
         if (!userId) userPermissions = allPermissions
         return allPermissions
       }
@@ -130,7 +117,7 @@ export function clearPermissionsCache() {
 
 // Get all available pages
 export function getAvailablePages() {
-  return AVAILABLE_PAGES
+  return getRegistryPages()
 }
 
 // Get default permissions for a role
@@ -140,7 +127,7 @@ export function getRolePermissions(role) {
 
 // Validate permissions array
 export function validatePermissions(permissions) {
-  const validPages = Object.keys(AVAILABLE_PAGES)
+  const validPages = Object.keys(getRegistryPages())
   return permissions.filter(permission => validPages.includes(permission))
 }
 
@@ -259,7 +246,8 @@ export async function enforcePagePermissions() {
 
 // Show permission denied notification
 function showPermissionDeniedNotification(pageId) {
-  const pageInfo = AVAILABLE_PAGES[pageId]
+  const availablePages = getRegistryPages()
+  const pageInfo = availablePages[pageId]
   const pageName = pageInfo ? pageInfo.name : pageId
   
   // Import notification function dynamically to avoid circular dependencies

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Management Demo - Add & Delete</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .demo-section h3 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+        .btn {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: #3182ce;
+        }
+        .btn-danger {
+            background: #e53e3e;
+        }
+        .btn-danger:hover {
+            background: #c53030;
+        }
+        .page-list {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            min-height: 100px;
+        }
+        .page-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .page-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .category-badge {
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .log {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .success { color: #48bb78; }
+        .error { color: #f56565; }
+        .info { color: #4299e1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Auto-Updating Page Management Demo</h1>
+        <p>This demonstrates how the Available Pages list updates automatically when you add or delete pages.</p>
+    </div>
+
+    <div class="container">
+        <div class="demo-section">
+            <h3>➕ Add New Pages</h3>
+            <button class="btn" onclick="addAnalyticsPage()">📊 Add Analytics Page</button>
+            <button class="btn" onclick="addCalendarPage()">📅 Add Calendar Page</button>
+            <button class="btn" onclick="addBackupPage()">💾 Add Backup Page</button>
+            <button class="btn" onclick="addCustomPage()">⚡ Add Custom Page</button>
+        </div>
+
+        <div class="demo-section">
+            <h3>📋 Current Available Pages</h3>
+            <div id="page-list" class="page-list">
+                Loading pages...
+            </div>
+            <button class="btn" onclick="refreshPageList()">🔄 Refresh List</button>
+        </div>
+
+        <div class="demo-section">
+            <h3>🗑️ Delete Pages</h3>
+            <p>Click any "Delete" button above to remove a page. The Available Pages list will update automatically.</p>
+        </div>
+
+        <div class="demo-section">
+            <h3>📝 Activity Log</h3>
+            <div id="log" class="log"></div>
+            <button class="btn" onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Mock the page registry system for demo
+        const PAGE_REGISTRY = {
+            home: { name: 'Home', icon: '🏠', description: 'Dashboard and overview', category: 'main' },
+            monthly: { name: 'Monthly View', icon: '📅', description: 'Calendar view', category: 'main' },
+            reports: { name: 'Reports', icon: '📊', description: 'Analytics and reports', category: 'main' },
+            availability: { name: 'Availability', icon: '📋', description: 'Staff availability', category: 'people' },
+            users: { name: 'Users', icon: '👥', description: 'User management', category: 'people' },
+            settings: { name: 'Settings', icon: '⚙️', description: 'App configuration', category: 'system' },
+            translations: { name: 'Translations', icon: '🌍', description: 'Multi-language', category: 'system' }
+        }
+
+        const CATEGORIES = {
+            main: 'Main Features',
+            people: 'People Management',
+            system: 'System & Admin'
+        }
+
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log')
+            const timestamp = new Date().toLocaleTimeString()
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info'
+            logEl.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`
+            logEl.scrollTop = logEl.scrollHeight
+        }
+
+        function registerPage(id, metadata) {
+            PAGE_REGISTRY[id] = metadata
+            log(`📄 Registered new page: ${id} - ${metadata.name}`, 'success')
+            
+            // Simulate auto-refresh of UI
+            refreshPageList()
+            
+            // Simulate event dispatch
+            window.dispatchEvent(new CustomEvent('pageRegistryUpdated', { 
+                detail: { action: 'add', pageId: id, metadata } 
+            }))
+        }
+
+        function unregisterPage(id) {
+            const page = PAGE_REGISTRY[id]
+            if (page) {
+                delete PAGE_REGISTRY[id]
+                log(`🗑️ Unregistered page: ${id} - ${page.name}`, 'success')
+                
+                // Simulate auto-refresh of UI
+                refreshPageList()
+                
+                // Simulate event dispatch
+                window.dispatchEvent(new CustomEvent('pageRegistryUpdated', { 
+                    detail: { action: 'remove', pageId: id } 
+                }))
+            }
+        }
+
+        function createPage(id, name, icon, category = 'system') {
+            if (PAGE_REGISTRY[id]) {
+                log(`❌ Page '${id}' already exists!`, 'error')
+                return
+            }
+
+            const metadata = { name, icon, description: `${name} functionality`, category }
+            registerPage(id, metadata)
+            log(`✅ Page '${name}' created and automatically added to Available Pages!`, 'success')
+        }
+
+        function deletePage(id) {
+            if (!PAGE_REGISTRY[id]) {
+                log(`❌ Page '${id}' not found!`, 'error')
+                return
+            }
+
+            const page = PAGE_REGISTRY[id]
+            
+            if (confirm(`Delete page "${page.name}"?\n\nThis will:\n• Remove it from Available Pages\n• Update all UI components\n• Clean up references\n\nThis action cannot be undone.`)) {
+                unregisterPage(id)
+                log(`✅ Page '${page.name}' deleted and automatically removed from Available Pages!`, 'success')
+                log(`🔄 All UI components updated automatically`, 'info')
+            }
+        }
+
+        function refreshPageList() {
+            const listEl = document.getElementById('page-list')
+            
+            if (Object.keys(PAGE_REGISTRY).length === 0) {
+                listEl.innerHTML = '<p style="color: #718096; text-align: center; margin: 20px;">No pages available</p>'
+                return
+            }
+
+            let html = ''
+            
+            // Group by category
+            Object.entries(CATEGORIES).forEach(([categoryId, categoryName]) => {
+                const categoryPages = Object.entries(PAGE_REGISTRY).filter(([id, page]) => page.category === categoryId)
+                
+                if (categoryPages.length > 0) {
+                    html += `<h4 style="margin: 15px 0 10px 0; color: #4a5568;">${categoryName}</h4>`
+                    
+                    categoryPages.forEach(([id, page]) => {
+                        // Don't show delete button for core pages
+                        const isCorePages = ['home', 'settings'].includes(id)
+                        const deleteBtn = isCorePages ? '' : `<button class="btn btn-danger" onclick="deletePage('${id}')" style="padding: 5px 10px; font-size: 12px;">🗑️ Delete</button>`
+                        
+                        html += `
+                            <div class="page-item">
+                                <div class="page-info">
+                                    <span style="font-size: 18px;">${page.icon}</span>
+                                    <span style="font-weight: 500;">${page.name}</span>
+                                    <span class="category-badge">${page.category}</span>
+                                </div>
+                                ${deleteBtn}
+                            </div>
+                        `
+                    })
+                }
+            })
+            
+            listEl.innerHTML = html
+        }
+
+        // Demo functions
+        window.addAnalyticsPage = () => createPage('analytics', 'Analytics', '📊', 'main')
+        window.addCalendarPage = () => createPage('calendar', 'Calendar', '📅', 'main')
+        window.addBackupPage = () => createPage('backup', 'Backup', '💾', 'system')
+        window.addCustomPage = () => {
+            const name = prompt('Page name:')
+            const icon = prompt('Page icon:') || '📄'
+            if (name) {
+                const id = name.toLowerCase().replace(/[^a-z0-9]/g, '')
+                createPage(id, name, icon, 'system')
+            }
+        }
+        window.deletePage = deletePage
+        window.refreshPageList = refreshPageList
+        window.clearLog = () => document.getElementById('log').innerHTML = ''
+
+        // Listen for registry updates
+        window.addEventListener('pageRegistryUpdated', (event) => {
+            const { action, pageId, metadata } = event.detail
+            if (action === 'add') {
+                log(`🔄 UI Auto-Update: Added "${metadata.name}" to all components`, 'info')
+            } else if (action === 'remove') {
+                log(`🔄 UI Auto-Update: Removed "${pageId}" from all components`, 'info')
+            }
+        })
+
+        // Initialize
+        log('🚀 Page Management Demo initialized', 'success')
+        log('📋 Available Pages list will update automatically when you add/delete pages', 'info')
+        refreshPageList()
+    </script>
+</body>
+</html>
