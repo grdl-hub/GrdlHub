@@ -6,7 +6,7 @@ export const FORM_TYPES = {
     id: 'monthly-availability',
     name: 'Monthly Availability Report',
     icon: '📅',
-    collection: 'availabilityReports',
+    collection: 'availabilitySubmissions',
     pageRoute: 'availability-forms',
     description: 'Submit your availability for meetings and service',
     category: 'monthly',

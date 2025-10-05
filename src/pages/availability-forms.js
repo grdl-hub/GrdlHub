@@ -94,12 +94,47 @@ async function loadMonthAppointments() {
     
     console.log('📊 Loading appointments between:', startDate, 'and', endDate)
     
-    // Get user's privileges
-    const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
-    const userPrivileges = userDoc.data()?.privileges || []
-    
-    console.log('👤 User privileges:', userPrivileges)
-    
+    // Load task data to get the privilege group filter
+    let taskPrivilegeGroup = null
+    if (taskId) {
+      try {
+        // First try to load from actionItems (task assignments)
+        const taskRef = doc(db, 'actionItems', taskId)
+        const taskDoc = await getDoc(taskRef)
+        if (taskDoc.exists()) {
+          const taskData = taskDoc.data()
+          taskPrivilegeGroup = taskData.privilegeGroup || taskData.title
+          console.log('🎯 Task from actionItems found:', {
+            id: taskId,
+            title: taskData.title,
+            privilegeGroup: taskData.privilegeGroup,
+            usingPrivilegeGroup: taskPrivilegeGroup,
+            fullData: taskData
+          })
+        } else {
+          // Fallback: try to load from appointments
+          const taskAppointmentRef = doc(db, 'appointments', taskId)
+          const taskAppointmentDoc = await getDoc(taskAppointmentRef)
+          if (taskAppointmentDoc.exists()) {
+            const taskAppointmentData = taskAppointmentDoc.data()
+            taskPrivilegeGroup = taskAppointmentData.privilegeGroup || taskAppointmentData.title
+            console.log('🎯 Task appointment found:', {
+              id: taskId,
+              title: taskAppointmentData.title,
+              category: taskAppointmentData.category,
+              privilegeGroup: taskAppointmentData.privilegeGroup,
+              usingPrivilegeGroup: taskPrivilegeGroup,
+              fullData: taskAppointmentData
+            })
+          } else {
+            console.warn('⚠️ Task not found in actionItems or appointments:', taskId)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading task data:', error)
+      }
+    }
+
     // Query appointments in date range
     const appointmentsRef = collection(db, 'appointments')
     const q = query(
@@ -113,33 +148,53 @@ async function loadMonthAppointments() {
     
     console.log('🔍 Debug: Found', querySnapshot.size, 'appointments in date range')
     
+    // Debug: Show ALL appointments found
+    console.log('📋 ALL APPOINTMENTS FOUND:')
+    querySnapshot.forEach((doc, index) => {
+      const data = doc.data()
+      console.log(`${index + 1}. ID: ${doc.id}, Title: "${data.title}", Date: ${data.date}, Category: ${data.category || 'undefined'}`)
+    })
+    
+    console.log('🎯 Filtering with privilege group:', taskPrivilegeGroup)
+    
+    // Process appointments and generate recurring instances
+    const processedAppointments = []
+    
     querySnapshot.forEach((doc) => {
       const data = doc.data()
-      const hasPrivilege = userPrivileges.includes(data.title)
       
-      console.log('🔍 Appointment:', {
-        id: doc.id,
-        date: data.date,
-        title: data.title,
-        time: data.time,
-        place: data.place,
-        hasPrivilege: hasPrivilege,
-        userPrivileges: userPrivileges
-      })
-      
-      // Filter by user's privileges (only show appointments matching user's privilege titles)
-      if (hasPrivilege) {
-        appointments.push({
-          id: doc.id,
-          ...data
-        })
-        console.log('✅ Included appointment:', data.title)
+      // Check if this appointment matches our filter criteria
+      let shouldInclude = false
+      if (taskPrivilegeGroup) {
+        shouldInclude = data.title === taskPrivilegeGroup
       } else {
-        console.log('❌ Excluded appointment:', data.title, '(user privileges:', userPrivileges, ')')
+        shouldInclude = true
+        console.log('⚠️ No task privilege group set, showing all appointments as fallback')
+      }
+      
+      if (!shouldInclude) {
+        console.log('❌ Excluded appointment:', data.title, `(doesn't match privilege group: ${taskPrivilegeGroup})`)
+        return
+      }
+      
+      // Generate instances based on repeat pattern
+      if (data.repeatPattern && data.repeatPattern !== 'none') {
+        console.log('🔄 Processing recurring appointment:', data.title, 'Pattern:', data.repeatPattern)
+        const instances = generateRecurringInstances(data, startDate, endDate)
+        processedAppointments.push(...instances)
+        console.log(`✅ Generated ${instances.length} instances for recurring appointment:`, data.title)
+      } else {
+        // Single appointment
+        processedAppointments.push({
+          id: doc.id,
+          ...data,
+          instanceDate: data.date // Keep original date
+        })
+        console.log('✅ Included single appointment:', data.title, 'on', data.date)
       }
     })
     
-    // Sort by date
+    appointments = processedAppointments    // Sort by date
     appointments.sort((a, b) => new Date(a.date) - new Date(b.date))
     
     console.log(`✅ Loaded ${appointments.length} appointments for ${currentMonthName}`)
@@ -158,10 +213,56 @@ async function loadMonthAppointments() {
   }
 }
 
+// Generate recurring appointment instances for a date range
+function generateRecurringInstances(appointmentData, startDate, endDate) {
+  const instances = []
+  const { repeatPattern, date: originalDate } = appointmentData
+  
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const original = new Date(originalDate)
+  
+  // Start from the original date or the start of the range, whichever is later
+  let currentDate = new Date(Math.max(original.getTime(), start.getTime()))
+  
+  // Generate instances based on repeat pattern
+  while (currentDate <= end) {
+    // Create instance with unique ID for each occurrence
+    const instanceId = `${appointmentData.id || 'temp'}_${currentDate.toISOString().split('T')[0]}`
+    
+    instances.push({
+      id: instanceId,
+      originalId: appointmentData.id,
+      ...appointmentData,
+      date: currentDate.toISOString().split('T')[0], // YYYY-MM-DD format
+      instanceDate: currentDate.toISOString().split('T')[0],
+      isRecurringInstance: true
+    })
+    
+    // Calculate next occurrence
+    switch (repeatPattern.toLowerCase()) {
+      case 'daily':
+        currentDate.setDate(currentDate.getDate() + 1)
+        break
+      case 'weekly':
+        currentDate.setDate(currentDate.getDate() + 7)
+        break
+      case 'monthly':
+        currentDate.setMonth(currentDate.getMonth() + 1)
+        break
+      default:
+        console.warn('Unknown repeat pattern:', repeatPattern)
+        return instances // Stop processing unknown patterns
+    }
+  }
+  
+  return instances
+}
+
 // Load existing submission if user already submitted for this month
 async function loadExistingSubmission() {
   try {
-    const submissionsRef = collection(db, 'availabilityReports')
+    const submissionsRef = collection(db, 'availabilitySubmissions')
     const q = query(
       submissionsRef,
       where('userId', '==', currentUser.uid),
@@ -433,7 +534,7 @@ async function saveSubmission(status) {
     }
     
     // Check if submission already exists
-    const submissionsRef = collection(db, 'availabilityReports')
+    const submissionsRef = collection(db, 'availabilitySubmissions')
     const q = query(
       submissionsRef,
       where('userId', '==', currentUser.uid),
@@ -445,14 +546,14 @@ async function saveSubmission(status) {
     if (!querySnapshot.empty) {
       // Update existing submission
       const docId = querySnapshot.docs[0].id
-      await updateDoc(doc(db, 'availabilityReports', docId), {
+      await updateDoc(doc(db, 'availabilitySubmissions', docId), {
         ...submissionData,
         updatedAt: Timestamp.now()
       })
       console.log('✅ Updated existing submission:', docId)
     } else {
       // Create new submission
-      await setDoc(doc(collection(db, 'availabilityReports')), submissionData)
+      await setDoc(doc(collection(db, 'availabilitySubmissions')), submissionData)
       console.log('✅ Created new submission')
     }
     

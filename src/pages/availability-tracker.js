@@ -44,7 +44,7 @@ async function loadSubmissions() {
   try {
     console.log('📊 Loading submissions for user:', currentUser.email)
     
-    const submissionsRef = collection(db, 'availabilityReports')
+    const submissionsRef = collection(db, 'availabilitySubmissions')
     // Simple query without orderBy to avoid composite index requirement
     const q = query(
       submissionsRef,
