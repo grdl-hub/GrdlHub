@@ -300,57 +300,6 @@ class MainApp {
             </div>
           </section>
 
-          <!-- Monthly View -->
-          <section id="monthly" class="section">
-            <div class="container">
-              <div class="section-header">
-                <h2>📅 Monthly View</h2>
-                <p>Simple monthly view of Testemunho Público appointments</p>
-              </div>
-
-              <div class="monthly-controls">
-                <div class="control-group">
-                  <label for="monthly-month-select">📅 Month</label>
-                  <select id="monthly-month-select" class="form-select">
-                    <option value="0">January</option>
-                    <option value="1">February</option>
-                    <option value="2">March</option>
-                    <option value="3">April</option>
-                    <option value="4">May</option>
-                    <option value="5">June</option>
-                    <option value="6">July</option>
-                    <option value="7">August</option>
-                    <option value="8">September</option>
-                    <option value="9">October</option>
-                    <option value="10">November</option>
-                    <option value="11">December</option>
-                  </select>
-                </div>
-                <div class="control-group">
-                  <label for="monthly-year-select">📅 Year</label>
-                  <select id="monthly-year-select" class="form-select">
-                    <option value="2023">2023</option>
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
-                    <option value="2026">2026</option>
-                  </select>
-                </div>
-                <div class="control-group">
-                  <button id="generate-monthly-btn" class="btn btn-primary">📅 View Month</button>
-                </div>
-              </div>
-
-              <div id="monthly-loading" class="loading-state" style="display: none;">
-                <div class="loading-spinner"></div>
-                <p>Loading appointments...</p>
-              </div>
-
-              <div id="monthly-results" class="monthly-results" style="display: none;">
-                <!-- Monthly content will be populated by JavaScript -->
-              </div>
-            </div>
-          </section>
-
           <!-- Templates -->
           <section id="templates" class="section">
             <div class="container">
@@ -1062,31 +1011,7 @@ class MainApp {
         }
       }, 200) // Increased timeout to 200ms for more stability
     }
-    if (sectionId === 'monthly') {
-      // Initialize monthly view page with dynamic import
-      console.log('📅 Monthly View section activated - setting up monthly view functionality')
-      setTimeout(async () => {
-        try {
-          if (!this.monthlyViewManager) {
-            console.log('📅 Loading MonthlyViewManager module...')
-            const monthlyModule = await import('./pages/monthly.js')
-            console.log('📅 MonthlyViewManager module loaded successfully')
-            this.monthlyViewManager = new monthlyModule.MonthlyViewManager()
-            console.log('📅 MonthlyViewManager instance created')
-          }
-          console.log('📅 Initializing MonthlyViewManager...')
-          await this.monthlyViewManager.initialize()
-          console.log('✅ MonthlyViewManager initialized successfully')
-        } catch (error) {
-          console.error('❌ Error loading monthly view module:', error)
-          try {
-            showNotification('Error loading monthly view functionality', 'error')
-          } catch (notifError) {
-            console.error('❌ Also failed to show notification:', notifError)
-          }
-        }
-      }, 200)
-    }
+
     
     // Monthly Availability Tracking
     if (baseSectionId === 'monthly-availability') {
