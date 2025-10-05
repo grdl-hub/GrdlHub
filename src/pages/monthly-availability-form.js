@@ -30,24 +30,37 @@ export async function initializeMonthlyAvailabilityForm() {
     currentUser = getCurrentUser()
     if (!currentUser) {
       console.error('No user logged in')
-      window.navigateTo('login')
+      window.location.hash = '#login'
       return
     }
     
-    // Get month from URL parameters
+    // Extract parameters from hash
+    // Format: #monthly-availability-form?month=2025-10&monthName=October%202025&taskId=abc
+    const hash = window.location.hash
+    const queryStart = hash.indexOf('?')
+    let params = new URLSearchParams()
+    
+    if (queryStart !== -1) {
+      const queryString = hash.substring(queryStart + 1)
+      params = new URLSearchParams(queryString)
+      console.log('📋 Retrieved params from hash:', queryString)
+    }
+    
+    // Also check regular URL parameters as fallback (for backward compatibility)
     const urlParams = new URLSearchParams(window.location.search)
-    currentMonth = urlParams.get('month')
-    currentMonthName = urlParams.get('monthName')
-    taskId = urlParams.get('taskId')
+    
+    currentMonth = params.get('month') || urlParams.get('month')
+    currentMonthName = params.get('monthName') || urlParams.get('monthName')
+    taskId = params.get('taskId') || urlParams.get('taskId')
     
     if (!currentMonth) {
-      console.error('No month specified')
+      console.error('No month specified in hash or URL')
       showNotification('Month not specified', 'error')
-      window.navigateTo('monthly-availability')
+      window.location.hash = '#monthly-availability'
       return
     }
     
-    console.log('📅 Loading form for month:', currentMonth, currentMonthName)
+    console.log('📅 Loading form for month:', currentMonth, currentMonthName, 'taskId:', taskId)
     
     showLoading('Loading appointments...')
     
@@ -98,14 +111,31 @@ async function loadMonthAppointments() {
     const querySnapshot = await getDocs(q)
     appointments = []
     
+    console.log('🔍 Debug: Found', querySnapshot.size, 'appointments in date range')
+    
     querySnapshot.forEach((doc) => {
       const data = doc.data()
+      const hasPrivilege = userPrivileges.includes(data.title)
+      
+      console.log('🔍 Appointment:', {
+        id: doc.id,
+        date: data.date,
+        title: data.title,
+        time: data.time,
+        place: data.place,
+        hasPrivilege: hasPrivilege,
+        userPrivileges: userPrivileges
+      })
+      
       // Filter by user's privileges (only show appointments matching user's privilege titles)
-      if (userPrivileges.includes(data.title)) {
+      if (hasPrivilege) {
         appointments.push({
           id: doc.id,
           ...data
         })
+        console.log('✅ Included appointment:', data.title)
+      } else {
+        console.log('❌ Excluded appointment:', data.title, '(user privileges:', userPrivileges, ')')
       }
     })
     
@@ -160,16 +190,44 @@ async function loadExistingSubmission() {
 
 // Render the form
 function renderForm() {
-  const container = document.getElementById('dynamic-content')
+  // Find or create the container
+  let container = document.getElementById('monthly-availability-form')
+  
   if (!container) {
-    console.error('Dynamic content container not found')
-    return
+    // Try multiple selectors for the main container
+    let main = document.querySelector('main.main') || 
+               document.querySelector('main') || 
+               document.querySelector('.main') ||
+               document.body
+               
+    console.log('🔍 Looking for main container:', {
+      'main.main': !!document.querySelector('main.main'),
+      'main': !!document.querySelector('main'),
+      '.main': !!document.querySelector('.main'),
+      'body': !!document.body,
+      'selected': main?.tagName
+    })
+    
+    if (main) {
+      container = document.createElement('section')
+      container.id = 'monthly-availability-form'
+      container.className = 'section active'
+      main.appendChild(container)
+      console.log('✅ Created monthly-availability-form section')
+    } else {
+      console.error('❌ No suitable main container found')
+      return
+    }
   }
+  
+  // Hide other sections and show this one
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'))
+  container.classList.add('active')
   
   let html = `
     <div class="availability-form-page">
       <div class="page-header">
-        <button class="back-button" onclick="window.navigateTo('monthly-availability')">
+        <button class="back-button" onclick="window.location.hash='#monthly-availability'">
           ← Back to Availability
         </button>
         <h2 class="page-title">📅 ${currentMonthName || currentMonth} Availability</h2>
@@ -330,7 +388,7 @@ async function submitForm() {
     
     // Redirect back to tracking page after 1 second
     setTimeout(() => {
-      window.navigateTo('monthly-availability')
+      window.location.hash = '#monthly-availability'
     }, 1000)
     
   } catch (error) {

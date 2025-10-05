@@ -955,6 +955,10 @@ class MainApp {
   showSection(sectionId) {
     console.log('🎯 Navigating to section:', sectionId)
     
+    // Extract base section ID (remove query params from hash)
+    const baseSectionId = sectionId.split('?')[0]
+    console.log('🎯 Base section ID:', baseSectionId)
+    
     // Cleanup previous page listeners before switching
     cleanupAvailability()
     
@@ -966,8 +970,8 @@ class MainApp {
     sections.forEach(section => section.classList.remove('active'))
     navLinks.forEach(link => link.classList.remove('active'))
     
-    const targetSection = document.getElementById(sectionId)
-    const targetLink = document.querySelector(`[href="#${sectionId}"]`)
+    const targetSection = document.getElementById(baseSectionId)
+    const targetLink = document.querySelector(`[href="#${baseSectionId}"]`)
     
     console.log('🎯 Target section found:', !!targetSection, 'Target link found:', !!targetLink)
     
@@ -1085,7 +1089,7 @@ class MainApp {
     }
     
     // Monthly Availability Tracking
-    if (sectionId === 'monthly-availability') {
+    if (baseSectionId === 'monthly-availability') {
       console.log('📅 Monthly Availability section activated')
       setTimeout(async () => {
         try {
@@ -1110,7 +1114,7 @@ class MainApp {
     }
     
     // Monthly Availability Form
-    if (sectionId === 'monthly-availability-form') {
+    if (baseSectionId === 'monthly-availability-form') {
       console.log('📝 Monthly Availability Form section activated')
       setTimeout(async () => {
         try {
@@ -1135,7 +1139,7 @@ class MainApp {
     }
     
     // Handle back button visibility
-    this.updateBackButton(sectionId)
+    this.updateBackButton(baseSectionId)
   }
 
   updateBackButton(sectionId) {

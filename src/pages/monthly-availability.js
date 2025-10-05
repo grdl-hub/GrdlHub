@@ -306,9 +306,12 @@ function renderMonthsList() {
       `
     }
     
+    // Get taskId from actionItem if available
+    const taskIdParam = monthData.actionItem?.id || ''
+    
     html += `
       <div class="month-card ${statusClass} ${highlightClass} ${pendingClass}" 
-           onclick="openMonthForm('${monthData.monthKey}', '${monthData.displayName}')"
+           onclick="openMonthForm('${monthData.monthKey}', '${monthData.displayName}', '${taskIdParam}')"
            data-month="${monthData.monthKey}">
         <div class="month-card-header">
           <h3 class="month-title">${monthData.displayName}</h3>
@@ -336,13 +339,19 @@ function renderMonthsList() {
 }
 
 // Open form for specific month
-window.openMonthForm = function(monthKey, displayName) {
-  console.log('📝 Opening form for month:', monthKey, displayName)
+window.openMonthForm = function(monthKey, displayName, taskId = '') {
+  console.log('📝 Opening form for month:', monthKey, displayName, 'taskId:', taskId)
   
-  // Navigate to form page with month parameter
-  const url = new URL(window.location)
-  url.searchParams.set('month', monthKey)
-  url.searchParams.set('monthName', displayName)
+  // Build URL with hash and query parameters
+  const params = new URLSearchParams({
+    month: monthKey,
+    monthName: displayName
+  })
   
-  window.navigateTo('monthly-availability-form')
+  if (taskId) {
+    params.set('taskId', taskId)
+  }
+  
+  // Navigate with hash and parameters: #monthly-availability-form?month=...&monthName=...&taskId=...
+  window.location.hash = `#monthly-availability-form?${params.toString()}`
 }
