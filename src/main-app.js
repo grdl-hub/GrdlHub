@@ -195,6 +195,14 @@ class MainApp {
                   <div class="hero-background" id="heroBackground"></div>
                 </div>
 
+                <!-- Action Items Section -->
+                <div class="action-items-section">
+                  <h3>✅ Action Items</h3>
+                  <div class="action-items-list" id="action-items-list">
+                    <!-- Action items will be dynamically populated -->
+                  </div>
+                </div>
+
                 <!-- Dynamic Sections Container -->
                 <div id="home-sections-container">
                   <!-- Sections will be dynamically populated based on user permissions -->
@@ -900,6 +908,13 @@ class MainApp {
         }
       })
     })
+    
+    // Make navigateTo globally available for dynamic pages
+    window.navigateTo = (page) => {
+      console.log('🔄 Navigating to:', page)
+      window.location.hash = `#${page}`
+      this.showSection(page)
+    }
   }
 
   setupTabs() {
@@ -1062,6 +1077,56 @@ class MainApp {
           console.error('❌ Error loading monthly view module:', error)
           try {
             showNotification('Error loading monthly view functionality', 'error')
+          } catch (notifError) {
+            console.error('❌ Also failed to show notification:', notifError)
+          }
+        }
+      }, 200)
+    }
+    
+    // Monthly Availability Tracking
+    if (sectionId === 'monthly-availability') {
+      console.log('📅 Monthly Availability section activated')
+      setTimeout(async () => {
+        try {
+          if (!this.monthlyAvailabilityManager) {
+            console.log('📅 Loading Monthly Availability module...')
+            const monthlyAvailabilityModule = await import('./pages/monthly-availability.js')
+            console.log('📅 Module loaded successfully')
+            this.monthlyAvailabilityManager = monthlyAvailabilityModule
+          }
+          console.log('📅 Initializing Monthly Availability...')
+          await this.monthlyAvailabilityManager.initializeMonthlyAvailability()
+          console.log('✅ Monthly Availability initialized successfully')
+        } catch (error) {
+          console.error('❌ Error loading monthly availability:', error)
+          try {
+            showNotification('Error loading availability tracking', 'error')
+          } catch (notifError) {
+            console.error('❌ Also failed to show notification:', notifError)
+          }
+        }
+      }, 200)
+    }
+    
+    // Monthly Availability Form
+    if (sectionId === 'monthly-availability-form') {
+      console.log('📝 Monthly Availability Form section activated')
+      setTimeout(async () => {
+        try {
+          if (!this.monthlyAvailabilityFormManager) {
+            console.log('📝 Loading Monthly Availability Form module...')
+            const formModule = await import('./pages/monthly-availability-form.js')
+            console.log('📝 Module loaded successfully')
+            this.monthlyAvailabilityFormManager = formModule
+          }
+          console.log('📝 Initializing Monthly Availability Form...')
+          await this.monthlyAvailabilityFormManager.initializeMonthlyAvailabilityForm()
+          console.log('✅ Monthly Availability Form initialized successfully')
+        } catch (error) {
+          console.error('❌ Error loading monthly availability form:', error)
+          try {
+            showNotification('Error loading form', 'error')
           } catch (notifError) {
             console.error('❌ Also failed to show notification:', notifError)
           }

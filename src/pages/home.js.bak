@@ -6,14 +6,13 @@ class HomePageManager {
     constructor() {
         // Sections will be loaded dynamically from Firestore
         this.sections = [];
-        this.actionItemsUnsubscribe = null;
     }
 
     async initialize() {
         console.log('🏠 Initializing Home Page Manager...');
         await this.loadSections();
         await this.renderSections();
-        await this.loadActionItems(); // Load action items with real-time listener
+        await this.loadActionItems(); // Load action items
         this.setupEventListeners();
         
         // Listen for page registry updates to refresh home sections
@@ -284,7 +283,7 @@ class HomePageManager {
     // Action Items Management
     async loadActionItems() {
         try {
-            const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+            const { collection, getDocs, query, where } = await import('firebase/firestore');
             const { db, getCurrentUser } = await import('../auth.js');
             
             // Get current user
@@ -296,9 +295,10 @@ class HomePageManager {
             }
 
             const userEmail = currentUser.email;
-            console.log('🔍 Setting up real-time listener for action items:', userEmail);
+            console.log('🔍 Loading action items for user:', userEmail);
             
-            // Set up real-time listener for action items
+            // Load action items assigned to current user that are NOT completed
+            // Note: Removed orderBy to avoid composite index requirement
             const actionItemsRef = collection(db, 'actionItems');
             const q = query(
                 actionItemsRef,
@@ -306,42 +306,33 @@ class HomePageManager {
                 where('completed', '==', false)
             );
             
-            // Store the unsubscribe function so we can clean up later
-            if (this.actionItemsUnsubscribe) {
-                this.actionItemsUnsubscribe();
-            }
+            console.log('📊 Executing Firestore query...');
+            const querySnapshot = await getDocs(q);
             
-            this.actionItemsUnsubscribe = onSnapshot(q, (querySnapshot) => {
-                const actionItems = [];
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    console.log('📄 Found action item:', doc.id, data.title);
-                    actionItems.push({
-                        id: doc.id,
-                        ...data
-                    });
+            const actionItems = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                console.log('📄 Found action item:', doc.id, data.title);
+                actionItems.push({
+                    id: doc.id,
+                    ...data
                 });
-
-                // Sort by due date in JavaScript instead of Firestore
-                actionItems.sort((a, b) => {
-                    const dateA = a.dueDate?.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
-                    const dateB = b.dueDate?.toDate ? b.dueDate.toDate() : new Date(b.dueDate);
-                    return dateA - dateB;
-                });
-
-                console.log(`✅ Loaded ${actionItems.length} uncompleted action items`);
-                
-                if (actionItems.length === 0) {
-                    this.renderEmptyActionItems();
-                } else {
-                    this.renderActionItems(actionItems);
-                }
-            }, (error) => {
-                console.error('❌ Error in action items listener:', error);
-                this.renderEmptyActionItems();
             });
+
+            // Sort by due date in JavaScript instead of Firestore
+            actionItems.sort((a, b) => {
+                const dateA = a.dueDate?.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
+                const dateB = b.dueDate?.toDate ? b.dueDate.toDate() : new Date(b.dueDate);
+                return dateA - dateB;
+            });
+
+            console.log(`✅ Loaded ${actionItems.length} uncompleted action items`);
             
-            console.log('✅ Real-time listener active for action items');
+            if (actionItems.length === 0) {
+                this.renderEmptyActionItems();
+            } else {
+                this.renderActionItems(actionItems);
+            }
         } catch (error) {
             console.error('❌ Error loading action items:', error);
             console.error('Error code:', error.code);
@@ -520,14 +511,31 @@ class HomePageManager {
             }
         };
     }
+                
+                await updateDoc(itemRef, {
+                    completed: true,
+                    completedAt: serverTimestamp(),
+                    completedBy: currentUser ? currentUser.email : 'unknown'
+                });
 
-    cleanup() {
-        // Unsubscribe from real-time listeners when leaving the page
-        if (this.actionItemsUnsubscribe) {
-            console.log('🧹 Cleaning up action items listener');
-            this.actionItemsUnsubscribe();
-            this.actionItemsUnsubscribe = null;
-        }
+                console.log(`✅ Action item ${itemId} marked as completed`);
+                
+                // Fade out and remove the item from view
+                actionItem.style.transition = 'opacity 0.3s, transform 0.3s';
+                actionItem.style.opacity = '0';
+                actionItem.style.transform = 'translateX(20px)';
+                
+                setTimeout(() => {
+                    // Reload action items to update the list
+                    this.loadActionItems();
+                }, 300);
+
+            } catch (error) {
+                console.error('Error opening task submission:', error);
+                const { showNotification } = await import('../utils/notifications.js');
+                showNotification('Error opening form', 'error');
+            }
+        };
     }
 }
 

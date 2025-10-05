@@ -174,5 +174,67 @@ service cloud.firestore {
       // Allow system initialization of default settings
       allow create: if request.auth != null;
     }
+    
+    // Action Items collection - users can read their own and update completion status
+    match /actionItems/{itemId} {
+      // Users can read action items assigned to them
+      allow read: if request.auth != null && 
+        request.auth.token.email in resource.data.assignedTo;
+      
+      // Users can update action items assigned to them (to mark as complete)
+      allow update: if request.auth != null && 
+        request.auth.token.email in resource.data.assignedTo &&
+        request.resource.data.assignedTo == resource.data.assignedTo; // Prevent changing assignments
+      
+      // Any authenticated user can create action items (tasks will be filtered by app logic)
+      allow create: if request.auth != null;
+      
+      // Admins can read/update/delete all action items
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Availability Reports collection - monthly submissions
+    match /availabilityReports/{reportId} {
+      // Users can read their own reports
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      
+      // Users can create/update their own reports
+      allow create, update: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Admins can read all reports
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Admins can create/update/delete all reports
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Notifications collection - for admin alerts
+    match /notifications/{notificationId} {
+      // Any authenticated user can create notifications
+      allow create: if request.auth != null;
+      
+      // Only admins can read notifications
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Only admins can update notifications (mark as read)
+      allow update: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Only admins can delete notifications
+      allow delete: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
   }
 }

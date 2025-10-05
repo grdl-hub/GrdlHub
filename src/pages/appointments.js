@@ -198,6 +198,9 @@ function switchAppointmentType(newType, buttonElement) {
   const timeField = modal.querySelector('.time-field')
   const durationField = modal.querySelector('.duration-field')
   const priorityField = modal.querySelector('.priority-field')
+  const designationsField = modal.querySelector('.designations-field')
+  const privilegeGroupField = modal.querySelector('.privilege-group-field')
+  const formTypeField = modal.querySelector('.form-type-field')
   
   // Update hidden field
   typeCategory.value = newType
@@ -211,11 +214,30 @@ function switchAppointmentType(newType, buttonElement) {
   // Update labels
   titleLabel.textContent = isTask ? 'Task Name' : 'Event Title'
   
+  // Update submit button text
+  const submitBtn = modal.querySelector('#submit-btn')
+  if (submitBtn && !modal.querySelector('#appointment-form').dataset.editingId) {
+    submitBtn.textContent = isTask ? '✅ Create Task' : '📅 Create Event'
+  }
+  
   // Show/hide fields based on type
   locationField.style.display = isTask ? 'none' : 'block'
   timeField.style.display = isTask ? 'none' : 'block'
   durationField.style.display = isTask ? 'none' : 'block'
   priorityField.style.display = isTask ? 'block' : 'none'
+  
+  // Toggle assignment fields
+  if (designationsField) designationsField.style.display = isTask ? 'none' : 'block'
+  if (privilegeGroupField) privilegeGroupField.style.display = isTask ? 'block' : 'none'
+  
+  // Toggle form type selector (Tasks only)
+  if (formTypeField) formTypeField.style.display = isTask ? 'block' : 'none'
+  
+  // Update required attribute
+  const privilegeGroupSelect = modal.querySelector('#apt-privilege-group')
+  if (privilegeGroupSelect) {
+    privilegeGroupSelect.required = isTask
+  }
 }
 
 // Debug function to manually initialize appointment titles (temporary)
@@ -247,6 +269,65 @@ async function editAppointmentFromCalendar(appointmentId, occurrenceDate) {
   await openEditAppointmentModal(appointment, occurrenceDate)
 }
 
+// Helper function to load privileges from Firestore
+async function loadPrivilegeGroupOptions() {
+  try {
+    // Step 1: Query all users to get their privilege IDs
+    const usersRef = collection(db, 'users')
+    const usersSnapshot = await getDocs(usersRef)
+    
+    // Step 2: Collect all unique privilege IDs from users
+    const privilegeIdsSet = new Set()
+    usersSnapshot.forEach((doc) => {
+      const userData = doc.data()
+      if (userData.privileges && Array.isArray(userData.privileges)) {
+        userData.privileges.forEach(privilegeId => privilegeIdsSet.add(privilegeId))
+      }
+    })
+    
+    console.log('📋 Found privilege IDs in use:', Array.from(privilegeIdsSet))
+    
+    if (privilegeIdsSet.size === 0) {
+      console.warn('⚠️ No privileges found in users')
+      return '<option value="">No privileges available</option>'
+    }
+    
+    // Step 3: Fetch privilege details for each ID
+    const privilegesRef = collection(db, 'privileges')
+    const privilegesSnapshot = await getDocs(privilegesRef)
+    
+    const options = ['<option value="">Select privilege group...</option>']
+    
+    // Step 4: Build options only for privileges that users have
+    privilegesSnapshot.forEach((doc) => {
+      const privilegeId = doc.id
+      if (privilegeIdsSet.has(privilegeId)) {
+        const data = doc.data()
+        const privilegeName = data.name || privilegeId
+        const privilegeIcon = data.icon || '🎯'
+        options.push(`<option value="${privilegeId}">${privilegeIcon} ${privilegeName}</option>`)
+      }
+    })
+    
+    console.log(`✅ Loaded ${options.length - 1} privilege groups for dropdown`)
+    return options.join('')
+    
+  } catch (error) {
+    console.error('Error loading privilege groups:', error)
+    // Fallback to basic options
+    return `
+      <option value="">Select privilege group...</option>
+      <option value="appointments">📅 Appointments</option>
+      <option value="availability">🗓️ Availability</option>
+      <option value="users">👥 Users Management</option>
+      <option value="pages">📄 Pages Management</option>
+      <option value="content">📝 Content Management</option>
+      <option value="settings">⚙️ Settings</option>
+      <option value="translations">🌐 Translations</option>
+    `
+  }
+}
+
 async function createAppointmentModal(preselectedDate = null, appointmentType = 'event') {
   // Remove any existing modal
   const existingModal = document.querySelector('.appointment-modal-overlay')
@@ -263,6 +344,9 @@ async function createAppointmentModal(preselectedDate = null, appointmentType = 
 
   // Get dynamic title dropdown HTML
   const titleDropdownHTML = await createTitleDropdownHTML()
+  
+  // Load privilege groups dynamically for tasks
+  const privilegeGroupOptionsHTML = await loadPrivilegeGroupOptions()
 
   // Determine modal title and form content based on type
   const isTask = appointmentType === 'task'
@@ -387,8 +471,8 @@ async function createAppointmentModal(preselectedDate = null, appointmentType = 
             <textarea id="apt-description" class="form-textarea" rows="3" placeholder="Additional notes or agenda..."></textarea>
           </div>
 
-          <!-- Designations Field -->
-          <div class="form-group">
+          <!-- Designations Field (For Events Only) -->
+          <div class="form-group designations-field" style="${isTask ? 'display: none;' : ''}">
             <label for="apt-designations" class="form-label">👥 Designations</label>
             <div class="designations-container">
               <div id="designations-loading" class="loading-message" style="display: none;">
@@ -401,14 +485,67 @@ async function createAppointmentModal(preselectedDate = null, appointmentType = 
                 <!-- Available users will be loaded here -->
               </div>
               <div class="designations-info">
-                <small>💡 Select up to 3 people who will be responsible for this appointment. Only users who marked themselves as available will appear here.</small>
+                <small>💡 Select up to 3 people who will be responsible for this event. Only users who marked themselves as available will appear here.</small>
               </div>
+            </div>
+          </div>
+
+          <!-- Assign to Privilege Group Field (For Tasks Only) -->
+          <div class="form-group privilege-group-field" style="${!isTask ? 'display: none;' : ''}">
+            <label for="apt-privilege-group" class="form-label">🎯 Assign to Privilege Group</label>
+            <select id="apt-privilege-group" class="form-select" ${isTask ? 'required' : ''}>
+              ${privilegeGroupOptionsHTML}
+            </select>
+            <div class="privilege-group-info">
+              <small>💡 All users with this privilege will receive this task as an action item on their home page.</small>
+            </div>
+          </div>
+
+          <!-- Form Type Selector (For Tasks Only) -->
+          <div class="form-group form-type-field" style="${!isTask ? 'display: none;' : ''}">
+            <label for="apt-form-type" class="form-label">📋 Submission Form Type</label>
+            <select id="apt-form-type" class="form-select" onchange="handleFormTypeChange(this.value)">
+              <option value="">Select a form type...</option>
+              <optgroup label="Monthly Reports">
+                <option value="monthly-availability">📅 Monthly Availability Report</option>
+                <option value="monthly-field-service">📊 Monthly Field Service Report</option>
+                <option value="monthly-attendance">👥 Monthly Attendance Report</option>
+                <option value="monthly-territory">🗺️ Monthly Territory Report</option>
+              </optgroup>
+              <optgroup label="Applications">
+                <option value="pioneer-application">🎯 Pioneer Application</option>
+                <option value="application-renewal">📝 Application Renewal</option>
+              </optgroup>
+            </select>
+            <div class="form-type-info">
+              <small>💡 Select the type of form users will need to fill out for this task.</small>
+            </div>
+          </div>
+
+          <!-- Reporting Period (For Monthly Report Forms Only) -->
+          <div id="reporting-period-fields" class="reporting-period-fields" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="period-start-date" class="form-label">📆 Period Start Date</label>
+                <input type="date" id="period-start-date" class="form-input">
+              </div>
+              
+              <div class="form-group">
+                <label for="period-end-date" class="form-label">📆 Period End Date</label>
+                <input type="date" id="period-end-date" class="form-input">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="period-display-name" class="form-label">📅 Period Display Name</label>
+              <input type="text" id="period-display-name" class="form-input" placeholder="e.g., September 2025">
+              <small class="form-help">This is how users will see this reporting period</small>
             </div>
           </div>
 
           <div class="form-actions">
             <button type="button" class="btn btn-secondary" onclick="this.closest('.appointment-modal-overlay').remove()">Cancel</button>
-            <button type="submit" class="btn btn-primary">📅 Create Appointment</button>
+            <button type="submit" class="btn btn-primary" id="submit-btn">${isTask ? '✅ Create Task' : '📅 Create Event'}</button>
           </div>
         </form>
       </div>
@@ -871,6 +1008,154 @@ function setupModalEventListeners(modal) {
       }
     })
   }
+  
+  // Make handleFormTypeChange globally available
+  window.handleFormTypeChange = handleFormTypeChange
+}
+
+// Handle form type selection change
+function handleFormTypeChange(formType) {
+  const reportingPeriodFields = document.getElementById('reporting-period-fields')
+  
+  if (!formType) {
+    reportingPeriodFields.style.display = 'none'
+    return
+  }
+  
+  // Show reporting period fields for monthly report forms
+  const isMonthlyReport = formType.startsWith('monthly-')
+  
+  if (isMonthlyReport) {
+    reportingPeriodFields.style.display = 'block'
+    
+    // Auto-populate with smart defaults
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    
+    // First day of current month
+    const startDate = new Date(year, month, 1)
+    const startDateStr = startDate.toISOString().split('T')[0]
+    
+    // Last day of current month
+    const endDate = new Date(year, month + 1, 0)
+    const endDateStr = endDate.toISOString().split('T')[0]
+    
+    // Month name
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+    const displayName = `${monthNames[month]} ${year}`
+    
+    // Populate fields
+    document.getElementById('period-start-date').value = startDateStr
+    document.getElementById('period-end-date').value = endDateStr
+    document.getElementById('period-display-name').value = displayName
+  } else {
+    reportingPeriodFields.style.display = 'none'
+  }
+}
+
+// Helper function to create action items for tasks
+async function createActionItemForTask(taskData, taskId) {
+  try {
+    const currentUser = getCurrentUser()
+    if (!currentUser) {
+      console.error('❌ No current user found')
+      return
+    }
+    
+    // Parse the date and time to create a proper due date
+    const dueDate = new Date(`${taskData.date}T${taskData.time || '23:59'}`)
+    
+    // Get privilege group from task data
+    const privilegeGroup = taskData.privilegeGroup
+    if (!privilegeGroup) {
+      console.error('❌ No privilege group specified for task')
+      showNotification('Task created but no privilege group specified', 'warning')
+      return
+    }
+    
+    console.log('🔍 Querying users with privilege:', privilegeGroup)
+    
+    // Query all users who have this privilege
+    const usersRef = collection(db, 'users')
+    const q = query(usersRef, where('privileges', 'array-contains', privilegeGroup))
+    const querySnapshot = await getDocs(q)
+    
+    console.log('📊 Query returned', querySnapshot.size, 'users')
+    
+    const assignedEmails = []
+    querySnapshot.forEach((doc) => {
+      const userData = doc.data()
+      console.log('👤 User found:', doc.id, 'Email:', userData.email, 'Privileges:', userData.privileges)
+      if (userData.email) {
+        assignedEmails.push(userData.email)
+      }
+    })
+    
+    if (assignedEmails.length === 0) {
+      console.warn(`⚠️ No users found with privilege: ${privilegeGroup}`)
+      showNotification(`Task created but no users have this privilege assigned yet`, 'warning')
+      return
+    }
+    
+    console.log(`✅ Found ${assignedEmails.length} users with privilege "${privilegeGroup}":`, assignedEmails)
+    
+    // Get form type and icon mapping
+    const formTypeIcons = {
+      'monthly-availability': '📅',
+      'monthly-field-service': '📊',
+      'monthly-attendance': '👥',
+      'monthly-territory': '🗺️',
+      'pioneer-application': '🎯',
+      'application-renewal': '📝'
+    }
+    
+    const formIcon = formTypeIcons[taskData.formType] || '📋'
+    
+    // Create action item
+    const actionItem = {
+      title: taskData.title,
+      subtitle: taskData.description || 'Task from appointments',
+      dueDate: Timestamp.fromDate(dueDate),
+      priority: taskData.priority || 'medium',
+      assignedTo: assignedEmails, // Array of user emails with this privilege
+      assignedByPrivilege: privilegeGroup, // Store the privilege group used
+      
+      // Form metadata
+      formType: taskData.formType || null,
+      formIcon: formIcon,
+      formPageUrl: taskData.formType ? `/${taskData.formType}` : null,
+      
+      // Reporting period (for monthly reports)
+      reportingPeriod: taskData.reportingPeriod || null,
+      
+      // Auto-completion
+      autoCompleteOnSubmission: true,
+      linkedSubmissionId: null,
+      
+      completed: false,
+      completedAt: null,
+      completedBy: null,
+      createdBy: currentUser.email,
+      createdAt: Timestamp.now(),
+      relatedTaskId: taskId, // Link back to the appointment/task
+      type: 'task'
+    }
+    
+    console.log('💾 Creating action item:', actionItem)
+    await addDoc(collection(db, 'actionItems'), actionItem)
+    console.log(`✅ Action item created successfully for ${assignedEmails.length} users`)
+    showNotification(`Task assigned to ${assignedEmails.length} user(s)`, 'success')
+    
+  } catch (error) {
+    console.error('❌ Error creating action item:', error)
+    console.error('Error details:', error.message, error.code)
+    showNotification('Task created but action items could not be assigned', 'warning')
+    // Don't throw - we still want the task to be created even if action item fails
+  }
 }
 
 async function handleCreateAppointment(e) {
@@ -893,28 +1178,67 @@ async function handleCreateAppointment(e) {
     // Check if user wants recurring appointment
     const isRecurring = document.getElementById('apt-is-recurring').checked
     
-    // Get selected designations
-    const selectedDesignations = getSelectedDesignations()
-    
     // Get the appointment type category (event or task)
     const appointmentTypeCategory = document.getElementById('appointment-type-category')?.value || 'event'
     const isTask = appointmentTypeCategory === 'task'
     
+    // Get assignment data based on type
+    let selectedDesignations = []
+    let privilegeGroup = null
+    
+    if (isTask) {
+      // For tasks, get the privilege group
+      privilegeGroup = document.getElementById('apt-privilege-group')?.value
+      if (!privilegeGroup) {
+        showNotification('Please select a privilege group for this task', 'error')
+        return
+      }
+    } else {
+      // For events, get selected designations
+      selectedDesignations = getSelectedDesignations()
+    }
+    
     const appointmentData = {
       title: getCurrentTitleValue(),
-      type: document.getElementById('apt-type').value,
       category: appointmentTypeCategory, // Store the main category (event/task)
       date: document.getElementById('apt-date').value,
-      time: document.getElementById('apt-time').value,
+      time: document.getElementById('apt-time')?.value || '12:00', // Default time for tasks
       place: document.getElementById('apt-place')?.value || '', // Tasks might not have location
       duration: parseInt(document.getElementById('apt-duration')?.value || (isTask ? 30 : 60)), // Default duration
       priority: document.getElementById('apt-priority')?.value || 'medium', // For tasks
       repeatPattern: isRecurring ? document.getElementById('apt-repeat').value : null,
       endDate: isRecurring ? (document.getElementById('apt-end-date').value || null) : null,
       description: document.getElementById('apt-description').value,
-      designatedUsers: selectedDesignations.map(d => d.userId),
-      designatedNames: selectedDesignations.map(d => d.userName),
-      designationsCount: selectedDesignations.length
+    }
+    
+    // Add form type and reporting period for tasks
+    if (isTask) {
+      const formType = document.getElementById('apt-form-type')?.value || null
+      appointmentData.formType = formType
+      
+      // Add reporting period if form type is selected and it's a monthly report
+      if (formType && formType.startsWith('monthly-')) {
+        const startDate = document.getElementById('period-start-date')?.value
+        const endDate = document.getElementById('period-end-date')?.value
+        const displayName = document.getElementById('period-display-name')?.value
+        
+        if (startDate && endDate && displayName) {
+          appointmentData.reportingPeriod = {
+            startDate: startDate,
+            endDate: endDate,
+            displayName: displayName
+          }
+        }
+      }
+    }
+    
+    // Add assignment data based on type
+    if (isTask) {
+      appointmentData.privilegeGroup = privilegeGroup
+    } else {
+      appointmentData.designatedUsers = selectedDesignations.map(d => d.userId)
+      appointmentData.designatedNames = selectedDesignations.map(d => d.userName)
+      appointmentData.designationsCount = selectedDesignations.length
     }
     
     // Only set these fields for new appointments
@@ -927,8 +1251,14 @@ async function handleCreateAppointment(e) {
     console.log(`${isEditing ? 'Updating' : 'Creating'} appointment with data:`, appointmentData)
     
     // Validate required fields
-    if (!appointmentData.title || !appointmentData.type || !appointmentData.date || !appointmentData.time) {
+    if (!appointmentData.title || !appointmentData.date) {
       showNotification('Please fill in all required fields', 'error')
+      return
+    }
+    
+    // Additional validation for tasks
+    if (isTask && !privilegeGroup) {
+      showNotification('Please select a privilege group for tasks', 'error')
       return
     }
     
@@ -954,10 +1284,16 @@ async function handleCreateAppointment(e) {
       
     } else {
       // Create new appointment
-      await addDoc(collection(db, 'appointments'), appointmentData)
+      const docRef = await addDoc(collection(db, 'appointments'), appointmentData)
+      
+      // If this is a task with privilege group, create action items
+      if (isTask && privilegeGroup) {
+        await createActionItemForTask(appointmentData, docRef.id)
+      }
+      
       const createMessage = isRecurring ? 
         'Recurring appointment created successfully! 🔄' :
-        'Appointment created successfully! 📅'
+        (isTask ? 'Task created and assigned successfully! ✅' : 'Appointment created successfully! 📅')
       showNotification(createMessage, 'success')
     }
     
@@ -1576,15 +1912,8 @@ function validateAppointmentForm(formData) {
     errors.push('Title must be at least 2 characters long')
   }
   
-  if (!formData.type) {
-    errors.push('Please select an appointment type')
-  }
-  
-  if (!formData.time) {
-    errors.push('Please specify a time')
-  }
-  
-  if (!formData.duration || formData.duration < 5 || formData.duration > 480) {
+  // Duration validation (optional for tasks)
+  if (formData.duration && (formData.duration < 5 || formData.duration > 480)) {
     errors.push('Duration must be between 5 and 480 minutes')
   }
   
