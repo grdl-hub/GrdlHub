@@ -1040,7 +1040,7 @@ class MainApp {
           await this.availabilityTrackerManager.initializeMonthlyAvailability()
           console.log('✅ Availability Tracker initialized successfully')
         } catch (error) {
-          console.error('❌ Error loading monthly availability:', error)
+          console.error('❌ Error loading availability tracker:', error)
           try {
             showNotification('Error loading availability tracking', 'error')
           } catch (notifError) {

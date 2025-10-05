@@ -24,7 +24,7 @@ let formData = {}
 let taskId = null
 
 export async function initializeMonthlyAvailabilityForm() {
-  console.log('📝 Initializing Monthly Availability Form...')
+  console.log('📝 Initializing Availability Form...')
   
   try {
     currentUser = getCurrentUser()
@@ -492,7 +492,7 @@ async function completeActionItem() {
     await createAdminNotification({
       type: 'form_submission',
       title: `${currentUser.displayName || currentUser.email} submitted availability`,
-      message: `${itemData.title || 'Monthly availability'} for ${currentMonthName} has been submitted`,
+      message: `${itemData.title || 'Availability'} for ${currentMonthName} has been submitted`,
       userId: currentUser.uid,
       userEmail: currentUser.email,
       metadata: {

@@ -18,7 +18,7 @@ let submissions = []
 let activeActionItems = []
 
 export async function initializeMonthlyAvailability() {
-  console.log('📅 Initializing Monthly Availability Tracking...')
+  console.log('📅 Initializing Availability Tracker...')
   
   try {
     currentUser = getCurrentUser()
@@ -32,9 +32,9 @@ export async function initializeMonthlyAvailability() {
     await loadActiveActionItems()
     renderMonthsList()
     
-    console.log('✅ Monthly Availability initialized')
+    console.log('✅ Availability Tracker initialized')
   } catch (error) {
-    console.error('❌ Error initializing monthly availability:', error)
+    console.error('❌ Error initializing availability tracker:', error)
     showNotification('Error loading availability tracking', 'error')
   }
 }
@@ -242,7 +242,7 @@ function renderMonthsList() {
         <button class="back-button" onclick="window.navigateTo('home')">
           ← Back to Home
         </button>
-        <h2 class="page-title">📅 Monthly Availability</h2>
+        <h2 class="page-title">📅 Availability Tracker</h2>
         <p class="page-subtitle">View pending tasks and submitted reports</p>
       </div>
       
