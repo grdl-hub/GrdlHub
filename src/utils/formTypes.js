@@ -7,7 +7,7 @@ export const FORM_TYPES = {
     name: 'Monthly Availability Report',
     icon: '📅',
     collection: 'availabilityReports',
-    pageRoute: 'monthly-availability',
+    pageRoute: 'availability-forms',
     description: 'Submit your availability for meetings and service',
     category: 'monthly',
     fields: ['appointments', 'availability', 'notes']

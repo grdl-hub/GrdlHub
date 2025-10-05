@@ -1,4 +1,4 @@
-// Monthly Availability Form Page
+// Availability Forms Page
 // Allows users to fill out availability for all appointments in a specific month
 
 import { db } from '../auth.js'
@@ -35,7 +35,7 @@ export async function initializeMonthlyAvailabilityForm() {
     }
     
     // Extract parameters from hash
-    // Format: #monthly-availability-form?month=2025-10&monthName=October%202025&taskId=abc
+    // Format: #availability-forms?month=2025-10&monthName=October%202025&taskId=abc
     const hash = window.location.hash
     const queryStart = hash.indexOf('?')
     let params = new URLSearchParams()
@@ -56,7 +56,7 @@ export async function initializeMonthlyAvailabilityForm() {
     if (!currentMonth) {
       console.error('No month specified in hash or URL')
       showNotification('Month not specified', 'error')
-      window.location.hash = '#monthly-availability'
+      window.location.hash = '#availability-tracker'
       return
     }
     
@@ -75,7 +75,7 @@ export async function initializeMonthlyAvailabilityForm() {
     
     hideLoading()
     
-    console.log('✅ Monthly Availability Form initialized')
+          console.log('✅ Created availability-forms section')
   } catch (error) {
     console.error('❌ Error initializing form:', error)
     hideLoading()
@@ -191,7 +191,7 @@ async function loadExistingSubmission() {
 // Render the form
 function renderForm() {
   // Find or create the container
-  let container = document.getElementById('monthly-availability-form')
+  let container = document.getElementById('availability-forms')
   
   if (!container) {
     // Try multiple selectors for the main container
@@ -210,10 +210,10 @@ function renderForm() {
     
     if (main) {
       container = document.createElement('section')
-      container.id = 'monthly-availability-form'
+      container.id = 'availability-forms'
       container.className = 'section active'
       main.appendChild(container)
-      console.log('✅ Created monthly-availability-form section')
+      console.log('✅ Created availability-forms section')
     } else {
       console.error('❌ No suitable main container found')
       return
@@ -227,7 +227,7 @@ function renderForm() {
   let html = `
     <div class="availability-form-page">
       <div class="page-header">
-        <button class="back-button" onclick="window.location.hash='#monthly-availability'">
+        <button class="back-button" onclick="window.location.hash='#availability-tracker'">
           ← Back to Availability
         </button>
         <h2 class="page-title">📅 ${currentMonthName || currentMonth} Availability</h2>
@@ -388,7 +388,7 @@ async function submitForm() {
     
     // Redirect back to tracking page after 1 second
     setTimeout(() => {
-      window.location.hash = '#monthly-availability'
+      window.location.hash = '#availability-tracker'
     }, 1000)
     
   } catch (error) {

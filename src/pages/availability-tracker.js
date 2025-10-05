@@ -1,4 +1,4 @@
-// Monthly Availability Tracking Page
+// Availability Tracker Page
 // Shows list of months with submission status (like screenshot)
 
 import { db } from '../auth.js'
@@ -214,14 +214,14 @@ function generateMonthsList_OLD() {
 // Render the months list (like availability screenshot)
 function renderMonthsList() {
   // Find or create the container
-  let container = document.getElementById('monthly-availability')
+  let container = document.getElementById('availability-tracker')
   
   if (!container) {
     // If section doesn't exist, create it inside <main>
     const main = document.querySelector('main.main')
     if (main) {
       container = document.createElement('section')
-      container.id = 'monthly-availability'
+      container.id = 'availability-tracker'
       container.className = 'section active'
       main.appendChild(container)
     } else {
@@ -352,6 +352,6 @@ window.openMonthForm = function(monthKey, displayName, taskId = '') {
     params.set('taskId', taskId)
   }
   
-  // Navigate with hash and parameters: #monthly-availability-form?month=...&monthName=...&taskId=...
-  window.location.hash = `#monthly-availability-form?${params.toString()}`
+  // Navigate with hash and parameters: #availability-forms?month=...&monthName=...&taskId=...
+  window.location.hash = `#availability-forms?${params.toString()}`
 }

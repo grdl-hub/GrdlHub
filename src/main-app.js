@@ -1013,20 +1013,32 @@ class MainApp {
     }
 
     
-    // Monthly Availability Tracking
+    // Backward compatibility: redirect old routes to new routes
     if (baseSectionId === 'monthly-availability') {
-      console.log('📅 Monthly Availability section activated')
+      console.log('📅 Redirecting old route to availability-tracker')
+      window.location.hash = window.location.hash.replace('#monthly-availability', '#availability-tracker')
+      return
+    }
+    if (baseSectionId === 'monthly-availability-form') {
+      console.log('📝 Redirecting old route to availability-forms')
+      window.location.hash = window.location.hash.replace('#monthly-availability-form', '#availability-forms')
+      return
+    }
+
+    // Availability Tracker
+    if (baseSectionId === 'availability-tracker') {
+      console.log('📅 Availability Tracker section activated')
       setTimeout(async () => {
         try {
-          if (!this.monthlyAvailabilityManager) {
-            console.log('📅 Loading Monthly Availability module...')
-            const monthlyAvailabilityModule = await import('./pages/monthly-availability.js')
+          if (!this.availabilityTrackerManager) {
+            console.log('📅 Loading Availability Tracker module...')
+            const availabilityTrackerModule = await import('./pages/availability-tracker.js')
             console.log('📅 Module loaded successfully')
-            this.monthlyAvailabilityManager = monthlyAvailabilityModule
+            this.availabilityTrackerManager = availabilityTrackerModule
           }
-          console.log('📅 Initializing Monthly Availability...')
-          await this.monthlyAvailabilityManager.initializeMonthlyAvailability()
-          console.log('✅ Monthly Availability initialized successfully')
+          console.log('📅 Initializing Availability Tracker...')
+          await this.availabilityTrackerManager.initializeMonthlyAvailability()
+          console.log('✅ Availability Tracker initialized successfully')
         } catch (error) {
           console.error('❌ Error loading monthly availability:', error)
           try {
@@ -1038,22 +1050,22 @@ class MainApp {
       }, 200)
     }
     
-    // Monthly Availability Form
-    if (baseSectionId === 'monthly-availability-form') {
-      console.log('📝 Monthly Availability Form section activated')
+    // Availability Forms
+    if (baseSectionId === 'availability-forms') {
+      console.log('📝 Availability Forms section activated')
       setTimeout(async () => {
         try {
-          if (!this.monthlyAvailabilityFormManager) {
-            console.log('📝 Loading Monthly Availability Form module...')
-            const formModule = await import('./pages/monthly-availability-form.js')
+          if (!this.availabilityFormsManager) {
+            console.log('📝 Loading Availability Forms module...')
+            const formModule = await import('./pages/availability-forms.js')
             console.log('📝 Module loaded successfully')
-            this.monthlyAvailabilityFormManager = formModule
+            this.availabilityFormsManager = formModule
           }
-          console.log('📝 Initializing Monthly Availability Form...')
-          await this.monthlyAvailabilityFormManager.initializeMonthlyAvailabilityForm()
-          console.log('✅ Monthly Availability Form initialized successfully')
+          console.log('📝 Initializing Availability Forms...')
+          await this.availabilityFormsManager.initializeMonthlyAvailabilityForm()
+          console.log('✅ Availability Forms initialized successfully')
         } catch (error) {
-          console.error('❌ Error loading monthly availability form:', error)
+          console.error('❌ Error loading availability forms:', error)
           try {
             showNotification('Error loading form', 'error')
           } catch (notifError) {
