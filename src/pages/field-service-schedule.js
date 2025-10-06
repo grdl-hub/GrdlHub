@@ -18,8 +18,8 @@ let appointments = []
 let currentView = 'list' // 'list' or 'calendar'
 let currentDate = new Date()
 
-// Target title to filter
-const TARGET_TITLE = 'Reuniões para o Serviço de Campo'
+// Target event type to filter
+const TARGET_EVENT_TYPE = 'field-service-meeting'
 
 export async function initializeFieldServiceMeetings() {
   console.log('🏫 Initializing Field Service Schedule page...')
@@ -42,7 +42,7 @@ export async function initializeFieldServiceMeetings() {
   }
 }
 
-// Load appointments with specific title
+// Load appointments with specific event type
 async function loadFieldServiceAppointments() {
   try {
     console.log('📊 Loading Field Service appointments...')
@@ -50,7 +50,7 @@ async function loadFieldServiceAppointments() {
     const appointmentsRef = collection(db, 'appointments')
     const q = query(
       appointmentsRef,
-      where('title', '==', TARGET_TITLE)
+      where('eventType', '==', TARGET_EVENT_TYPE)
     )
     
     const querySnapshot = await getDocs(q)
@@ -60,16 +60,21 @@ async function loadFieldServiceAppointments() {
     
     querySnapshot.forEach((doc) => {
       const data = doc.data()
+      console.log('📋 Found appointment:', data)
       allAppointments.push({
         id: doc.id,
         ...data
       })
     })
     
+    console.log(`📦 Total appointments from Firestore: ${allAppointments.length}`)
+    
     // Expand recurring appointments and filter future ones
     appointments = []
     allAppointments.forEach(apt => {
+      console.log(`🔄 Processing: ${apt.title}, date: ${apt.date}, repeatPattern: ${apt.repeatPattern}`)
       const expanded = expandRecurringAppointment(apt, now)
+      console.log(`   Expanded into ${expanded.length} occurrences`)
       appointments.push(...expanded)
     })
     
@@ -88,26 +93,32 @@ async function loadFieldServiceAppointments() {
 function expandRecurringAppointment(appointment, fromDate) {
   const occurrences = []
   
-  // Convert Firestore timestamp to Date
-  const startDate = appointment.startDate?.toDate ? appointment.startDate.toDate() : new Date(appointment.startDate)
-  const endDate = appointment.endDate?.toDate ? appointment.endDate.toDate() : new Date(appointment.endDate)
+  // Parse date string (format: "YYYY-MM-DD")
+  if (!appointment.date) {
+    console.warn('⚠️ Appointment missing date field:', appointment)
+    return occurrences
+  }
+  
+  const appointmentDate = new Date(appointment.date + 'T00:00:00')
   
   if (!appointment.repeatPattern || appointment.repeatPattern === 'none') {
     // Single occurrence
-    if (startDate >= fromDate) {
+    if (appointmentDate >= fromDate) {
       occurrences.push({
         ...appointment,
-        date: startDate,
+        date: appointmentDate,
         isRecurring: false
       })
     }
   } else {
     // Recurring appointment - generate occurrences
     const pattern = appointment.repeatPattern
-    let currentDate = new Date(startDate)
-    const maxDate = new Date(endDate)
+    let currentDate = new Date(appointmentDate)
     const limitDate = new Date(fromDate)
     limitDate.setFullYear(limitDate.getFullYear() + 1) // Show up to 1 year ahead
+    
+    // If appointment has an endDate, use it, otherwise show up to 1 year
+    const maxDate = appointment.endDate ? new Date(appointment.endDate + 'T00:00:00') : limitDate
     
     while (currentDate <= maxDate && currentDate <= limitDate) {
       if (currentDate >= fromDate) {
@@ -115,7 +126,7 @@ function expandRecurringAppointment(appointment, fromDate) {
           ...appointment,
           date: new Date(currentDate),
           isRecurring: true,
-          originalStartDate: startDate
+          originalStartDate: appointmentDate
         })
       }
       
@@ -146,8 +157,8 @@ function renderPage() {
   container.innerHTML = `
     <div class="field-service-meetings-page">
       <div class="page-header">
-        <h2 class="page-title">🏫 Field Service Schedule</h2>
-        <p class="page-description">Schedule for ${TARGET_TITLE}</p>
+        <h2 class="page-title">🚪 Field Service Meetings</h2>
+        <p class="page-description">Schedule for field service meetings</p>
       </div>
 
       <div class="view-controls">
@@ -186,7 +197,7 @@ function renderListView() {
   const cards = appointments.map(apt => {
     const dateStr = formatDate(apt.date)
     const timeStr = apt.time || 'Time not set'
-    const location = apt.location || 'Location not set'
+    const location = apt.place || 'Location not set'
     const isRecurring = apt.isRecurring ? '🔄' : ''
     
     return `
