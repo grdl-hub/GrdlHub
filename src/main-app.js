@@ -13,6 +13,7 @@ import { initializeSettingsPage } from './pages/settings.js'
 import { initializeAppointmentsPage } from './pages/appointments.js'
 import { initializeAvailability, cleanupAvailability } from './pages/availability.js'
 import { initializeTranslationsPage } from './pages/translations.js'
+import { initializeFieldServiceMeetings } from './pages/field-service-schedule.js'
 import { showNotification } from './utils/notifications.js'
 
 class MainApp {
@@ -197,7 +198,9 @@ class MainApp {
 
                 <!-- Action Items Section -->
                 <div class="action-items-section">
-                  <h3>✅ Action Items</h3>
+                  <div class="section-header">
+                    <h3 class="section-title">Action Items</h3>
+                  </div>
                   <div class="action-items-list" id="action-items-list">
                     <!-- Action items will be dynamically populated -->
                   </div>
@@ -206,18 +209,6 @@ class MainApp {
                 <!-- Dynamic Sections Container -->
                 <div id="home-sections-container">
                   <!-- Sections will be dynamically populated based on user permissions -->
-                </div>
-
-                <!-- Recent Activity Section -->
-                <div class="recent-activity-section">
-                  <h3>📋 Recent Activity</h3>
-                  <div class="activity-feed" id="activity-feed">
-                    <div class="activity-item">
-                      <span class="activity-icon">👋</span>
-                      <span class="activity-text">Welcome to GrdlHub! Start by exploring the features above.</span>
-                      <span class="activity-time">Just now</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -419,6 +410,15 @@ class MainApp {
                   <p>This report will show overall appointment and attendance trends.</p>
                   <p><em>Coming soon...</em></p>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Field Service Meetings -->
+          <section id="field-service-meetings" class="section">
+            <div class="container">
+              <div id="field-service-meetings-container">
+                <!-- Content will be populated by field-service-meetings.js -->
               </div>
             </div>
           </section>
@@ -653,45 +653,51 @@ class MainApp {
       <div id="edit-user-modal" class="modal hidden">
         <div class="modal-content">
           <div class="modal-header">
-            <h3>Edit User</h3>
+            <h3>✏️ Edit User</h3>
             <button class="close-btn">&times;</button>
           </div>
           <div class="modal-body">
             <form id="edit-user-form">
-              <div class="form-group">
-                <label for="edit-user-name" class="form-label">Full Name</label>
-                <input type="text" id="edit-user-name" name="user-name" class="form-input" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="edit-user-congregation" class="form-label">Congregation</label>
-                <input type="text" id="edit-user-congregation" name="user-congregation" class="form-input" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="edit-user-email" class="form-label">Email Address</label>
-                <input type="email" id="edit-user-email" name="user-email" class="form-input" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="edit-user-role" class="form-label">Role</label>
-                <select id="edit-user-role" name="user-role" class="form-select" required>
-                  <option value="">Select Role</option>
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
+              <div class="form-section">
+                <h4 class="form-section-title">👤 Personal Information</h4>
+                <div class="form-group">
+                  <label for="edit-user-name" class="form-label">Full Name</label>
+                  <input type="text" id="edit-user-name" name="user-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="edit-user-congregation" class="form-label">Congregation</label>
+                  <input type="text" id="edit-user-congregation" name="user-congregation" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="edit-user-email" class="form-label">Email Address</label>
+                  <input type="email" id="edit-user-email" name="user-email" class="form-input" required>
+                </div>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">Privileges</label>
-                <div id="edit-user-privileges" class="privileges-grid">
-                  <!-- Privilege checkboxes will be populated here -->
+              <div class="form-section">
+                <h4 class="form-section-title">🔐 Access Control</h4>
+                <div class="form-group">
+                  <label for="edit-user-role" class="form-label">Role</label>
+                  <select id="edit-user-role" name="user-role" class="form-select" required>
+                    <option value="">Select Role</option>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
-                <small class="form-help">Select multiple congregation privileges or work functions</small>
+              </div>
+
+              <div class="form-section">
+                <h4 class="form-section-title">🏷️ Privileges</h4>
+                <div id="edit-user-privileges" class="privileges-list">
+                  <!-- Privilege switches will be populated here -->
+                </div>
+                <small class="form-help">Select congregation privileges or work functions</small>
               </div>
               
-              <div class="form-group">
-                <label class="form-label">Permissions</label>
+              <div class="form-section">
+                <h4 class="form-section-title">📄 Page Permissions</h4>
                 <div id="edit-user-permissions" class="permissions-grid">
                   <!-- Permissions checkboxes will be populated here -->
                 </div>
@@ -700,7 +706,7 @@ class MainApp {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary">Cancel</button>
-            <button type="submit" id="update-user-btn" class="btn btn-primary" form="edit-user-form">Update User</button>
+            <button type="submit" id="update-user-btn" class="btn btn-primary" form="edit-user-form">💾 Update User</button>
           </div>
         </div>
       </div>
@@ -1010,6 +1016,25 @@ class MainApp {
           }
         }
       }, 200) // Increased timeout to 200ms for more stability
+    }
+
+    // Field Service Schedule
+    if (baseSectionId === 'field-service-meetings') {
+      console.log('🏫 Field Service Schedule section activated')
+      setTimeout(async () => {
+        try {
+          console.log('🏫 Initializing Field Service Schedule...')
+          await initializeFieldServiceMeetings()
+          console.log('✅ Field Service Schedule initialized successfully')
+        } catch (error) {
+          console.error('❌ Error loading Field Service Schedule:', error)
+          try {
+            showNotification('Error loading Field Service Schedule', 'error')
+          } catch (notifError) {
+            console.error('❌ Also failed to show notification:', notifError)
+          }
+        }
+      }, 200)
     }
 
     

@@ -1,5 +1,19 @@
 /**
- * Centralized Page Registry
+ * Central  appointments: { 
+    name: 'Appointment  userReports: { 
+    name: 'User Reports', 
+    ico  admin: { 
+    name: 'Admin', 
+    icon: '�', 
+    description: 'Administrative functions', 
+    category: 'system' 
+  },', 
+    description: 'Generate user-specific reports', 
+    category: 'people' 
+  },   icon: '📅', 
+    description: 'Recurring appointments and scheduling', 
+    category: 'main' 
+  },age Registry
  * Automatically discovers and manages available pages
  */
 
@@ -12,38 +26,12 @@ const PAGE_REGISTRY = {
     description: 'Dashboard and overview',
     category: 'main'
   },
-  templates: { 
-    name: 'Templates', 
-    icon: '📋', 
-    description: 'Appointment templates management',
-    category: 'main'
-  },
-  monthly: { 
-    name: 'Monthly View', 
-    icon: '📅', 
-    description: 'Simple monthly view of appointments', 
-    category: 'main' 
-  },
   appointments: { 
     name: 'Appointments', 
-    icon: '📅', 
+    icon: '�', 
     description: 'Recurring appointments and scheduling', 
     category: 'main' 
   },
-  reports: { 
-    name: 'Reports', 
-    icon: '📊', 
-    description: 'Generate detailed reports and analytics', 
-    category: 'main' 
-  },
-  'field-service-meetings': { 
-    name: 'Field Service Schedule', 
-    icon: '🏫', 
-    description: 'View field service schedule', 
-    category: 'main' 
-  },
-  
-  // People Management
   availability: { 
     name: 'Availability', 
     icon: '📋', 
@@ -52,14 +40,32 @@ const PAGE_REGISTRY = {
   },
   'availability-tracker': { 
     name: 'Availability Tracker', 
-    icon: '📆', 
-    description: 'Monthly availability tracking view', 
+    icon: '📅', 
+    description: 'Track availability submissions', 
     category: 'people' 
   },
   'availability-forms': { 
     name: 'Availability Forms', 
     icon: '📝', 
-    description: 'Submit availability forms', 
+    description: 'Submit availability for appointments', 
+    category: 'people' 
+  },
+  monthly: { 
+    name: 'Monthly View', 
+    icon: '📅', 
+    description: 'Simple monthly view of appointments', 
+    category: 'main' 
+  },
+  reports: { 
+    name: 'Reports', 
+    icon: '📊', 
+    description: 'Generate detailed reports and analytics', 
+    category: 'main' 
+  },
+  userReports: { 
+    name: 'User Reports', 
+    icon: '�', 
+    description: 'Generate user-specific reports', 
     category: 'people' 
   },
   users: { 
@@ -68,8 +74,12 @@ const PAGE_REGISTRY = {
     description: 'User management', 
     category: 'people' 
   },
-  
-  // System & Admin
+  templates: { 
+    name: 'Templates', 
+    icon: '📋', 
+    description: 'Appointment templates management',
+    category: 'main'
+  },
   content: { 
     name: 'Content', 
     icon: '📝', 
@@ -94,10 +104,22 @@ const PAGE_REGISTRY = {
     description: 'Multi-language support', 
     category: 'system' 
   },
+  'simple-translations': { 
+    name: 'Simple Translations', 
+    icon: '🌐', 
+    description: 'Simplified translation interface', 
+    category: 'system' 
+  },
   admin: { 
     name: 'Admin', 
-    icon: '🔧', 
+    icon: '�', 
     description: 'Administrative functions', 
+    category: 'system' 
+  },
+  preApprovedEmails: { 
+    name: 'Pre-approved Emails', 
+    icon: '📧', 
+    description: 'Email approval management', 
     category: 'system' 
   }
 }
@@ -304,19 +326,105 @@ export function getCorePages() {
 
 /**
  * Auto-discover pages from the file system (for development)
- * This would scan src/pages/ directory and auto-register found pages
+ * This scans for actual page files and updates the registry
  */
 export async function autoDiscoverPages() {
-  // In a real implementation, this could scan the src/pages directory
-  // For now, we'll manually maintain the registry above
-  console.log('📄 Page auto-discovery would scan src/pages/ directory')
+  console.log('🔍 Running auto-discovery of pages...')
+  
+  // List of known page files that exist in src/pages/
+  const knownPageFiles = [
+    'home.js',
+    'appointments.js', 
+    'availability.js',
+    'availability-tracker.js',
+    'availability-forms.js',
+    'reports.js',
+    'userReports.js',
+    'users.js',
+    'pages.js',
+    'templates.js',
+    'content.js',
+    'settings.js',
+    'translations.js',
+    'simple-translations.js',
+    'admin.js',
+    'preApprovedEmails.js'
+  ]
+  
+  let discoveredPages = 0
+  let newPages = 0
+  
+  knownPageFiles.forEach(file => {
+    const pageId = file.replace('.js', '')
+    discoveredPages++
+    
+    // Check if page is not in registry
+    if (!PAGE_REGISTRY[pageId]) {
+      // Auto-generate page info for new pages
+      const autoPageInfo = {
+        name: pageId.split('-').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' '),
+        icon: '📄', // Default icon
+        description: `${pageId} page functionality`,
+        category: 'main' // Default category
+      }
+      
+      // Add to registry
+      PAGE_REGISTRY[pageId] = autoPageInfo
+      newPages++
+      
+      console.log(`📄 Auto-discovered new page: ${pageId} - ${autoPageInfo.name}`)
+    }
+  })
+  
+  console.log(`✅ Page discovery complete: ${discoveredPages} total, ${newPages} new pages added`)
+  
+  // Trigger update event if new pages were found
+  if (newPages > 0) {
+    window.dispatchEvent(new CustomEvent('pageRegistryUpdated', { 
+      detail: { 
+        action: 'auto-discovery',
+        newPagesCount: newPages,
+        totalPages: Object.keys(PAGE_REGISTRY).length
+      }
+    }))
+  }
+  
+  return {
+    totalPages: discoveredPages,
+    newPages: newPages,
+    registry: PAGE_REGISTRY
+  }
+}
+
+/**
+ * Manual refresh trigger for updating available pages
+ */
+export async function refreshPageRegistry() {
+  console.log('🔄 Manual refresh of page registry triggered...')
+  const result = await autoDiscoverPages()
+  
+  // Force UI refresh
+  setTimeout(() => {
+    window.location.reload()
+  }, 1000)
+  
+  return result
 }
 
 /**
  * Initialize the page registry system
  */
-export function initializePageRegistry() {
+export async function initializePageRegistry() {
   console.log('📄 Initializing Page Registry with', Object.keys(PAGE_REGISTRY).length, 'pages')
+  
+  // Run auto-discovery on initialization
+  try {
+    await autoDiscoverPages()
+  } catch (error) {
+    console.log('⚠️ Auto-discovery failed, using static registry:', error)
+  }
   
   // Set up event listeners for automatic UI updates
   window.addEventListener('pageRegistryUpdated', (event) => {

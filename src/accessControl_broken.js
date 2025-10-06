@@ -1,4 +1,4 @@
-import { db } from './auth.js'
+import { db   userReports: { name: 'User Reports', icon: '📊', description: 'Generate user-specific reports' }, from './auth.js'
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { getCurrentUser } from './auth.js'
 
@@ -7,19 +7,32 @@ const AVAILABLE_PAGES = {
   home: { name: 'Home', icon: '🏠', description: 'Dashboard and overview' },
   appointments: { name: 'Appointments', icon: '📅', description: 'Recurring appointments and scheduling' },
   availability: { name: 'Availability', icon: '📋', description: 'Mark availability for appointments' },
+  'availability-tracker': { name: 'Availability Tracker', icon: '📅', description: 'Track availability submissions' },
+  'availability-forms': { name: 'Availability Forms', icon: '📝', description: 'Submit availability for appointments' },
   reports: { name: 'Reports', icon: '📊', description: 'Generate detailed reports and analytics (Admin only)' },
-  'field-service-meetings': { name: 'Field Service Schedule', icon: '🏫', description: 'View field service schedule' },
-  users: { name: 'Users', icon: '👥', description: 'User management' },
+  userReports: { name: 'User Reports', icon: '�', description: 'Generate user-specific reports' },
+  users: { name: 'Users', icon: '�👥', description: 'User management' },
   pages: { name: 'Pages', icon: '📄', description: 'Static page management' },
+  templates: { name: 'Templates', icon: '📄', description: 'Template management' },
   content: { name: 'Content', icon: '📝', description: 'Dynamic content management' },
   settings: { name: 'Settings', icon: '⚙️', description: 'App configuration' },
-  translations: { name: 'Translations', icon: '🌍', description: 'Interface translation management (Admin only)' }
+  translations: { name: 'Translations', icon: '🌍', description: 'Interface translation management (Admin only)' },
+  'simple-translations': { name: 'Simple Translations', icon: '🌐', description: 'Simplified translation interface' },
+  admin: { name: 'Admin', icon: '👑', description: 'Admin panel and controls (Admin only)' },
+  preApprovedEmails: { name: 'Pre-approved Emails', icon: '📧', description: 'Email approval management (Admin only)' }
 }
 
 // Default permissions for roles
 const ROLE_PERMISSIONS = {
-  admin: ['home', 'appointments', 'availability', 'reports', 'field-service-meetings', 'users', 'pages', 'content', 'settings', 'translations'],
-  user: ['home', 'appointments', 'availability', 'field-service-meetings', 'content']
+  admin: [
+    'home', 'appointments', 'availability', 'availability-tracker', 'availability-forms', 
+    'reports', 'userReports', 'users', 'pages', 'templates', 'content', 'settings', 
+    'translations', 'simple-translations', 'admin', 'preApprovedEmails'
+  ],
+  user: [
+    'home', 'appointments', 'availability', 'availability-tracker', 'availability-forms', 
+    'content', 'userReports'
+  ]
 }
 
 let userPermissions = null

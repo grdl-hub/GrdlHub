@@ -721,7 +721,14 @@ function setupHomeSectionsEventListeners() {
   // Refresh sections button
   const refreshSectionsBtn = document.getElementById('refresh-sections-btn')
   if (refreshSectionsBtn) {
-    refreshSectionsBtn.addEventListener('click', () => loadHomeSectionsForSettings(true))
+    refreshSectionsBtn.addEventListener('click', () => {
+      // Close any open modals before refreshing
+      const openModals = document.querySelectorAll('.appointment-modal-overlay')
+      openModals.forEach(modal => modal.remove())
+      
+      // Reload sections
+      loadHomeSectionsForSettings(true)
+    })
   }
   
   // Initialize defaults button

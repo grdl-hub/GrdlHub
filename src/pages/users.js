@@ -321,22 +321,26 @@ async function loadPrivilegeOptions(containerId) {
     // Update cache for display names
     privilegesCache = privileges
     
-    // Create iOS-style toggle switches
-    container.innerHTML = privileges.map(privilege => `
-      <div class="privilege-switch-item">
-        <label class="privilege-switch-label">
-          <span class="privilege-switch-name">${privilege.name}</span>
-          <div class="privilege-switch">
-            <input type="checkbox" id="${containerId}-privilege-${privilege.id}" name="privileges" value="${privilege.id}" class="privilege-switch-input">
-            <span class="privilege-switch-slider"></span>
-          </div>
-        </label>
-      </div>
-    `).join('')
+    // Create iOS-style toggle switches with clean layout
+    if (privileges.length === 0) {
+      container.innerHTML = '<div class="empty-message">No privileges available. Please add privileges in settings.</div>'
+    } else {
+      container.innerHTML = privileges.map(privilege => `
+        <div class="privilege-switch-item">
+          <label class="privilege-switch-label">
+            <span class="privilege-switch-name">${privilege.name}</span>
+            <div class="privilege-switch">
+              <input type="checkbox" id="${containerId}-privilege-${privilege.id}" name="privileges" value="${privilege.id}" class="privilege-switch-input">
+              <span class="privilege-switch-slider"></span>
+            </div>
+          </label>
+        </div>
+      `).join('')
+    }
     
   } catch (error) {
     console.error('Error loading privileges:', error)
-    container.innerHTML = '<div class="error-message">Error loading privileges</div>'
+    container.innerHTML = '<div class="error-message">⚠️ Error loading privileges</div>'
   }
 }
 

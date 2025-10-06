@@ -1,26 +1,31 @@
 import { getUserPermissions } from '../accessControl.js';
 import { loadHomeSections } from '../utils/homeSections.js';
-import { getAvailablePages } from '../utils/pageRegistry.js';
+import { getAvailablePagesArray } from '../utils/pageRegistry.js';
+import { getCurrentUser } from '../auth.js';
+import { db } from '../auth.js';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 class HomePageManager {
     constructor() {
         // Sections will be loaded dynamically from Firestore
         this.sections = [];
-        this.actionItemsUnsubscribe = null;
+        // Load available pages from registry
+        this.availablePages = null;
+        // Action items
+        this.actionItems = [];
     }
 
     async initialize() {
         console.log('🏠 Initializing Home Page Manager...');
+        // Load available pages from registry
+        this.availablePages = getAvailablePagesArray();
         await this.loadSections();
+        await this.loadActionItems();
         await this.renderSections();
-        await this.loadActionItems(); // Load action items with real-time listener
+        this.renderActionItems();
         this.setupEventListeners();
-        
-        // Listen for page registry updates to refresh home sections
-        window.addEventListener('pageRegistryUpdated', () => {
-            console.log('🔄 Page registry updated, refreshing home sections...');
-            this.renderSections();
-        });
+        this.setupHeroImage();
+        console.log('✅ Home Page Manager initialized');
     }
 
     async loadSections() {
@@ -50,17 +55,16 @@ class HomePageManager {
             return [];
         }
 
-        // Get available pages from centralized registry
-        const availablePages = getAvailablePages();
-        
-        // Convert page registry to card format  
+        // Use the page registry instead of hardcoded map
         const pageToCardMap = {};
-        Object.entries(availablePages).forEach(([pageId, pageInfo]) => {
-            pageToCardMap[pageId] = {
-                id: pageId,
-                title: pageInfo.name,
-                icon: pageInfo.icon,
-                page: pageId
+        
+        // Build the map dynamically from available pages
+        this.availablePages.forEach(page => {
+            pageToCardMap[page.id] = {
+                id: page.id,
+                title: page.name,
+                icon: page.icon,
+                page: page.id
             };
         });
 
@@ -83,9 +87,26 @@ class HomePageManager {
 
         for (const section of this.sections) {
             // Filter cards based on user permissions
-            const accessibleCards = section.cards.filter(card => 
-                userPermissions.includes(card.page)
-            );
+            // For sub-pages like 'availability-tracker', check if user has parent page permission
+            const accessibleCards = section.cards.filter(card => {
+                const pageId = card.page;
+                
+                // Check direct permission
+                if (userPermissions.includes(pageId)) {
+                    return true;
+                }
+                
+                // Check if it's a sub-page (contains hyphen)
+                if (pageId.includes('-')) {
+                    // Extract parent page (e.g., 'availability-tracker' -> 'availability')
+                    const parentPage = pageId.split('-')[0];
+                    if (userPermissions.includes(parentPage)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            });
 
             // Only show section if user has access to at least one card
             if (accessibleCards.length > 0) {
@@ -170,6 +191,126 @@ class HomePageManager {
         });
     }
 
+    async loadActionItems() {
+        try {
+            console.log('📋 Loading action items...');
+            const currentUser = getCurrentUser();
+            
+            if (!currentUser || !currentUser.email) {
+                console.log('⚠️ No current user found');
+                this.actionItems = [];
+                return;
+            }
+
+            const actionItemsRef = collection(db, 'actionItems');
+            const q = query(
+                actionItemsRef,
+                where('assignedTo', 'array-contains', currentUser.email),
+                where('completed', '==', false)
+            );
+
+            const querySnapshot = await getDocs(q);
+            this.actionItems = [];
+
+            querySnapshot.forEach((doc) => {
+                this.actionItems.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            console.log(`✅ Loaded ${this.actionItems.length} action items`);
+        } catch (error) {
+            console.error('❌ Error loading action items:', error);
+            this.actionItems = [];
+        }
+    }
+
+    renderActionItems() {
+        const container = document.getElementById('action-items-list');
+        if (!container) {
+            console.error('❌ Action items container not found');
+            return;
+        }
+
+        if (this.actionItems.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p class="text-muted">✅ No pending action items</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Wrap all items in a single card
+        const itemsHtml = this.actionItems.map(item => this.renderActionItem(item)).join('');
+        container.innerHTML = `
+            <div class="home-action-card">
+                ${itemsHtml}
+            </div>
+        `;
+    }
+
+    renderActionItem(item) {
+        // Format the due date if available
+        let dueDate = '';
+        let dueInfo = '';
+        if (item.dueDate) {
+            try {
+                const date = item.dueDate.toDate ? item.dueDate.toDate() : new Date(item.dueDate);
+                dueDate = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                
+                // Calculate "Due in X days/weeks/months"
+                const today = new Date();
+                const diffTime = date - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 0) {
+                    dueInfo = 'Overdue';
+                } else if (diffDays === 0) {
+                    dueInfo = 'Due today';
+                } else if (diffDays === 1) {
+                    dueInfo = 'Due tomorrow';
+                } else if (diffDays < 7) {
+                    dueInfo = `Due in ${diffDays} days`;
+                } else if (diffDays < 30) {
+                    const weeks = Math.floor(diffDays / 7);
+                    dueInfo = `Due in ${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
+                } else {
+                    dueInfo = 'Due next month';
+                }
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                dueDate = 'No deadline';
+            }
+        }
+
+        // Determine the icon and URL based on form type
+        let icon = '✓';
+        let actionUrl = '#availability';
+        
+        if (item.formType === 'monthly-availability') {
+            icon = '✓';
+            actionUrl = `#availability-tracker`;
+        } else if (item.formType === 'availability-form') {
+            icon = '✓';
+            actionUrl = `#availability-forms`;
+        }
+
+        return `
+            <div class="home-action-item" data-item-id="${item.id}" onclick="window.location.hash='${actionUrl}'">
+                <div class="home-action-icon">${icon}</div>
+                <div class="home-action-content">
+                    <div class="home-action-title">${item.title || 'Untitled Task'}</div>
+                </div>
+                <div class="home-action-meta">
+                    <div class="home-action-date">${dueDate}</div>
+                    <div class="home-action-due">${dueInfo}</div>
+                </div>
+            </div>
+        `;
+    }
+
     async refreshSections() {
         console.log('🔄 Refreshing home sections...');
         await this.renderSections();
@@ -208,10 +349,7 @@ class HomePageManager {
                         const blob = new Blob([byteArray], { type: 'image/jpeg' });
                         const blobUrl = URL.createObjectURL(blob);
                         
-                        heroBackground.classList.add('has-image');
                         heroBackground.style.backgroundImage = `url(${blobUrl})`;
-                        heroBackground.style.backgroundSize = 'cover';
-                        heroBackground.style.backgroundPosition = 'center';
                         console.log('✅ Admin hero image loaded successfully');
                         return;
                     } catch (error) {
@@ -219,10 +357,7 @@ class HomePageManager {
                     }
                 } else {
                     // Regular URL
-                    heroBackground.classList.add('has-image');
                     heroBackground.style.backgroundImage = `url(${heroImageData.imageUrl})`;
-                    heroBackground.style.backgroundSize = 'cover';
-                    heroBackground.style.backgroundPosition = 'center';
                     console.log('✅ Admin hero image loaded successfully');
                     return;
                 }
@@ -244,22 +379,9 @@ class HomePageManager {
         // Use a random image for now
         const randomImage = defaultImages[Math.floor(Math.random() * defaultImages.length)];
         
-        // Load image with fallback
-        const img = new Image();
-        img.onload = () => {
-            heroBackground.classList.add('has-image');
-            heroBackground.style.backgroundImage = `url(${randomImage})`;
-            heroBackground.style.backgroundSize = 'cover';
-            heroBackground.style.backgroundPosition = 'center';
-            console.log('✅ Default hero image loaded successfully');
-        };
-        img.onerror = () => {
-            // Fallback to gradient if image fails to load
-            console.log('🖼️ Hero image failed to load, using gradient fallback');
-            heroBackground.classList.remove('has-image');
-            heroBackground.style.backgroundImage = 'none';
-        };
-        img.src = randomImage;
+        // Set image directly - no need to preload since CSS background-image handles it
+        heroBackground.style.backgroundImage = `url(${randomImage})`;
+        console.log('✅ Default hero image set:', randomImage);
     }
 
     async getHeroImageFromFirestore() {
@@ -278,255 +400,6 @@ class HomePageManager {
         } catch (error) {
             console.error('Error getting hero image from Firestore:', error);
             return null;
-        }
-    }
-
-    // Action Items Management
-    async loadActionItems() {
-        try {
-            const { collection, query, where, onSnapshot } = await import('firebase/firestore');
-            const { db, getCurrentUser } = await import('../auth.js');
-            
-            // Get current user
-            const currentUser = getCurrentUser();
-            if (!currentUser) {
-                console.log('⚠️ No user logged in, skipping action items');
-                this.renderEmptyActionItems();
-                return;
-            }
-
-            const userEmail = currentUser.email;
-            console.log('🔍 Setting up real-time listener for action items:', userEmail);
-            
-            // Set up real-time listener for action items
-            const actionItemsRef = collection(db, 'actionItems');
-            const q = query(
-                actionItemsRef,
-                where('assignedTo', 'array-contains', userEmail),
-                where('completed', '==', false)
-            );
-            
-            // Store the unsubscribe function so we can clean up later
-            if (this.actionItemsUnsubscribe) {
-                this.actionItemsUnsubscribe();
-            }
-            
-            this.actionItemsUnsubscribe = onSnapshot(q, (querySnapshot) => {
-                const actionItems = [];
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    console.log('📄 Found action item:', doc.id, data.title);
-                    actionItems.push({
-                        id: doc.id,
-                        ...data
-                    });
-                });
-
-                // Sort by due date in JavaScript instead of Firestore
-                actionItems.sort((a, b) => {
-                    const dateA = a.dueDate?.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
-                    const dateB = b.dueDate?.toDate ? b.dueDate.toDate() : new Date(b.dueDate);
-                    return dateA - dateB;
-                });
-
-                console.log(`✅ Loaded ${actionItems.length} uncompleted action items`);
-                
-                if (actionItems.length === 0) {
-                    this.renderEmptyActionItems();
-                } else {
-                    this.renderActionItems(actionItems);
-                }
-            }, (error) => {
-                console.error('❌ Error in action items listener:', error);
-                this.renderEmptyActionItems();
-            });
-            
-            console.log('✅ Real-time listener active for action items');
-        } catch (error) {
-            console.error('❌ Error loading action items:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            
-            // Show empty state instead of sample data
-            this.renderEmptyActionItems();
-        }
-    }
-
-    renderEmptyActionItems() {
-        const container = document.getElementById('action-items-list');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="empty-state" style="text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);">
-                <p>🎉 All caught up! No pending action items.</p>
-            </div>
-        `;
-    }
-
-    renderActionItems(actionItems) {
-        const container = document.getElementById('action-items-list');
-        if (!container) return;
-
-        if (actionItems.length === 0) {
-            this.renderEmptyActionItems();
-            return;
-        }
-
-        const html = actionItems.map(item => this.renderActionItem(item)).join('');
-        container.innerHTML = html;
-        
-        // Add click listeners for checkboxes
-        this.setupActionItemListeners();
-    }
-
-    renderDefaultActionItems() {
-        // Show sample action items for demonstration
-        const defaultItems = [
-            {
-                id: 'sample-1',
-                title: 'Submit Congregation Monthly Report',
-                subtitle: 'Monthly administrative report due',
-                dueDate: new Date('2025-10-20'),
-                completed: false
-            },
-            {
-                id: 'sample-2', 
-                title: 'Expiring Application',
-                subtitle: 'Review and renew application',
-                dueDate: new Date('2025-11-13'),
-                completed: false
-            }
-        ];
-
-        console.log('📝 Showing sample action items (no tasks found in database)');
-        this.renderActionItems(defaultItems);
-    }
-
-    renderActionItem(item) {
-        // Handle Firestore Timestamp objects
-        let dueDate;
-        if (item.dueDate?.toDate) {
-            // Firestore Timestamp
-            dueDate = item.dueDate.toDate();
-        } else if (item.dueDate instanceof Date) {
-            dueDate = item.dueDate;
-        } else {
-            dueDate = new Date(item.dueDate);
-        }
-        
-        const today = new Date();
-        const diffTime = dueDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        let dueBadge = '';
-        let dueClass = '';
-        
-        if (diffDays < 0) {
-            dueBadge = 'Overdue';
-            dueClass = 'overdue';
-        } else if (diffDays <= 7) {
-            dueBadge = `Due in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
-            dueClass = 'due-soon';
-        } else if (diffDays <= 30) {
-            dueBadge = `Due in ${Math.ceil(diffDays / 7)} week${Math.ceil(diffDays / 7) === 1 ? '' : 's'}`;
-            dueClass = 'due-later';
-        } else {
-            dueBadge = 'Due next month';
-            dueClass = 'due-later';
-        }
-
-        const formattedDate = dueDate.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric',
-            year: 'numeric'
-        });
-
-        // Get form type icon
-        const formIcon = item.formIcon || '📋';
-        const formType = item.formType || 'task';
-        
-        // Show reporting period if available
-        const periodInfo = item.reportingPeriod ? 
-            `<div class="action-item-period">Period: ${item.reportingPeriod.displayName || 'Not specified'}</div>` : '';
-
-        return `
-            <div class="action-item ${item.completed ? 'completed' : ''}" 
-                 data-id="${item.id}"
-                 data-form-type="${formType}"
-                 onclick="openTaskSubmission('${item.id}', '${formType}')"
-                 style="cursor: pointer;">
-                <div class="action-item-left">
-                    <div class="action-item-icon">${formIcon}</div>
-                    <div class="action-item-content">
-                        <div class="action-item-title">${item.title}</div>
-                        ${item.subtitle ? `<div class="action-item-subtitle">${item.subtitle}</div>` : ''}
-                        ${periodInfo}
-                    </div>
-                </div>
-                <div class="action-item-right">
-                    <div class="action-item-date">${formattedDate}</div>
-                    <div class="action-item-due ${dueClass}">${dueBadge}</div>
-                    <div class="action-item-arrow">→</div>
-                </div>
-            </div>
-        `;
-    }
-
-    setupActionItemListeners() {
-        // Make openTaskSubmission globally available
-        window.openTaskSubmission = async (itemId, formType) => {
-            try {
-                console.log('📋 Opening task submission:', itemId, formType);
-                
-                // Get the action item data from Firestore
-                const { doc, getDoc } = await import('firebase/firestore');
-                const { db } = await import('../auth.js');
-                
-                const itemRef = doc(db, 'actionItems', itemId);
-                const itemDoc = await getDoc(itemRef);
-                
-                if (!itemDoc.exists()) {
-                    console.error('Action item not found:', itemId);
-                    return;
-                }
-                
-                const itemData = itemDoc.data();
-                
-                // Navigate to the appropriate form page based on formType
-                const formTypeToRoute = {
-                    'monthly-availability': 'monthly-availability',
-                    'monthly-field-service': 'monthly-field-service',
-                    'monthly-attendance': 'monthly-attendance',
-                    'monthly-territory': 'monthly-territory',
-                    'pioneer-application': 'pioneer-application',
-                    'application-renewal': 'application-renewal'
-                };
-                
-                const route = formTypeToRoute[formType] || 'monthly-availability';
-                
-                // Store task ID in URL params for reference
-                const url = new URL(window.location);
-                url.searchParams.set('taskId', itemId);
-                
-                // Navigate to the form page
-                console.log('🔄 Navigating to:', route);
-                window.navigateTo(route);
-                
-            } catch (error) {
-                console.error('Error opening task submission:', error);
-                const { showNotification } = await import('../utils/notifications.js');
-                showNotification('Error opening form', 'error');
-            }
-        };
-    }
-
-    cleanup() {
-        // Unsubscribe from real-time listeners when leaving the page
-        if (this.actionItemsUnsubscribe) {
-            console.log('🧹 Cleaning up action items listener');
-            this.actionItemsUnsubscribe();
-            this.actionItemsUnsubscribe = null;
         }
     }
 }
