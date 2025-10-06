@@ -1,5 +1,5 @@
 // Field Service Schedule Page
-// Shows appointments filtered by title "Reunião para o Serviço de Campo"
+// Shows appointments filtered by title "Reuniões para o Serviço de Campo"
 
 import { db } from '../auth.js'
 import { getCurrentUser } from '../auth.js'
@@ -18,7 +18,8 @@ let appointments = []
 let currentView = 'list' // 'list' or 'calendar'
 let currentDate = new Date()
 
-const TARGET_TITLE = 'Reunião para o Serviço de Campo'
+// Target title to filter
+const TARGET_TITLE = 'Reuniões para o Serviço de Campo'
 
 export async function initializeFieldServiceMeetings() {
   console.log('🏫 Initializing Field Service Schedule page...')

@@ -597,45 +597,57 @@ class MainApp {
       <div id="add-user-modal" class="modal hidden">
         <div class="modal-content">
           <div class="modal-header">
-            <h3>Add New User</h3>
+            <h3>➕ Add New User</h3>
             <button class="close-btn">&times;</button>
           </div>
           <div class="modal-body">
             <form id="add-user-form">
-              <div class="form-group">
-                <label for="add-user-name" class="form-label">Full Name</label>
-                <input type="text" id="add-user-name" name="user-name" class="form-input" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="add-user-congregation" class="form-label">Congregation</label>
-                <input type="text" id="add-user-congregation" name="user-congregation" class="form-input" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="add-user-email" class="form-label">Email Address</label>
-                <input type="email" id="add-user-email" name="user-email" class="form-input" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="add-user-role" class="form-label">Role</label>
-                <select id="add-user-role" name="user-role" class="form-select" required>
-                  <option value="">Select Role</option>
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
+              <div class="form-section">
+                <h4 class="form-section-title">👤 Personal Information</h4>
+                <div class="form-group">
+                  <label for="add-user-name" class="form-label">Full Name</label>
+                  <input type="text" id="add-user-name" name="user-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="add-user-congregation" class="form-label">Congregation</label>
+                  <input type="text" id="add-user-congregation" name="user-congregation" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="add-user-email" class="form-label">Email Address</label>
+                  <input type="email" id="add-user-email" name="user-email" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="add-user-baptism-date" class="form-label">Date of Baptism</label>
+                  <input type="date" id="add-user-baptism-date" name="baptism-date" class="form-input" required>
+                  <small class="form-help">The date when the user was baptized</small>
+                </div>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">Privileges</label>
-                <div id="add-user-privileges" class="privileges-grid">
-                  <!-- Privilege checkboxes will be populated here -->
+              <div class="form-section">
+                <h4 class="form-section-title">🔐 Access Control</h4>
+                <div class="form-group">
+                  <label for="add-user-role" class="form-label">Role</label>
+                  <select id="add-user-role" name="user-role" class="form-select" required>
+                    <option value="">Select Role</option>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
-                <small class="form-help">Select multiple congregation privileges or work functions</small>
+              </div>
+
+              <div class="form-section">
+                <h4 class="form-section-title">🏷️ Privileges</h4>
+                <div id="add-user-privileges" class="privileges-list">
+                  <!-- Privilege switches will be populated here -->
+                </div>
+                <small class="form-help">Select congregation privileges or work functions</small>
               </div>
               
-              <div class="form-group">
-                <label class="form-label">Permissions</label>
+              <div class="form-section">
+                <h4 class="form-section-title">📄 Page Permissions</h4>
                 <div id="add-user-permissions" class="permissions-grid">
                   <!-- Permissions checkboxes will be populated here -->
                 </div>
@@ -644,7 +656,7 @@ class MainApp {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary">Cancel</button>
-            <button type="submit" id="add-user-btn" class="btn btn-primary" form="add-user-form">Add User</button>
+            <button type="submit" id="add-user-btn" class="btn btn-primary" form="add-user-form">➕ Add User</button>
           </div>
         </div>
       </div>
@@ -673,6 +685,12 @@ class MainApp {
                 <div class="form-group">
                   <label for="edit-user-email" class="form-label">Email Address</label>
                   <input type="email" id="edit-user-email" name="user-email" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-user-baptism-date" class="form-label">Date of Baptism</label>
+                  <input type="date" id="edit-user-baptism-date" name="baptism-date" class="form-input" required>
+                  <small class="form-help">The date when the user was baptized</small>
                 </div>
               </div>
 

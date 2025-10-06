@@ -1673,14 +1673,14 @@ select[multiple] option:checked {
 /* Form Sections */
 .form-section {
   margin-bottom: var(--spacing-xl);
-  padding-bottom: var(--spacing-lg);
-  border-bottom: 1px solid var(--gray-200);
+  padding: var(--spacing-lg);
+  background: #fafafa;
+  border-radius: var(--radius-lg);
+  border: 1px solid #e5e5e5;
 }
 
 .form-section:last-child {
-  border-bottom: none;
   margin-bottom: 0;
-  padding-bottom: 0;
 }
 
 .form-section-title {
@@ -2727,6 +2727,165 @@ body.authenticated #auth-nav-link {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Event Type Selection Modal */
+.event-type-selection-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.event-type-selection-modal {
+  background: var(--bg-primary);
+  border-radius: 16px;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.event-type-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, var(--primary-color)10, transparent);
+}
+
+.event-type-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.event-type-content {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.event-type-description {
+  margin: 0 0 20px 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.event-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.event-type-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.event-type-card:hover {
+  border-color: var(--primary-color);
+  background: var(--primary-color)08;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.event-type-card:active {
+  transform: translateY(0);
+}
+
+.event-type-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.event-type-info {
+  flex: 1;
+}
+
+.event-type-name {
+  margin: 0 0 6px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.event-type-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.generic-event-card {
+  border-style: dashed;
+}
+
+.no-event-types-message {
+  text-align: center;
+  padding: 30px 20px;
+  background: var(--warning-bg);
+  border-radius: 12px;
+  margin-top: 20px;
+}
+
+.no-event-types-message p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+
+.no-event-types-message p:first-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .event-type-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .event-type-selection-modal {
+    border-radius: 16px 16px 0 0;
+    margin-top: auto;
+    max-height: 80vh;
+  }
+  
+  .event-type-header {
+    padding: 20px;
+  }
+  
+  .event-type-content {
+    padding: 20px;
   }
 }
 
@@ -4266,6 +4425,17 @@ body.authenticated #auth-nav-link {
   line-height: 1.4;
 }
 
+/* Info Box Styling */
+.info-box {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 /* Privilege Group Field Styling */
 .privilege-group-info {
   padding: var(--spacing-sm);
@@ -4303,6 +4473,102 @@ body.authenticated #auth-nav-link {
   
   .designation-user-name {
     font-size: 0.95em;
+  }
+}
+
+/* Toggle Buttons Grid Layout (for single selection) */
+.toggle-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--spacing-sm);
+  max-height: none !important;
+  overflow-y: visible !important;
+  padding: var(--spacing-md);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius);
+  background: var(--bg-primary);
+}
+
+.toggle-button-option {
+  display: block;
+  cursor: pointer;
+  position: relative;
+}
+
+.toggle-button-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-button-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  background: var(--bg-primary);
+  transition: all 0.2s ease;
+  min-height: 80px;
+  text-align: center;
+}
+
+.toggle-button-option:hover .toggle-button-label {
+  background: var(--gray-50);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-button-input:checked + .toggle-button-label {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+.toggle-button-icon {
+  font-size: 1.5em;
+  display: block;
+}
+
+.toggle-button-input:checked + .toggle-button-label .toggle-button-icon {
+  transform: scale(1.1);
+}
+
+.toggle-button-name {
+  font-size: 0.85em;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.toggle-button-input:checked + .toggle-button-label .toggle-button-name {
+  color: white;
+  font-weight: 600;
+}
+
+/* Responsive toggle buttons */
+@media (max-width: 768px) {
+  .toggle-buttons-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--spacing-xs);
+  }
+  
+  .toggle-button-label {
+    padding: var(--spacing-sm);
+    min-height: 70px;
+  }
+  
+  .toggle-button-icon {
+    font-size: 1.3em;
+  }
+  
+  .toggle-button-name {
+    font-size: 0.8em;
   }
 }
 

@@ -445,6 +445,7 @@ async function handleAddUserSubmit(e) {
   const name = formData.get('user-name').trim()
   const congregation = formData.get('user-congregation').trim()
   const email = formData.get('user-email').trim().toLowerCase()
+  const baptismDate = formData.get('baptism-date')
   const role = formData.get('user-role')
   const privileges = Array.from(formData.getAll('privileges'))
   const permissions = Array.from(formData.getAll('permissions'))
@@ -468,6 +469,7 @@ async function handleAddUserSubmit(e) {
       name,
       congregation,
       email: email.toLowerCase(),
+      baptismDate,
       role,
       privileges: privileges || [],
       permissions: validatePermissions(permissions),
@@ -508,6 +510,7 @@ async function handleEditUserSubmit(e) {
   const name = formData.get('user-name').trim()
   const congregation = formData.get('user-congregation').trim()
   const email = formData.get('user-email').trim().toLowerCase()
+  const baptismDate = formData.get('baptism-date')
   const role = formData.get('user-role')
   const privileges = Array.from(formData.getAll('privileges'))
   const permissions = Array.from(formData.getAll('permissions'))
@@ -531,6 +534,7 @@ async function handleEditUserSubmit(e) {
       name,
       congregation,
       email: email.toLowerCase(),
+      baptismDate,
       role,
       privileges: privileges || [],
       permissions: validatePermissions(permissions),
@@ -580,6 +584,7 @@ window.editUser = async function(userId) {
       document.getElementById('edit-user-name').value = user.name || ''
       document.getElementById('edit-user-congregation').value = user.congregation || ''
       document.getElementById('edit-user-email').value = user.email
+      document.getElementById('edit-user-baptism-date').value = user.baptismDate || ''
       document.getElementById('edit-user-role').value = user.role || 'user'
       
       // Setup both permissions and privileges sections
