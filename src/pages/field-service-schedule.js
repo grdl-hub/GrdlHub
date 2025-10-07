@@ -182,7 +182,7 @@ function renderPage() {
   `
 }
 
-// Render card list view
+// Render card list view grouped by week
 function renderListView() {
   if (appointments.length === 0) {
     return `
@@ -194,59 +194,148 @@ function renderListView() {
     `
   }
 
-  const cards = appointments.map(apt => {
-    const dateStr = formatDate(apt.date)
-    const timeStr = apt.time || 'Time not set'
-    const location = apt.place || 'Location not set'
-    const isRecurring = apt.isRecurring ? '🔄' : ''
-    
-    return `
-      <div class="appointment-card">
-        <div class="appointment-header">
-          <h3 class="appointment-title">${isRecurring} ${apt.title}</h3>
-          <span class="appointment-date">${dateStr}</span>
+  // Group appointments by week
+  const weekGroups = groupAppointmentsByWeek(appointments)
+  
+  let html = '<div class="appointments-list">'
+  
+  weekGroups.forEach(week => {
+    html += `
+      <div class="week-group">
+        <div class="week-header">
+          <h3>${week.weekLabel}</h3>
         </div>
-        <div class="appointment-body">
-          <div class="appointment-detail">
-            <span class="detail-icon">🕐</span>
-            <span class="detail-text">${timeStr}</span>
+        <div class="cards-grid">
+    `
+    
+    week.appointments.forEach(apt => {
+      const dayName = getDayName(apt.date)
+      const timeStr = apt.time || 'Time not set'
+      const location = apt.place || 'Location not set'
+      
+      // Extract organizer names from designations array
+      let organizers = 'Not assigned'
+      if (apt.designations && Array.isArray(apt.designations) && apt.designations.length > 0) {
+        organizers = apt.designations.map(d => d.userName || d.userId).join(', ')
+      }
+      
+      const isRecurring = apt.isRecurring ? '🔄 ' : ''
+      
+      html += `
+        <div class="appointment-card">
+          <div class="appointment-header">
+            <span class="appointment-date">${isRecurring}${dayName}</span>
           </div>
-          <div class="appointment-detail">
-            <span class="detail-icon">📍</span>
-            <span class="detail-text">${location}</span>
+          <div class="appointment-body">
+            <div class="appointment-detail">
+              <span class="detail-icon">🕐</span>
+              <span class="detail-text">${timeStr}</span>
+            </div>
+            <div class="appointment-detail">
+              <span class="detail-icon">📍</span>
+              <span class="detail-text">${location}</span>
+            </div>
+            <div class="appointment-detail">
+              <span class="detail-icon">👥</span>
+              <span class="detail-text">${organizers}</span>
+            </div>
           </div>
+        </div>
+      `
+    })
+    
+    html += `
         </div>
       </div>
     `
-  }).join('')
+  })
+  
+  html += '</div>'
+  return html
+}
 
-  return `
-    <div class="appointments-list">
-      <div class="list-header">
-        <h3>Upcoming Meetings (${appointments.length})</h3>
-      </div>
-      <div class="cards-grid">
-        ${cards}
-      </div>
-    </div>
-  `
+// Group appointments by week
+function groupAppointmentsByWeek(appointments) {
+  const weeks = []
+  const weekMap = new Map()
+  
+  appointments.forEach(apt => {
+    const weekKey = getWeekKey(apt.date)
+    
+    if (!weekMap.has(weekKey)) {
+      const weekLabel = getWeekLabel(apt.date)
+      weekMap.set(weekKey, {
+        weekKey,
+        weekLabel,
+        appointments: []
+      })
+      weeks.push(weekMap.get(weekKey))
+    }
+    
+    weekMap.get(weekKey).appointments.push(apt)
+  })
+  
+  return weeks
+}
+
+// Get week key for grouping (year-week)
+function getWeekKey(date) {
+  const d = new Date(date)
+  const yearStart = new Date(d.getFullYear(), 0, 1)
+  const weekNum = Math.ceil((((d - yearStart) / 86400000) + yearStart.getDay() + 1) / 7)
+  return `${d.getFullYear()}-W${weekNum}`
+}
+
+// Get week label (e.g., "Week of Oct 5 - Oct 12, 2025")
+function getWeekLabel(date) {
+  const d = new Date(date)
+  const monday = new Date(d)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Adjust to Monday
+  monday.setDate(diff)
+  
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  
+  const startMonth = monday.toLocaleDateString('en-US', { month: 'short' })
+  const startDay = monday.getDate()
+  const endMonth = sunday.toLocaleDateString('en-US', { month: 'short' })
+  const endDay = sunday.getDate()
+  const year = sunday.getFullYear()
+  
+  // If same month, show: Week of Oct 5 - 12, 2025
+  if (monday.getMonth() === sunday.getMonth()) {
+    return `Week of ${startMonth} ${startDay} - ${endDay}, ${year}`
+  }
+  
+  // If different months, show: Week of Oct 30 - Nov 5, 2025
+  return `Week of ${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`
+}
+
+// Get day name only (e.g., "Monday")
+function getDayName(date) {
+  const options = { weekday: 'long' }
+  return date.toLocaleDateString('en-US', options)
 }
 
 // Render monthly calendar view
 function renderCalendarView() {
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
   
   return `
     <div class="calendar-view">
       <div class="calendar-header">
-        <button class="btn btn-icon" onclick="fieldServiceMeetings.previousMonth()">
-          ◀
-        </button>
-        <h3 class="calendar-title">${getMonthName(month)} ${year}</h3>
-        <button class="btn btn-icon" onclick="fieldServiceMeetings.nextMonth()">
-          ▶
-        </button>
+        <h3>📆 Monthly View</h3>
+        <div class="calendar-nav">
+          <button id="fs-prev-month" class="btn btn-secondary btn-small" onclick="fieldServiceMeetings.previousMonth()">‹ Prev</button>
+          <span id="fs-current-month-year" class="month-display">${monthNames[month]} ${year}</span>
+          <button id="fs-next-month" class="btn btn-secondary btn-small" onclick="fieldServiceMeetings.nextMonth()">Next ›</button>
+        </div>
       </div>
       <div class="calendar-grid">
         ${renderCalendarGrid(year, month)}
@@ -255,56 +344,141 @@ function renderCalendarView() {
   `
 }
 
-// Render calendar grid
+// Render calendar grid (Monday-start week)
 function renderCalendarGrid(year, month) {
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
   const daysInMonth = lastDay.getDate()
-  const startingDayOfWeek = firstDay.getDay()
   
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  // Adjust for Monday start: 0=Sunday becomes 6, 1=Monday becomes 0, etc.
+  const firstDayOfWeek = (firstDay.getDay() + 6) % 7
   
-  let html = '<div class="calendar-days-header">'
-  dayNames.forEach(day => {
-    html += `<div class="calendar-day-name">${day}</div>`
-  })
-  html += '</div><div class="calendar-days-grid">'
+  // Calculate previous month details
+  const prevMonth = new Date(year, month - 1, 0)
+  const daysInPrevMonth = prevMonth.getDate()
   
-  // Empty cells before first day
-  for (let i = 0; i < startingDayOfWeek; i++) {
-    html += '<div class="calendar-day empty"></div>'
-  }
+  // Build calendar HTML with Monday start
+  let html = `
+    <div class="calendar-header-row">
+      <div class="calendar-day-header">Mon</div>
+      <div class="calendar-day-header">Tue</div>
+      <div class="calendar-day-header">Wed</div>
+      <div class="calendar-day-header">Thu</div>
+      <div class="calendar-day-header">Fri</div>
+      <div class="calendar-day-header">Sat</div>
+      <div class="calendar-day-header">Sun</div>
+    </div>
+  `
   
-  // Days of the month
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day)
-    const dayAppointments = getAppointmentsForDate(date)
-    const isToday = isSameDate(date, new Date())
-    const hasAppointments = dayAppointments.length > 0
+  // Add trailing days from previous month
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    const prevDay = daysInPrevMonth - i
+    const prevMonthDate = new Date(year, month - 1, prevDay)
+    const dateString = formatDateString(prevMonthDate)
+    const dayAppointments = getAppointmentsForDateString(dateString)
+    const isToday = isSameDate(prevMonthDate, new Date())
+    
+    let dayClass = 'calendar-day other-month'
+    if (isToday) dayClass += ' today'
+    if (dayAppointments.length > 0) dayClass += ' has-appointments'
     
     html += `
-      <div class="calendar-day ${isToday ? 'today' : ''} ${hasAppointments ? 'has-appointments' : ''}">
-        <div class="day-number">${day}</div>
-        ${hasAppointments ? `
-          <div class="day-appointments">
-            ${dayAppointments.map(apt => `
-              <div class="day-appointment" title="${apt.title} - ${apt.time || 'No time'} - ${apt.location || 'No location'}">
-                🏫 ${apt.time || ''}
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
+      <div class="${dayClass}" data-date="${dateString}">
+        <div class="day-number">${prevDay}</div>
+        <div class="appointments-preview">${renderDayAppointments(dayAppointments, 2)}</div>
       </div>
     `
   }
   
-  html += '</div>'
+  // Add days of current month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayDate = new Date(year, month, day)
+    const dateString = formatDateString(dayDate)
+    const dayAppointments = getAppointmentsForDateString(dateString)
+    const isToday = isSameDate(dayDate, new Date())
+    
+    let dayClass = 'calendar-day'
+    if (isToday) dayClass += ' today'
+    if (dayAppointments.length > 0) dayClass += ' has-appointments'
+    
+    html += `
+      <div class="${dayClass}" data-date="${dateString}">
+        <div class="day-number">${day}</div>
+        <div class="appointments-preview">${renderDayAppointments(dayAppointments, 3)}</div>
+      </div>
+    `
+  }
+  
+  // Calculate remaining cells to complete the grid
+  const totalCellsUsed = firstDayOfWeek + daysInMonth
+  const remainingCells = (7 - (totalCellsUsed % 7)) % 7
+  
+  // Add leading days from next month
+  for (let day = 1; day <= remainingCells; day++) {
+    const nextMonthDate = new Date(year, month + 1, day)
+    const dateString = formatDateString(nextMonthDate)
+    const dayAppointments = getAppointmentsForDateString(dateString)
+    const isToday = isSameDate(nextMonthDate, new Date())
+    
+    let dayClass = 'calendar-day other-month'
+    if (isToday) dayClass += ' today'
+    if (dayAppointments.length > 0) dayClass += ' has-appointments'
+    
+    html += `
+      <div class="${dayClass}" data-date="${dateString}">
+        <div class="day-number">${day}</div>
+        <div class="appointments-preview">${renderDayAppointments(dayAppointments, 2)}</div>
+      </div>
+    `
+  }
+  
   return html
 }
 
-// Get appointments for specific date
-function getAppointmentsForDate(date) {
-  return appointments.filter(apt => isSameDate(apt.date, date))
+// Render appointments for a day
+function renderDayAppointments(dayAppointments, maxShow) {
+  let html = ''
+  
+  dayAppointments.slice(0, maxShow).forEach(apt => {
+    const timeText = apt.time || 'No time'
+    const title = apt.title || 'Meeting'
+    
+    // Extract organizer names
+    let designationsText = ''
+    if (apt.designations && Array.isArray(apt.designations) && apt.designations.length > 0) {
+      const names = apt.designations.map(d => d.userName || d.userId).join(', ')
+      designationsText = `\n👥 ${names}`
+    }
+    
+    html += `
+      <div class="appointment-item meeting" 
+           title="${title}\n🕐 ${timeText}\n📍 ${apt.place || 'No location'}${designationsText}">
+        <div class="apt-time">${timeText}</div>
+        <div class="apt-title">${title}</div>
+      </div>
+      ${apt.designations && apt.designations.length > 0 ? 
+        `<div class="apt-designations">👥 ${apt.designations.map(d => d.userName || d.userId).join(', ')}</div>` : ''}
+    `
+  })
+  
+  if (dayAppointments.length > maxShow) {
+    html += `<div class="appointment-more">+${dayAppointments.length - maxShow} more</div>`
+  }
+  
+  return html
+}
+
+// Format date as YYYY-MM-DD string
+function formatDateString(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+// Get appointments for a specific date string
+function getAppointmentsForDateString(dateString) {
+  return appointments.filter(apt => {
+    const aptDateString = formatDateString(apt.date)
+    return aptDateString === dateString
+  })
 }
 
 // Helper: Check if two dates are the same day
