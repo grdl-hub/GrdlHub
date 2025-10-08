@@ -318,19 +318,19 @@ class HomePageManager {
     }
 
     setupHeroImage() {
-        // Set up hero image with admin upload or fallback to default images
+        // Set up hero image - load admin image directly and as fast as possible
         const heroBackground = document.getElementById('heroBackground');
         if (heroBackground) {
-            console.log('🖼️ Hero background element found, loading image...');
-            this.loadHeroImage(heroBackground);
+            console.log('🖼️ Hero background element found, loading admin image...');
+            this.loadAdminHeroImageDirectly(heroBackground);
         } else {
             console.error('❌ Hero background element not found!');
         }
     }
 
-    async loadHeroImage(heroBackground) {
+    async loadAdminHeroImageDirectly(heroBackground) {
         try {
-            // Try to load admin-uploaded hero image first
+            // Load admin image as fast as possible
             const heroImageData = await this.getHeroImageFromFirestore();
             
             if (heroImageData && heroImageData.imageUrl) {
@@ -361,27 +361,17 @@ class HomePageManager {
                     console.log('✅ Admin hero image loaded successfully');
                     return;
                 }
-            } else {
-                console.log('🖼️ No admin hero image found, using defaults');
             }
+            
+            // Only if no admin image found, use simple fallback
+            console.log('🖼️ No admin hero image found, using simple fallback');
+            heroBackground.style.backgroundImage = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            
         } catch (error) {
             console.error('Error loading admin hero image:', error);
+            // Simple fallback on error
+            heroBackground.style.backgroundImage = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
         }
-        
-        // Fallback to default images if no admin image
-        console.log('🖼️ Loading default hero image');
-        const defaultImages = [
-            'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Mountain landscape
-            'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Forest path
-            'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'  // Nature scene
-        ];
-        
-        // Use a random image for now
-        const randomImage = defaultImages[Math.floor(Math.random() * defaultImages.length)];
-        
-        // Set image directly - no need to preload since CSS background-image handles it
-        heroBackground.style.backgroundImage = `url(${randomImage})`;
-        console.log('✅ Default hero image set:', randomImage);
     }
 
     async getHeroImageFromFirestore() {

@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "dotenv": "^17.2.2",
+    "firebase-admin": "^13.5.0",
     "idb": "^8.0.3"
   }
 }
