@@ -2452,6 +2452,12 @@ async function loadAppointments() {
           id: doc.id,
           ...doc.data()
         }
+        
+        // Map designations to designatedNames if it exists (for field service meetings)
+        if (aptData.designations && Array.isArray(aptData.designations) && !aptData.designatedNames) {
+          aptData.designatedNames = aptData.designations.map(d => d.userName || d.userId)
+        }
+        
         appointments.push(aptData)
         console.log(`📋 Loaded appointment: ${aptData.title} | type: ${aptData.type} | eventType: ${aptData.eventType} | date: ${aptData.date} | createdBy: ${aptData.createdBy}`)
       })
@@ -2473,6 +2479,12 @@ async function loadAppointments() {
           id: doc.id,
           ...doc.data()
         }
+        
+        // Map designations to designatedNames if it exists (for field service meetings)
+        if (aptData.designations && Array.isArray(aptData.designations) && !aptData.designatedNames) {
+          aptData.designatedNames = aptData.designations.map(d => d.userName || d.userId)
+        }
+        
         appointments.push(aptData)
         console.log(`📋 Loaded appointment (fallback): ${aptData.title} | type: ${aptData.type} | eventType: ${aptData.eventType} | date: ${aptData.date} | createdBy: ${aptData.createdBy}`)
       })
@@ -2571,9 +2583,9 @@ function renderCalendar() {
              data-occurrence-date="${apt.occurrenceDate || apt.date}">
           <span class="appointment-time">${timeText}</span>
           <span class="appointment-title">${titleText}</span>
-          ${apt.designatedNames && apt.designatedNames.length > 0 ? 
-            `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
         </div>
+        ${apt.designatedNames && apt.designatedNames.length > 0 ? 
+          `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
       `
     })
     
@@ -2633,9 +2645,9 @@ function renderCalendar() {
              data-occurrence-date="${dateString}">
           <div class="apt-time">${timeText}</div>
           <div class="apt-title ${apt.exception?.action === 'cancelled' ? 'strikethrough' : ''}">${titleText}</div>
-          ${apt.designatedNames && apt.designatedNames.length > 0 ? 
-            `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
         </div>
+        ${apt.designatedNames && apt.designatedNames.length > 0 ? 
+          `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
       `
     })
     
@@ -2696,9 +2708,9 @@ function renderCalendar() {
              data-occurrence-date="${apt.occurrenceDate || apt.date}">
           <span class="appointment-time">${timeText}</span>
           <span class="appointment-title">${titleText}</span>
-          ${apt.designatedNames && apt.designatedNames.length > 0 ? 
-            `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
         </div>
+        ${apt.designatedNames && apt.designatedNames.length > 0 ? 
+          `<div class="apt-designations">👥 ${apt.designatedNames.join(', ')}</div>` : ''}
       `
     })
     
