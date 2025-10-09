@@ -1,9 +1,10 @@
 import { getUserPermissions } from '../accessControl.js';
 import { loadHomeSections } from '../utils/homeSections.js';
-import { getAvailablePagesArray } from '../utils/pageRegistry.js';
+import { getAvailablePagesArray, getTranslatedPageName } from '../utils/pageRegistry.js';
 import { getCurrentUser } from '../auth.js';
 import { db } from '../auth.js';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { getUserLanguagePreference } from '../utils/translationManagement.js';
 
 class HomePageManager {
     constructor() {
@@ -57,12 +58,15 @@ class HomePageManager {
 
         // Use the page registry instead of hardcoded map
         const pageToCardMap = {};
+        const userLang = getUserLanguagePreference();
         
-        // Build the map dynamically from available pages
+        // Build the map dynamically from available pages with translated names
         this.availablePages.forEach(page => {
+            const translatedName = getTranslatedPageName(page.id, userLang);
+            
             pageToCardMap[page.id] = {
                 id: page.id,
-                title: page.name,
+                title: translatedName, // ← Use translated name
                 icon: page.icon,
                 page: page.id
             };
@@ -155,6 +159,13 @@ class HomePageManager {
                     window.location.hash = `#${page}`;
                 }
             }
+        });
+
+        // Listen for language changes and reload sections
+        window.addEventListener('languageChanged', async (event) => {
+            console.log('🌍 Language changed, reloading home sections with new language:', event.detail.lang);
+            await this.loadSections();
+            await this.renderSections();
         });
 
         // Add horizontal scroll support for touch devices

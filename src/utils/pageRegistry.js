@@ -3,44 +3,54 @@
  * Automatically discovers and manages available pages
  */
 
+// Import translation system
+import { getTranslationSync } from './translationManagement.js';
+
 // Core page definitions - single source of truth
+// NOTE: These are the English names - translations come from Firestore
 const PAGE_REGISTRY = {
   // Main pages
   home: { 
     name: 'Home', 
     icon: '🏠', 
     description: 'Dashboard and overview',
-    category: 'main'
+    category: 'main',
+    translationKey: 'pages.home'
   },
   templates: { 
     name: 'Templates', 
     icon: '📋', 
     description: 'Appointment templates management',
-    category: 'main'
+    category: 'main',
+    translationKey: 'pages.templates'
   },
   monthly: { 
     name: 'Monthly View', 
     icon: '📅', 
     description: 'Simple monthly view of appointments', 
-    category: 'main' 
+    category: 'main',
+    translationKey: 'pages.monthly'
   },
   appointments: { 
     name: 'Appointments', 
     icon: '📅', 
     description: 'Recurring appointments and scheduling', 
-    category: 'main' 
+    category: 'main',
+    translationKey: 'pages.appointments'
   },
   reports: { 
     name: 'Reports', 
     icon: '📊', 
     description: 'Generate detailed reports and analytics', 
-    category: 'main' 
+    category: 'main',
+    translationKey: 'pages.reports'
   },
   'field-service-meetings': { 
     name: 'Field Service Schedule', 
     icon: '🏫', 
     description: 'View field service schedule', 
-    category: 'main' 
+    category: 'main',
+    translationKey: 'pages.fieldServiceSchedule'
   },
   
   // People Management
@@ -48,25 +58,29 @@ const PAGE_REGISTRY = {
     name: 'Availability', 
     icon: '📋', 
     description: 'Mark availability for appointments', 
-    category: 'people' 
+    category: 'people',
+    translationKey: 'pages.availability'
   },
   'availability-tracker': { 
     name: 'Availability Tracker', 
     icon: '📆', 
     description: 'Monthly availability tracking view', 
-    category: 'people' 
+    category: 'people',
+    translationKey: 'pages.availabilityTracker'
   },
   'availability-forms': { 
     name: 'Availability Forms', 
     icon: '📝', 
     description: 'Submit availability forms', 
-    category: 'people' 
+    category: 'people',
+    translationKey: 'pages.availabilityForms'
   },
   users: { 
     name: 'Users', 
     icon: '👥', 
     description: 'User management', 
-    category: 'people' 
+    category: 'people',
+    translationKey: 'pages.users'
   },
   
   // System & Admin
@@ -74,31 +88,36 @@ const PAGE_REGISTRY = {
     name: 'Content', 
     icon: '📝', 
     description: 'Dynamic content management', 
-    category: 'system' 
+    category: 'system',
+    translationKey: 'pages.content'
   },
   pages: { 
     name: 'Pages', 
     icon: '📄', 
     description: 'Static page management', 
-    category: 'system' 
+    category: 'system',
+    translationKey: 'pages.pages'
   },
   settings: { 
     name: 'Settings', 
     icon: '⚙️', 
     description: 'App configuration', 
-    category: 'system' 
+    category: 'system',
+    translationKey: 'pages.settings'
   },
   translations: { 
     name: 'Translations', 
     icon: '🌍', 
     description: 'Multi-language support', 
-    category: 'system' 
+    category: 'system',
+    translationKey: 'pages.translations'
   },
   admin: { 
     name: 'Admin', 
     icon: '🔧', 
     description: 'Administrative functions', 
-    category: 'system' 
+    category: 'system',
+    translationKey: 'pages.admin'
   }
 }
 
@@ -106,6 +125,45 @@ const CATEGORIES = {
   main: 'Main Features',
   people: 'People Management',
   system: 'System & Admin'
+}
+
+/**
+ * Get translated page name
+ * @param {string} pageId - Page identifier
+ * @param {string} lang - Language code (defaults to user preference)
+ * @returns {string} - Translated page name or English fallback
+ */
+export function getTranslatedPageName(pageId, lang = null) {
+  const page = PAGE_REGISTRY[pageId];
+  if (!page) return pageId;
+  
+  // Get translation if available
+  if (page.translationKey) {
+    const translated = getTranslationSync(page.translationKey, lang);
+    
+    if (translated && translated !== page.translationKey) {
+      return translated;
+    }
+  }
+  
+  // Fallback to English
+  return page.name;
+}
+
+/**
+ * Get page metadata with translated name
+ * @param {string} pageId - Page identifier
+ * @param {string} lang - Language code
+ * @returns {object} - Page metadata with translated name
+ */
+export function getTranslatedPageMetadata(pageId, lang = null) {
+  const page = PAGE_REGISTRY[pageId];
+  if (!page) return null;
+  
+  return {
+    ...page,
+    name: getTranslatedPageName(pageId, lang)
+  };
 }
 
 /**

@@ -15,6 +15,8 @@ import { initializeAvailability, cleanupAvailability } from './pages/availabilit
 import { initializeTranslationsPage } from './pages/translations.js'
 import { initializeFieldServiceMeetings } from './pages/field-service-schedule.js'
 import { showNotification } from './utils/notifications.js'
+import { initializePWAUpdates } from './pwa-update.js'
+import { initializeCachedTranslations, setUserLanguagePreference } from './utils/translationManagement.js'
 
 class MainApp {
   constructor() {
@@ -77,12 +79,22 @@ class MainApp {
       await initializeAccessControl()
       console.log('✅ Access control initialized')
       
+      // Initialize cached translations for page names
+      console.log('🔧 Initializing translations cache...')
+      await initializeCachedTranslations()
+      console.log('✅ Translations cache initialized')
+      
       // Filter navigation to show auth-required elements
       await filterNavigation()
       console.log('✅ Navigation filtered for authenticated user')
       
       initializeUI()
       console.log('✅ UI initialized')
+      
+      // Initialize PWA update manager
+      console.log('🔧 Initializing PWA updates...')
+      initializePWAUpdates()
+      console.log('✅ PWA updates initialized')
       
       // Setup page modules
       console.log('🔧 Setting up page modules...')
@@ -539,7 +551,24 @@ class MainApp {
                 </div>
                 
                 <div class="settings-card">
-                  <h3>🖼️ Hero Image</h3>
+                  <h3>� App Updates</h3>
+                  <p>Check for and install the latest version of GrdlHub</p>
+                  <div class="update-info">
+                    <div class="form-group">
+                      <label class="form-label">Current Version</label>
+                      <div class="version-display" id="app-version-display">
+                        Loading...
+                      </div>
+                    </div>
+                    <button class="btn btn-primary" id="check-updates-btn" onclick="window.checkForAppUpdates?.()">
+                      🔍 Check for Updates
+                    </button>
+                    <small class="form-hint">The app automatically checks for updates every hour. You'll be notified when a new version is available.</small>
+                  </div>
+                </div>
+                
+                <div class="settings-card">
+                  <h3>�🖼️ Hero Image</h3>
                   <p>Customize the home page hero background image</p>
                   <div id="hero-image-management">
                     <div class="hero-image-preview" id="heroImagePreview">
@@ -1211,13 +1240,8 @@ class MainApp {
         languageOptions.forEach(opt => opt.classList.remove('active'))
         e.currentTarget.classList.add('active')
         
-        // Store preference
-        localStorage.setItem('selectedLanguage', selectedLang)
-        
-        // Apply language changes (if i18n system is available)
-        if (window.i18n && typeof window.i18n.setLanguage === 'function') {
-          await window.i18n.setLanguage(selectedLang)
-        }
+        // Store preference and dispatch event
+        setUserLanguagePreference(selectedLang)
         
         // Show notification
         const langName = selectedLang === 'pt' ? 'Português' : 'English'
@@ -1229,7 +1253,7 @@ class MainApp {
     })
     
     // Set initial active language
-    const currentLang = localStorage.getItem('selectedLanguage') || 'pt'
+    const currentLang = localStorage.getItem('userLanguage') || 'en'
     languageOptions.forEach(option => {
       if (option.dataset.lang === currentLang) {
         option.classList.add('active')

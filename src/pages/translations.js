@@ -5,6 +5,7 @@ import { getCurrentUser } from '../auth.js';
 import { showNotification } from '../utils/notifications.js';
 import { hasPageAccess } from '../accessControl.js';
 import TextExtractor from '../utils/textExtractor.js';
+import { translateText, translateBatch } from '../utils/autoTranslate.js';
 import { 
     getTranslationEntries,
     saveTranslationEntry,
@@ -142,6 +143,12 @@ class TranslationManager {
                     <div class="toolbar-left">
                         <button id="add-translation-btn" class="btn btn-primary">
                             ➕ Add Translation
+                        </button>
+                        <button id="translate-all-btn" class="btn btn-success">
+                            🔄 Auto-Translate All
+                        </button>
+                        <button id="init-page-translations-btn" class="btn btn-info">
+                            📄 Initialize Page Names
                         </button>
                         <button id="init-auth-translations-btn" class="btn btn-secondary">
                             🔐 Initialize Auth Portal
@@ -282,6 +289,18 @@ class TranslationManager {
         const addBtn = document.getElementById('add-translation-btn');
         if (addBtn) {
             addBtn.addEventListener('click', () => this.openTranslationModal());
+        }
+
+        // Auto-translate all button
+        const translateAllBtn = document.getElementById('translate-all-btn');
+        if (translateAllBtn) {
+            translateAllBtn.addEventListener('click', () => this.autoTranslateAll());
+        }
+
+        // Initialize Page Translations button
+        const initPageTranslationsBtn = document.getElementById('init-page-translations-btn');
+        if (initPageTranslationsBtn) {
+            initPageTranslationsBtn.addEventListener('click', () => this.initializePageTranslations());
         }
 
         // Initialize Auth Portal translations button
@@ -470,15 +489,20 @@ class TranslationManager {
                         <small class="form-hint">This is the primary text that will be displayed if no translation exists</small>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="portuguese-text">🇵🇹 Portuguese Translation:</label>
+                    <div class="form-group portuguese-translation-group">
+                        <div class="label-with-action">
+                            <label for="portuguese-text">🇵🇹 Portuguese Translation:</label>
+                            <button type="button" class="btn btn-small btn-secondary" id="auto-translate-btn" title="Auto-translate from English to Portuguese">
+                                🔄 Auto-translate
+                            </button>
+                        </div>
                         <input 
                             type="text" 
                             id="portuguese-text" 
                             value="${translation?.pt || ''}"
-                            placeholder="Portuguese translation (optional)"
+                            placeholder="Portuguese translation (will auto-translate if empty)"
                         >
-                        <small class="form-hint">Leave empty if translation is not available yet</small>
+                        <small class="form-hint">Click "Auto-translate" to generate Portuguese translation, or type manually</small>
                     </div>
 
                     <div class="form-group">
@@ -527,6 +551,49 @@ class TranslationManager {
         `;
         
         document.body.appendChild(modal);
+        
+        // Setup auto-translate button
+        const autoTranslateBtn = document.getElementById('auto-translate-btn');
+        const englishInput = document.getElementById('english-text');
+        const portugueseInput = document.getElementById('portuguese-text');
+        
+        if (autoTranslateBtn && englishInput && portugueseInput) {
+            autoTranslateBtn.addEventListener('click', async () => {
+                const englishText = englishInput.value.trim();
+                
+                if (!englishText) {
+                    showNotification('Please enter English text first', 'warning');
+                    englishInput.focus();
+                    return;
+                }
+                
+                // Show loading state
+                autoTranslateBtn.disabled = true;
+                autoTranslateBtn.innerHTML = '⏳ Translating...';
+                
+                try {
+                    // Auto-translate
+                    const translated = await translateText(englishText, 'pt');
+                    portugueseInput.value = translated;
+                    
+                    // Success feedback
+                    showNotification('✅ Translated to Portuguese!', 'success');
+                    autoTranslateBtn.innerHTML = '✅ Translated';
+                    
+                    // Reset button after 2 seconds
+                    setTimeout(() => {
+                        autoTranslateBtn.innerHTML = '🔄 Auto-translate';
+                        autoTranslateBtn.disabled = false;
+                    }, 2000);
+                    
+                } catch (error) {
+                    console.error('Translation error:', error);
+                    showNotification('Failed to translate. Please try manually.', 'error');
+                    autoTranslateBtn.innerHTML = '🔄 Auto-translate';
+                    autoTranslateBtn.disabled = false;
+                }
+            });
+        }
         
         // Setup form submission
         const form = document.getElementById('translation-form');
@@ -697,6 +764,90 @@ class TranslationManager {
         return this.translations.length > 0 ? Math.round((translated / this.translations.length) * 100) : 0;
     }
 
+    async autoTranslateAll() {
+        console.log('🔄 Starting bulk auto-translation...');
+        
+        // Find all translations missing Portuguese
+        const missingTranslations = this.translations.filter(t => !t.pt || t.pt.trim() === '');
+        
+        if (missingTranslations.length === 0) {
+            showNotification('✅ All translations already have Portuguese text!', 'info');
+            return;
+        }
+        
+        // Confirm action
+        const confirmed = confirm(
+            `This will auto-translate ${missingTranslations.length} entries from English to Portuguese.\n\n` +
+            `You can review and edit any translations afterwards.\n\n` +
+            `Continue?`
+        );
+        
+        if (!confirmed) return;
+        
+        // Show progress notification
+        showNotification(`🔄 Translating ${missingTranslations.length} entries...`, 'info');
+        
+        try {
+            let successCount = 0;
+            let failCount = 0;
+            
+            // Process translations in batches
+            for (const translation of missingTranslations) {
+                try {
+                    // Auto-translate
+                    const portugueseText = await translateText(translation.en, 'pt');
+                    
+                    // Update translation
+                    const updatedTranslation = {
+                        ...translation,
+                        pt: portugueseText,
+                        updatedAt: new Date(),
+                        updatedBy: getCurrentUser()?.email || 'System',
+                        autoTranslated: true // Mark as auto-translated
+                    };
+                    
+                    // Save to Firestore
+                    await saveTranslationEntry(updatedTranslation);
+                    successCount++;
+                    
+                    // Update progress every 5 translations
+                    if (successCount % 5 === 0) {
+                        showNotification(
+                            `🔄 Progress: ${successCount}/${missingTranslations.length} translated...`,
+                            'info'
+                        );
+                    }
+                    
+                } catch (error) {
+                    console.error(`Failed to translate ${translation.key}:`, error);
+                    failCount++;
+                }
+            }
+            
+            // Reload translations
+            await this.loadTranslations();
+            this.updateTranslationTable();
+            this.updateStats();
+            
+            // Show results
+            if (failCount === 0) {
+                showNotification(
+                    `✅ Successfully auto-translated all ${successCount} entries!`,
+                    'success'
+                );
+            } else {
+                showNotification(
+                    `✅ Translated ${successCount} entries (${failCount} failed)`,
+                    'warning'
+                );
+            }
+            
+        } catch (error) {
+            console.error('❌ Error during bulk translation:', error);
+            showNotification('Error during bulk translation. Please try again.', 'error');
+        }
+    }
+
     async initializeAuthPortalTranslations() {
         try {
             console.log('🔐 Initializing Auth Portal translations...');
@@ -746,6 +897,91 @@ class TranslationManager {
         } catch (error) {
             console.error('❌ Error initializing Auth Portal translations:', error);
             showNotification('Error initializing Auth Portal translations', 'error');
+        }
+    }
+
+    async initializePageTranslations() {
+        try {
+            console.log('📄 Initializing Page Name translations...');
+            showNotification('📄 Initializing Page Name translations...', 'info');
+
+            const { saveTranslationEntry } = await import('../utils/translationManagement.js');
+
+            // Define all page name translations from PAGE_REGISTRY
+            const pageTranslations = [
+                // Main Pages
+                { key: 'pages.home', en: 'Home', pt: 'Início', category: 'navigation' },
+                { key: 'pages.users', en: 'Users', pt: 'Utilizadores', category: 'navigation' },
+                { key: 'pages.pages', en: 'Pages', pt: 'Páginas', category: 'navigation' },
+                { key: 'pages.content', en: 'Content', pt: 'Conteúdo', category: 'navigation' },
+                { key: 'pages.templates', en: 'Templates', pt: 'Modelos', category: 'navigation' },
+                { key: 'pages.settings', en: 'Settings', pt: 'Definições', category: 'navigation' },
+                { key: 'pages.translations', en: 'Translations', pt: 'Traduções', category: 'navigation' },
+                { key: 'pages.appointments', en: 'Appointments', pt: 'Compromissos', category: 'navigation' },
+                { key: 'pages.availability', en: 'Availability', pt: 'Disponibilidade', category: 'navigation' },
+                { key: 'pages.availability-tracker', en: 'Availability Tracker', pt: 'Rastreador de Disponibilidade', category: 'navigation' },
+                { key: 'pages.availability-forms', en: 'Availability Forms', pt: 'Formulários de Disponibilidade', category: 'navigation' },
+                { key: 'pages.reports', en: 'Reports', pt: 'Relatórios', category: 'navigation' },
+                { key: 'pages.field-service-meetings', en: 'Field Service Schedule', pt: 'Agenda de Serviço de Campo', category: 'navigation' },
+                { key: 'pages.admin', en: 'Admin', pt: 'Administrador', category: 'navigation' },
+                
+                // Page Descriptions
+                { key: 'pages.home.description', en: 'Dashboard and overview', pt: 'Painel e visão geral', category: 'navigation' },
+                { key: 'pages.users.description', en: 'User management', pt: 'Gestão de utilizadores', category: 'navigation' },
+                { key: 'pages.pages.description', en: 'Page configuration', pt: 'Configuração de páginas', category: 'navigation' },
+                { key: 'pages.content.description', en: 'Content management', pt: 'Gestão de conteúdo', category: 'navigation' },
+                { key: 'pages.templates.description', en: 'Document templates', pt: 'Modelos de documentos', category: 'navigation' },
+                { key: 'pages.settings.description', en: 'Application settings', pt: 'Definições da aplicação', category: 'navigation' },
+                { key: 'pages.translations.description', en: 'Translation management', pt: 'Gestão de traduções', category: 'navigation' },
+                { key: 'pages.appointments.description', en: 'Appointment scheduling', pt: 'Agendamento de compromissos', category: 'navigation' },
+                { key: 'pages.availability.description', en: 'Availability management', pt: 'Gestão de disponibilidade', category: 'navigation' },
+                { key: 'pages.reports.description', en: 'Reports and analytics', pt: 'Relatórios e análises', category: 'navigation' },
+                
+                // Navigation elements
+                { key: 'nav.back_to_home', en: 'Back to Home', pt: 'Voltar ao Início', category: 'navigation' },
+                { key: 'nav.sign_out', en: 'Sign Out', pt: 'Sair', category: 'navigation' },
+                { key: 'nav.user_settings', en: 'User Settings', pt: 'Definições de Utilizador', category: 'navigation' },
+                
+                // Common UI elements
+                { key: 'common.language', en: 'Language', pt: 'Idioma', category: 'ui' },
+                { key: 'common.english', en: 'English', pt: 'Inglês', category: 'ui' },
+                { key: 'common.portuguese', en: 'Portuguese', pt: 'Português', category: 'ui' },
+            ];
+
+            let successCount = 0;
+            let skippedCount = 0;
+            
+            for (const translation of pageTranslations) {
+                try {
+                    // Check if translation already exists
+                    const existing = this.translations.find(t => t.key === translation.key);
+                    
+                    if (existing && existing.pt && existing.pt !== translation.key) {
+                        // Already has Portuguese translation, skip
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    await saveTranslationEntry(translation.key, translation.en, translation.pt, translation.category);
+                    successCount++;
+                } catch (error) {
+                    console.error(`❌ Error saving translation ${translation.key}:`, error);
+                }
+            }
+
+            // Reload translations
+            await this.loadTranslations();
+            this.updateTranslationTable();
+            this.updateStats();
+
+            showNotification(
+                `✅ Initialized ${successCount} page translations! (${skippedCount} already existed)`,
+                'success'
+            );
+            
+        } catch (error) {
+            console.error('❌ Error initializing page translations:', error);
+            showNotification('Error initializing page translations', 'error');
         }
     }
 }

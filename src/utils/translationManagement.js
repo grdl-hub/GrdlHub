@@ -394,3 +394,107 @@ export async function importTranslations(importData) {
     return false;
   }
 }
+
+/**
+ * Cached translations for synchronous access
+ * This is populated from Firestore and kept in memory
+ */
+let cachedTranslations = {
+  en: {},
+  pt: {}
+};
+
+/**
+ * Initialize cached translations from Firestore
+ * Call this on app startup
+ */
+export async function initializeCachedTranslations() {
+  try {
+    console.log('🔄 Initializing cached translations...');
+    cachedTranslations = await loadTranslationsFromFirestore();
+    
+    // Subscribe to real-time updates to keep cache fresh
+    subscribeToTranslations((entries) => {
+      cachedTranslations = {
+        en: {},
+        pt: {}
+      };
+      
+      entries.forEach(entry => {
+        if (entry.en) cachedTranslations.en[entry.key] = entry.en;
+        if (entry.pt) cachedTranslations.pt[entry.key] = entry.pt;
+      });
+      
+      console.log('🔄 Cached translations updated from Firestore');
+      
+      // Dispatch event to notify UI components to refresh
+      const currentLang = getUserLanguagePreference();
+      window.dispatchEvent(new CustomEvent('languageChanged', { 
+        detail: { lang: currentLang, source: 'cache-update' } 
+      }));
+    });
+    
+    console.log('✅ Cached translations initialized');
+    return cachedTranslations;
+  } catch (error) {
+    console.error('❌ Error initializing cached translations:', error);
+    return { en: {}, pt: {} };
+  }
+}
+
+/**
+ * Get translation synchronously from cache
+ * @param {string} key - Translation key
+ * @param {string} lang - Language code ('en' or 'pt')
+ * @returns {string} - Translated text or key if not found
+ */
+export function getTranslationSync(key, lang = null) {
+  // Get user's preferred language
+  if (!lang) {
+    lang = getUserLanguagePreference();
+  }
+  
+  // Check if translation exists in cache
+  if (cachedTranslations[lang] && cachedTranslations[lang][key]) {
+    return cachedTranslations[lang][key];
+  }
+  
+  // Fallback to English if Portuguese not found
+  if (lang === 'pt' && cachedTranslations.en[key]) {
+    return cachedTranslations.en[key];
+  }
+  
+  // Return key if no translation found
+  return key;
+}
+
+/**
+ * Get user's language preference
+ * @returns {string} - Language code
+ */
+export function getUserLanguagePreference() {
+  // Check localStorage (use same key as old i18n system for compatibility)
+  const savedLang = localStorage.getItem('userLanguage') || localStorage.getItem('grdlhub-language');
+  if (savedLang) return savedLang;
+  
+  // Check browser language
+  const browserLang = navigator.language || navigator.userLanguage;
+  if (browserLang.startsWith('pt')) return 'pt';
+  
+  // Default to English
+  return 'en';
+}
+
+/**
+ * Set user's language preference
+ * @param {string} lang - Language code
+ */
+export function setUserLanguagePreference(lang) {
+  // Save to both keys for compatibility with old i18n system
+  localStorage.setItem('userLanguage', lang);
+  localStorage.setItem('grdlhub-language', lang);
+  console.log(`🌍 Language preference set to: ${lang}`);
+  
+  // Dispatch event for UI updates
+  window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang } }));
+}

@@ -1511,6 +1511,22 @@ body {
   font-weight: 500;
 }
 
+/* App Updates Section */
+.update-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.version-display {
+  margin-bottom: var(--spacing-sm);
+}
+
+#check-updates-btn {
+  align-self: flex-start;
+  min-width: 200px;
+}
+
 /* Hero Image Management Styles */
 .hero-image-preview {
   width: 100%;
@@ -6869,6 +6885,28 @@ body.authenticated #auth-nav-link {
   margin-bottom: var(--spacing-sm);
   font-weight: 500;
   color: var(--text-primary);
+}
+
+/* Portuguese translation group with auto-translate button */
+.portuguese-translation-group {
+  position: relative;
+}
+
+.label-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.label-with-action label {
+  margin-bottom: 0;
+}
+
+.label-with-action .btn-small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 .form-group input,

@@ -4,7 +4,6 @@ console.log('🚀 Authentication Portal Loaded')
 // Global variables
 let authModule = null
 let isReady = false
-let i18n = null
 
 // Storage keys for magic link flow
 const STORED_EMAIL_LINK_KEY = 'auth:pendingEmailLink'
@@ -27,37 +26,11 @@ async function initAuthPortal() {
   }
   
   try {
-    // Initialize i18n system with Portuguese as default
-    const i18nModule = await import('./utils/i18n.js')
-    i18n = i18nModule.default
-    
-    // Initialize default translations first
-    const translationModule = await import('./utils/translationManagement.js')
-    console.log('🌍 Checking translation entries...')
-    
-    try {
-      const entries = await translationModule.getTranslationEntries()
-      console.log('🌍 Found translation entries:', entries.length)
-      if (entries.length === 0) {
-        console.log('🌍 No translations found, initializing defaults...')
-        await translationModule.initializeDefaultTranslations()
-      }
-    } catch (translationError) {
-      console.error('🌍 Error with translations (likely auth issue):', translationError)
-      console.log('🌍 Proceeding without translations - using fallbacks')
-    }
-    
-    // Set Portuguese as default for auth portal
-    i18n.setLanguage('pt')
-    await i18n.initialize()
-    console.log('🌍 i18n initialized with Portuguese as default')
-    console.log('🌍 i18n instance:', i18n)
-    
-  // Load Firebase auth module
-  authModule = await import('./auth-standalone.js')
-  console.log('🔐 Firebase auth module loaded. Current URL:', window.location.href)
-  await authModule.initializeStandaloneAuth()
-  console.log('🔐 Standalone auth initialized. Firebase sign-in link detected?', authModule.isFirebaseSignInLink())
+    // Load Firebase auth module
+    authModule = await import('./auth-standalone.js')
+    console.log('🔐 Firebase auth module loaded. Current URL:', window.location.href)
+    await authModule.initializeStandaloneAuth()
+    console.log('🔐 Standalone auth initialized. Firebase sign-in link detected?', authModule.isFirebaseSignInLink())
     isReady = true
     
     // Check if user is already signed in
@@ -100,27 +73,15 @@ async function initAuthPortal() {
 }
 
 function showEmailForm(container) {
-  // Test translation system
-  console.log('🌍 Testing translations...')
-  console.log('🌍 i18n available:', !!i18n)
-  console.log('🌍 i18n initialized:', i18n?.initialized)
-  
-  // Try to use translation system, fall back to Portuguese if needed
-  const title = (i18n && i18n.t) ? i18n.t('auth.title') || 'GrdlHub' : 'GrdlHub'
-  const subtitle = (i18n && i18n.t) ? i18n.t('auth.subtitle') || 'Portal de Acesso Seguro' : 'Portal de Acesso Seguro'
-  const signin = (i18n && i18n.t) ? i18n.t('auth.signin') || 'Entrar' : 'Entrar'
-  const emailPrompt = (i18n && i18n.t) ? i18n.t('auth.email_prompt') || 'Digite seu endereço de email para acessar o GrdlHub' : 'Digite seu endereço de email para acessar o GrdlHub'
-  const emailLabel = (i18n && i18n.t) ? i18n.t('auth.email_label') || 'Endereço de Email' : 'Endereço de Email'
-  const emailPlaceholder = (i18n && i18n.t) ? i18n.t('auth.email_placeholder') || 'seu.email@exemplo.com' : 'seu.email@exemplo.com'
-  const signinButton = (i18n && i18n.t) ? i18n.t('auth.signin_button') || 'Entrar' : 'Entrar'
-  const secureNote = (i18n && i18n.t) ? i18n.t('auth.secure_note') || '🔒 Autenticação segura baseada em email' : '🔒 Autenticação segura baseada em email'
-  
-  console.log('🌍 Translation test:', {
-    'auth.title': i18n?.t('auth.title'),
-    'auth.subtitle': i18n?.t('auth.subtitle'),
-    title,
-    subtitle
-  })
+  // Use Portuguese hardcoded text for auth portal
+  const title = 'GrdlHub'
+  const subtitle = 'Portal de Acesso Seguro'
+  const signin = 'Entrar'
+  const emailPrompt = 'Digite seu endereço de email para acessar o GrdlHub'
+  const emailLabel = 'Endereço de Email'
+  const emailPlaceholder = 'seu.email@exemplo.com'
+  const signinButton = 'Entrar'
+  const secureNote = '🔒 Autenticação segura baseada em email'
   
   container.innerHTML = `
     <div style="max-width: 400px; margin: 0 auto; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">

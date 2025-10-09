@@ -20,7 +20,8 @@
     "setup-firebase": "node scripts/setup-firebase.js",
     "verify-firebase": "node scripts/verify-firebase-config.js",
     "check-firebase": "node scripts/check-firebase-config.js",
-    "debug": "node scripts/debug.js"
+    "debug": "node scripts/debug.js",
+    "init-page-translations": "node scripts/initPageTranslations.js"
   },
   "devDependencies": {
     "firebase": "^12.2.1",
