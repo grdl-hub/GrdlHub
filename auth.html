@@ -25,6 +25,15 @@
   <link rel="stylesheet" href="/src/auth-portal.css">
   
   <title>GrdlHub - Secure Access</title>
+  <script>
+    const initialAuthHref = window.location.href
+    try {
+      window.localStorage.setItem('authDebug:lastInitialHref', initialAuthHref)
+    } catch (storageError) {
+      console.warn('⚠️ Unable to persist initial auth URL in localStorage:', storageError)
+    }
+    console.log('🔎 auth.html initial location:', initialAuthHref)
+  </script>
 </head>
 <body>
   <div id="auth-container">

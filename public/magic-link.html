@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completing Sign In...</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h2>Completing Sign In...</h2>
+        <p>Please wait while we sign you in.</p>
+        <div id="error-message" class="error" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        import { signInWithFirebaseLink, isFirebaseSignInLink } from './src/auth-standalone.js'
+
+        async function handleMagicLink() {
+            try {
+                console.log('🔗 Magic Link Handler: Processing authentication...')
+                
+                // Check if this is a valid magic link
+                if (!isFirebaseSignInLink(window.location.href)) {
+                    throw new Error('Invalid magic link URL')
+                }
+
+                // Get email from URL params or localStorage
+                const urlParams = new URLSearchParams(window.location.search)
+                const email = urlParams.get('email') || window.localStorage.getItem('emailForSignIn')
+                
+                if (!email) {
+                    throw new Error('Email address not found. Please try signing in again.')
+                }
+
+                console.log('📧 Processing magic link for:', email)
+
+                // Sign in with the magic link
+                const result = await signInWithFirebaseLink(email, window.location.href)
+
+                if (result.success) {
+                    console.log('✅ Magic link authentication successful!')
+                    
+                    // Clear stored email
+                    window.localStorage.removeItem('emailForSignIn')
+                    
+                    // Close this window if it's a popup, or redirect to main app
+                    if (window.opener) {
+                        // This is a popup window, close it
+                        console.log('📱 Closing popup window and notifying parent')
+                        window.opener.postMessage({
+                            type: 'MAGIC_LINK_SUCCESS',
+                            user: result.user
+                        }, window.location.origin)
+                        window.close()
+                    } else {
+                        // This is the same tab, redirect to main app
+                        console.log('🔄 Redirecting to main app')
+                        window.location.href = '/'
+                    }
+                } else {
+                    throw new Error(result.error || 'Authentication failed')
+                }
+            } catch (error) {
+                console.error('❌ Magic link error:', error)
+                
+                const errorDiv = document.getElementById('error-message')
+                errorDiv.textContent = error.message
+                errorDiv.style.display = 'block'
+                
+                // Hide spinner
+                document.querySelector('.spinner').style.display = 'none'
+                
+                // Redirect to auth portal after delay
+                setTimeout(() => {
+                    if (window.opener) {
+                        window.opener.postMessage({
+                            type: 'MAGIC_LINK_ERROR',
+                            error: error.message
+                        }, window.location.origin)
+                        window.close()
+                    } else {
+                        window.location.href = '/auth.html'
+                    }
+                }, 3000)
+            }
+        }
+
+        // Start processing when page loads
+        handleMagicLink()
+    </script>
+</body>
+</html>

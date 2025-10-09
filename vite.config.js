@@ -30,7 +30,14 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [
+          /^\/auth-link-handler/,
+          /^\/auth\.html/,
+          /^\/magic-link-helper/,
+          /^\/cache-reset/
+        ]
       }
     })
   ],
@@ -39,7 +46,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        auth: resolve(__dirname, 'auth.html')
+        auth: resolve(__dirname, 'auth.html'),
+        authLinkHandler: resolve(__dirname, 'auth-link-handler.html')
       }
     }
   }

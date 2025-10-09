@@ -6,6 +6,10 @@ let authModule = null
 let isReady = false
 let i18n = null
 
+// Storage keys for magic link flow
+const STORED_EMAIL_LINK_KEY = 'auth:pendingEmailLink'
+const STORED_EMAIL_KEY = 'auth:pendingEmail'
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initAuthPortal)
@@ -49,9 +53,11 @@ async function initAuthPortal() {
     console.log('🌍 i18n initialized with Portuguese as default')
     console.log('🌍 i18n instance:', i18n)
     
-    // Load Firebase auth module
-    authModule = await import('./auth-standalone.js')
-    await authModule.initializeStandaloneAuth()
+  // Load Firebase auth module
+  authModule = await import('./auth-standalone.js')
+  console.log('🔐 Firebase auth module loaded. Current URL:', window.location.href)
+  await authModule.initializeStandaloneAuth()
+  console.log('🔐 Standalone auth initialized. Firebase sign-in link detected?', authModule.isFirebaseSignInLink())
     isReady = true
     
     // Check if user is already signed in
@@ -62,10 +68,25 @@ async function initAuthPortal() {
       return
     }
     
-    // Check if this is a magic link
-    if (authModule.isFirebaseSignInLink()) {
-      console.log('🔗 Processing magic link...')
-      await processMagicLink(container)
+      // Check if this is a magic link in the current URL
+      if (authModule.isFirebaseSignInLink()) {
+        console.log('🔗 Processing magic link in URL:', window.location.href)
+        await processMagicLink(container)
+        return
+      }
+
+      // Check if we have a stored pending magic link (from handler)
+      const storedLink = window.localStorage.getItem(STORED_EMAIL_LINK_KEY)
+      if (storedLink && authModule.isFirebaseSignInLink(storedLink)) {
+        console.log('🔗 Processing stored magic link from handler:', storedLink)
+        await processMagicLink(container, storedLink)
+      return
+    }
+
+    const urlParams = new URLSearchParams(window.location.search)
+    if (!storedLink && urlParams.get('from') === 'email-link') {
+      console.warn('⚠️ Returned from email link but no stored magic link was found. Showing helper UI.')
+      showMagicLinkHelperPrompt(container)
       return
     }
     
@@ -141,6 +162,65 @@ function showEmailForm(container) {
   if (form) {
     form.addEventListener('submit', handleEmailSubmit)
     console.log('✅ Email form ready')
+  }
+}
+
+function showMagicLinkHelperPrompt(container) {
+  const helperUrl = '/magic-link-helper.html'
+  const debugUrl = '/cache-reset.html'
+
+  container.innerHTML = `
+    <div style="max-width: 480px; margin: 0 auto; padding: 40px; background: white; border-radius: 16px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.15); text-align: left;">
+      <h1 style="margin: 0 0 12px; color: #0d47a1; font-size: 1.85rem; font-weight: 600;">Precisamos do seu link</h1>
+      <p style="margin: 0 0 24px; color: #4b5563; line-height: 1.6;">Não conseguimos completar o acesso automático porque o link seguro não chegou até aqui. Seguindo os passos abaixo, você conclui o acesso em poucos segundos:</p>
+
+      <ol style="margin: 0 0 24px 20px; padding: 0; color: #374151; line-height: 1.6;">
+        <li>Abra o e-mail que recebeu com o link de acesso.</li>
+        <li>Copie o link inteiro (começa com <code>https://kgdmin.firebaseapp.com/__/auth/action...</code>).</li>
+        <li>Cole o link na ferramenta “Abrir link seguro” abaixo.</li>
+      </ol>
+
+      <a href="${helperUrl}" style="display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; background: linear-gradient(135deg, #1976d2, #0d47a1); color: white; border-radius: 999px; text-decoration: none; font-weight: 600;">
+        Abrir ferramenta “Abrir link seguro”
+        <span aria-hidden="true">↗</span>
+      </a>
+
+      <div style="margin-top: 24px; padding: 16px; background: #e0f2fe; border-radius: 12px; color: #0c4a6e;">
+        <strong>Dica:</strong> se já tentou antes, limpe os arquivos salvos clicando em
+        <a href="${debugUrl}" style="color: #0d47a1; font-weight: 600;">Atualizar GrdlHub</a> em uma nova aba.
+      </div>
+    </div>
+  `
+}
+
+function normalizeEmailLink(link) {
+  try {
+    const url = new URL(link)
+    const mode = url.searchParams.get('mode')
+    const oobCode = url.searchParams.get('oobCode')
+    const apiKey = url.searchParams.get('apiKey')
+    const languageCode = url.searchParams.get('lang') || url.searchParams.get('languageCode')
+    const continueUrl = url.searchParams.get('continueUrl')
+
+    if (!mode || !oobCode || !apiKey) {
+      return link
+    }
+
+    const firebaseActionUrl = new URL('/__/auth/action', 'https://kgdmin.firebaseapp.com')
+    firebaseActionUrl.searchParams.set('mode', mode)
+    firebaseActionUrl.searchParams.set('oobCode', oobCode)
+    firebaseActionUrl.searchParams.set('apiKey', apiKey)
+    if (languageCode) {
+      firebaseActionUrl.searchParams.set('lang', languageCode)
+    }
+    if (continueUrl) {
+      firebaseActionUrl.searchParams.set('continueUrl', continueUrl)
+    }
+
+    return firebaseActionUrl.toString()
+  } catch (error) {
+    console.warn('⚠️ Failed to normalize magic link, using original.', error)
+    return link
   }
 }
 
@@ -265,7 +345,7 @@ function showEmailNotRecognized(email) {
   `
 }
 
-async function processMagicLink(container) {
+async function processMagicLink(container, linkOverride = null) {
   container.innerHTML = `
     <div style="max-width: 400px; margin: 0 auto; padding: 40px; text-align: center;">
       <h1 style="margin: 0 0 8px 0; color: #1976d2; font-size: 2rem; font-weight: 600;">GrdlHub</h1>
@@ -277,20 +357,30 @@ async function processMagicLink(container) {
   try {
     // Get email from URL or localStorage
     const urlParams = new URLSearchParams(window.location.search)
-    const email = urlParams.get('email') || window.localStorage.getItem('emailForSignIn')
+    const emailFromUrl = urlParams.get('email')
+    const storedEmail = window.localStorage.getItem(STORED_EMAIL_KEY)
+    const email = emailFromUrl || storedEmail || window.localStorage.getItem('emailForSignIn')
+  const rawLink = linkOverride || window.localStorage.getItem(STORED_EMAIL_LINK_KEY) || window.location.href
+  const linkToUse = normalizeEmailLink(rawLink)
     
     console.log('🔗 Processing magic link for email:', email)
+    console.log('🔗 URL params:', Object.fromEntries(urlParams.entries()))
+    console.log('🔗 Local storage email:', window.localStorage.getItem('emailForSignIn'))
+    console.log('🔗 Stored handler email:', storedEmail)
+    console.log('🔗 Link override?', !!linkOverride)
+    console.log('🔗 Link to use for sign-in:', linkToUse)
     
     if (!email) {
       throw new Error('Email address required to complete sign-in')
     }
     
     // Sign in with magic link
-    const result = await authModule.signInWithFirebaseLink(email, window.location.href)
+    const result = await authModule.signInWithFirebaseLink(email, linkToUse)
     
     if (result.success) {
-      console.log('✅ Magic link sign-in successful')
-      showSignInSuccess(container)
+      console.log('✅ Magic link sign-in successful. Firebase user:', result.user?.email)
+      clearPendingMagicLink()
+      await showSignInSuccess(container)
     } else {
       throw new Error(result.error || 'Failed to complete sign-in')
     }
@@ -298,10 +388,12 @@ async function processMagicLink(container) {
   } catch (error) {
     console.error('❌ Magic link error:', error)
     showMagicLinkError(container, error.message)
+    clearPendingMagicLink()
   }
 }
 
-function showSignInSuccess(container) {
+async function showSignInSuccess(container) {
+  console.log('🚦 showSignInSuccess() called. Waiting for auth state confirmation...')
   container.innerHTML = `
     <div style="max-width: 400px; margin: 0 auto; padding: 40px; text-align: center;">
       <h1 style="margin: 0 0 8px 0; color: #1976d2; font-size: 2rem; font-weight: 600;">GrdlHub</h1>
@@ -311,13 +403,49 @@ function showSignInSuccess(container) {
     </div>
   `
   
-  // Redirect to main app after short delay
-  setTimeout(() => {
-    window.location.href = '/'
-  }, 2000)
+  // Wait for Firebase Auth state to fully propagate
+  try {
+    const { getAuth } = await import('firebase/auth')
+    const auth = getAuth()
+    console.log('🚦 Firebase auth instance ready. Current user at start:', auth.currentUser?.email)
+    
+    // Wait for auth state to be confirmed
+    await new Promise((resolve) => {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        if (user) {
+          console.log('✅ Auth state confirmed before redirect:', user.email)
+          unsubscribe()
+          resolve()
+        }
+      })
+      
+      // Failsafe: redirect after 3 seconds even if not confirmed
+      setTimeout(() => {
+        console.warn('⏱️ Auth state confirmation timed out after 3s. Proceeding with redirect.')
+        unsubscribe()
+        resolve()
+      }, 3000)
+    })
+  } catch (error) {
+    console.error('⚠️ Auth state check error:', error)
+  }
+  
+  // Redirect to main app
+  console.log('➡️ Redirecting to /index.html#home')
+  window.location.href = '/index.html#home'
 }
 
-function showSignedInState(container) {
+function clearPendingMagicLink() {
+  try {
+    window.localStorage.removeItem(STORED_EMAIL_LINK_KEY)
+    window.localStorage.removeItem(STORED_EMAIL_KEY)
+  } catch (error) {
+    console.warn('⚠️ Failed to clear pending magic link storage keys:', error)
+  }
+}
+
+async function showSignedInState(container) {
+  console.log('🚦 showSignedInState() called. User already signed in, verifying state before redirect...')
   container.innerHTML = `
     <div style="max-width: 400px; margin: 0 auto; padding: 40px; text-align: center;">
       <h1 style="margin: 0 0 8px 0; color: #1976d2; font-size: 2rem; font-weight: 600;">GrdlHub</h1>
@@ -327,10 +455,37 @@ function showSignedInState(container) {
     </div>
   `
   
-  // Redirect to main app after short delay
-  setTimeout(() => {
-    window.location.href = '/'
-  }, 1500)
+  // Wait for Firebase Auth state to fully propagate
+  try {
+    const { getAuth } = await import('firebase/auth')
+    const auth = getAuth()
+    console.log('🚦 Current auth user before confirmation:', auth.currentUser?.email)
+    
+    // Wait for auth state to be confirmed
+    await new Promise((resolve) => {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        if (user) {
+          console.log('✅ Auth state confirmed for already signed-in user:', user.email)
+          unsubscribe()
+          resolve()
+        }
+      })
+      
+      // Failsafe: redirect after 2 seconds even if not confirmed
+      setTimeout(() => {
+        console.warn('⏱️ Auth state confirmation timed out after 2s (already signed-in path). Proceeding with redirect.')
+        unsubscribe()
+        resolve()
+      }, 2000)
+    })
+  } catch (error) {
+    console.error('⚠️ Auth state check error:', error)
+  }
+  
+  // Redirect to main app
+  console.log('➡️ Redirecting (already signed-in) to /index.html#home')
+  clearPendingMagicLink()
+  window.location.href = '/index.html#home'
 }
 
 function showMagicLinkError(container, errorMessage) {

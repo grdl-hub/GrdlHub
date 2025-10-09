@@ -12,6 +12,18 @@
     ],
     "rewrites": [
       {
+        "source": "/auth-link-handler",
+        "destination": "/auth-link-handler.html"
+      },
+      {
+        "source": "/auth-link-handler.html",
+        "destination": "/auth-link-handler.html"
+      },
+      {
+        "source": "/auth.html",
+        "destination": "/auth.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
